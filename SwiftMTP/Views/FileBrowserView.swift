@@ -91,10 +91,10 @@ struct FileBrowserView: View {
                             } label: {
                                 Label("删除", systemImage: "trash")
                                     .labelStyle(.iconOnly)
+                                    .foregroundStyle(selectedFiles.isEmpty ? .secondary : .red)
                             }
                             .help("删除选中的文件")
                             .disabled(selectedFiles.isEmpty)
-                            .foregroundStyle(selectedFiles.isEmpty ? .secondary : .red)
                         }
                     }
                     .toolbarLiquidGlass()            .sheet(isPresented: $showingCreateFolderDialog) {
