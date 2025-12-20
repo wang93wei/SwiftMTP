@@ -23,6 +23,11 @@ struct FileBrowserView: View {
     private var hasSelectedFolders: Bool {
         currentFiles.contains { selectedFiles.contains($0.id) && $0.isDirectory }
     }
+    
+    // Check if there are downloadable files selected
+    private var hasDownloadableFiles: Bool {
+        !selectedFiles.isEmpty && !hasSelectedFolders
+    }
 
     @State private var showingDeleteAlert = false
     @State private var fileToDelete: FileItem?
@@ -98,7 +103,7 @@ struct FileBrowserView: View {
                                     .labelStyle(.iconOnly)
                             }
                             .help("下载选中的文件")
-                            .disabled(selectedFiles.isEmpty || hasSelectedFolders)
+                            .disabled(!hasDownloadableFiles)
                         }
                         
                         ToolbarItem {
