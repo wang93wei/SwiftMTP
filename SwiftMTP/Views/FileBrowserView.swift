@@ -17,6 +17,7 @@ struct FileBrowserView: View {
     @State private var selectedFiles: Set<FileItem.ID> = []
     @State private var isLoading = false
     @State private var pendingNavigation: FileItem?
+    @State private var isDropTargeted = false
 
     @State private var showingDeleteAlert = false
     @State private var fileToDelete: FileItem?
@@ -108,8 +109,14 @@ struct FileBrowserView: View {
                 systemImage: "folder",
                 description: Text("此文件夹中没有文件")
             )
+            .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+                handleDroppedFiles(providers)
+            }
         } else {
             fileTableView
+                .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+                    handleDroppedFiles(providers)
+                }
         }
     }
     
@@ -154,6 +161,16 @@ struct FileBrowserView: View {
                 pendingNavigation = nil
             }
         }
+        .overlay {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(.blue, lineWidth: 2)
+                    .background(.blue.opacity(0.1))
+                    .padding(4)
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
     }
     
     private func nameCell(for file: FileItem) -> some View {
@@ -437,6 +454,65 @@ struct FileBrowserView: View {
                     print("Failed to create folder: \(folderName)")
                 }
             }
+        }
+    }
+    
+    // MARK: - Drag & Drop Support
+    
+    private func handleDroppedFiles(_ providers: [NSItemProvider]) -> Bool {
+        guard !currentPath.isEmpty || device.storageInfo.first != nil else {
+            print("Cannot upload: No valid destination")
+            return false
+        }
+        
+        // Determine parent ID and storage ID
+        let parentId = currentPath.last?.objectId ?? 0xFFFFFFFF
+        let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId ?? 0xFFFFFFFF
+        
+        var fileURLs: [URL] = []
+        
+        // Extract file URLs from providers
+        for provider in providers {
+            if provider.canLoadObject(ofClass: URL.self) {
+                provider.loadObject(ofClass: URL.self) { url, error in
+                    if let url = url as? URL {
+                        DispatchQueue.main.async {
+                            fileURLs.append(url)
+                            
+                            // Check if all files have been processed
+                            if fileURLs.count == providers.count {
+                                uploadDroppedFiles(fileURLs, parentId: parentId, storageId: storageId)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Handle case where no files were loaded
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if fileURLs.isEmpty {
+                print("No valid files were dropped")
+            }
+        }
+        
+        return true
+    }
+    
+    private func uploadDroppedFiles(_ urls: [URL], parentId: UInt32, storageId: UInt32) {
+        print("Uploading \(urls.count) dropped files...")
+        
+        for url in urls {
+            // Skip directories and hidden files
+            var isDirectory: ObjCBool = false
+            if url.lastPathComponent.hasPrefix(".") || 
+               FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue {
+                print("Skipping: \(url.lastPathComponent) (hidden or directory)")
+                continue
+            }
+            
+            // Upload file
+            FileTransferManager.shared.uploadFile(to: device, sourceURL: url, parentId: parentId, storageId: storageId)
         }
     }
 }
