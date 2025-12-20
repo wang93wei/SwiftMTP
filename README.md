@@ -33,6 +33,22 @@ brew install libmtp go
 3. 连接 Android 设备并设置为 MTP 模式
 4. 在 Xcode 中按 `Cmd + R` 构建并运行
 
+### 3. 创建 DMG 安装包
+
+项目提供了两个脚本来创建 DMG 安装包：
+
+#### 简化版打包（推荐，无需开发者证书）
+```bash
+./Scripts/create_dmg_simple.sh
+```
+
+#### 完整版打包（需要开发者证书）
+```bash
+./Scripts/create_dmg.sh
+```
+
+DMG 文件将生成在 `build/` 目录中，文件名格式为 `SwiftMTP_版本号.dmg`。
+
 ## 使用说明
 
 ### 连接设备
