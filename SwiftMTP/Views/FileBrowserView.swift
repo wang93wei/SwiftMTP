@@ -605,31 +605,6 @@ struct FileBrowserView: View {
             FileTransferManager.shared.uploadFile(to: device, sourceURL: url, parentId: parentId, storageId: storageId)
         }
     }
-    
-    private func downloadSelectedFiles() {
-        let filesToDownload = currentFiles.filter { selectedFiles.contains($0.id) && !$0.isDirectory }
-        
-        guard !filesToDownload.isEmpty else {
-            return
-        }
-        
-        // Show save panel for the first file
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.canCreateDirectories = true
-        panel.prompt = "选择下载位置"
-        panel.title = filesToDownload.count == 1 ? "下载文件" : "下载 \(filesToDownload.count) 个文件"
-        
-        panel.begin { response in
-            if response == .OK, let directory = panel.url {
-                for file in filesToDownload {
-                    let destination = directory.appendingPathComponent(file.name)
-                    FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination)
-                }
-            }
-        }
-    }
 }
 
 // MARK: - Table Double Click Support
