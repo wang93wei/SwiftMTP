@@ -1,0 +1,9 @@
+# github.com/ganeshrvel/go-mtpfs v1.0.4-0.20240426083057-1c3302b3c476
+## explicit; go 1.12
+github.com/ganeshrvel/go-mtpfs/mtp
+# github.com/ganeshrvel/go-mtpx v0.0.0-20240426092756-18f12db021cc
+## explicit; go 1.15
+github.com/ganeshrvel/go-mtpx
+# github.com/ganeshrvel/usb v0.0.0-20210103155855-14d96f5ae403
+## explicit; go 1.15
+github.com/ganeshrvel/usb

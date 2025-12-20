@@ -1,0 +1,284 @@
+package main
+
+/*
+#include <stdlib.h>
+*/
+import "C"
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+	"sync"
+	"unsafe"
+    
+	"github.com/ganeshrvel/go-mtpfs/mtp"
+	"github.com/ganeshrvel/go-mtpx"
+)
+
+// -- Internal State --
+
+var (
+	deviceMu sync.Mutex
+)
+
+// withDevice executes a function with a fresh device connection
+func withDevice(fn func(*mtp.Device) error) error {
+	deviceMu.Lock()
+	defer deviceMu.Unlock()
+	
+	dev, err := mtpx.Initialize(mtpx.Init{
+		DebugMode: false,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to initialize device: %w", err)
+	}
+	defer mtpx.Dispose(dev)
+	
+	return fn(dev)
+}
+
+// -- Data Structures for JSON --
+
+type DeviceJSON struct {
+	ID           int            `json:"id"`
+	Name         string         `json:"name"`
+	Manufacturer string         `json:"manufacturer"`
+	Model        string         `json:"model"`
+	Storage      []StorageJSON  `json:"storage"`
+}
+
+type StorageJSON struct {
+	ID          uint32 `json:"id"`
+	Description string `json:"description"`
+	FreeSpace   uint64 `json:"freeSpace"`
+	MaxCapacity uint64 `json:"maxCapacity"`
+}
+
+type FileJSON struct {
+	ID        uint32 `json:"id"`
+	ParentID  uint32 `json:"parentId"`
+	StorageID uint32 `json:"storageId"`
+	Name      string `json:"name"`
+	Size      uint64 `json:"size"`
+	IsFolder  bool   `json:"isFolder"`
+	ModTime   int64  `json:"modTime"`
+}
+
+// -- Exported Functions --
+
+//export Kalam_Init
+func Kalam_Init() {
+	fmt.Println("Kalam Kernel Bridge Initialized")
+}
+
+//export Kalam_Scan
+func Kalam_Scan() *C.char {
+	var result string
+	
+	err := withDevice(func(dev *mtp.Device) error {
+		info, err := mtpx.FetchDeviceInfo(dev)
+		if err != nil {
+			return fmt.Errorf("FetchDeviceInfo failed: %w", err)
+		}
+
+		storages, err := mtpx.FetchStorages(dev)
+		if err != nil {
+			fmt.Printf("Kalam_Scan: FetchStorages failed: %v\n", err)
+			storages = []mtpx.StorageData{}
+		}
+
+		var deviceList []DeviceJSON
+
+		deviceName := info.Model
+		if info.Manufacturer != "" && !containsIgnoreCase(info.Model, info.Manufacturer) {
+			deviceName = info.Manufacturer + " " + info.Model
+		}
+
+		d := DeviceJSON{
+			ID:           1,
+			Name:         deviceName,
+			Manufacturer: info.Manufacturer,
+			Model:        info.Model,
+			Storage:      []StorageJSON{},
+		}
+
+		for _, s := range storages {
+			d.Storage = append(d.Storage, StorageJSON{
+				ID:          s.Sid,
+				Description: s.Info.StorageDescription,
+				FreeSpace:   s.Info.FreeSpaceInBytes,
+				MaxCapacity: s.Info.MaxCapability,
+			})
+		}
+
+		deviceList = append(deviceList, d)
+
+		jsonData, err := json.Marshal(deviceList)
+		if err != nil {
+			return fmt.Errorf("JSON marshal failed: %w", err)
+		}
+		
+		result = string(jsonData)
+		return nil
+	})
+	
+	if err != nil {
+		fmt.Printf("Kalam_Scan: %v\n", err)
+		return C.CString("[]")
+	}
+	
+	return C.CString(result)
+}
+
+//export Kalam_ListFiles
+func Kalam_ListFiles(storageID uint32, parentID uint32) *C.char {
+	var result string
+	
+	err := withDevice(func(dev *mtp.Device) error {
+		var handles mtp.Uint32Array
+		if err := dev.GetObjectHandles(storageID, 0, parentID, &handles); err != nil {
+			return fmt.Errorf("GetObjectHandles failed: %w", err)
+		}
+
+		var files []FileJSON
+		for _, handle := range handles.Values {
+			var info mtp.ObjectInfo
+			if err := dev.GetObjectInfo(handle, &info); err != nil {
+				fmt.Printf("Kalam_ListFiles: GetObjectInfo failed for handle %d: %v\n", handle, err)
+				continue
+			}
+
+			files = append(files, FileJSON{
+				ID:        handle,
+				ParentID:  info.ParentObject,
+				StorageID: info.StorageID,
+				Name:      info.Filename,
+				Size:      uint64(info.CompressedSize),
+				IsFolder:  info.ObjectFormat == 0x3001,
+				ModTime:   info.ModificationDate.Unix(),
+			})
+		}
+		
+		if files == nil {
+			files = []FileJSON{}
+		}
+
+		jsonData, err := json.Marshal(files)
+		if err != nil {
+			return fmt.Errorf("JSON marshal failed: %w", err)
+		}
+		
+		result = string(jsonData)
+		return nil
+	})
+	
+	if err != nil {
+		fmt.Printf("Kalam_ListFiles: %v\n", err)
+		return C.CString("[]")
+	}
+	
+	return C.CString(result)
+}
+
+//export Kalam_FreeString
+func Kalam_FreeString(str *C.char) {
+    C.free(unsafe.Pointer(str))
+}
+
+//export Kalam_CreateFolder
+func Kalam_CreateFolder(storageID uint32, parentID uint32, folderName *C.char) uint32 {
+	name := C.GoString(folderName)
+	if name == "" {
+		return 0
+	}
+
+	var newHandle uint32
+	
+	err := withDevice(func(dev *mtp.Device) error {
+		var objInfo mtp.ObjectInfo
+		objInfo.StorageID = storageID
+		objInfo.ParentObject = parentID
+		objInfo.Filename = name
+		objInfo.ObjectFormat = 0x3001
+		objInfo.CompressedSize = 0
+
+		_, _, handle, err := dev.SendObjectInfo(storageID, parentID, &objInfo)
+		if err != nil {
+			return fmt.Errorf("SendObjectInfo failed: %w", err)
+		}
+		
+		newHandle = handle
+		return nil
+	})
+	
+	if err != nil {
+		fmt.Printf("Kalam_CreateFolder: %v\n", err)
+		return 0
+	}
+	
+	return newHandle
+}
+
+//export Kalam_DeleteObject
+func Kalam_DeleteObject(objectID uint32) int32 {
+	err := withDevice(func(dev *mtp.Device) error {
+		if err := dev.DeleteObject(objectID); err != nil {
+			return fmt.Errorf("DeleteObject failed: %w", err)
+		}
+		return nil
+	})
+	
+	if err != nil {
+		fmt.Printf("Kalam_DeleteObject: %v\n", err)
+		return 0
+	}
+	
+	return 1
+}
+
+//export Kalam_DownloadFile
+func Kalam_DownloadFile(objectID uint32, destinationPath *C.char) int32 {
+	destPath := C.GoString(destinationPath)
+	if destPath == "" {
+		return 0
+	}
+
+	file, err := os.Create(destPath)
+	if err != nil {
+		fmt.Printf("Kalam_DownloadFile: Failed to create file %s: %v\n", destPath, err)
+		return 0
+	}
+	defer file.Close()
+
+	err = withDevice(func(dev *mtp.Device) error {
+		if err := dev.GetObject(objectID, file, nil); err != nil {
+			return fmt.Errorf("GetObject failed: %w", err)
+		}
+		return nil
+	})
+	
+	if err != nil {
+		fmt.Printf("Kalam_DownloadFile: %v\n", err)
+		os.Remove(destPath)
+		return 0
+	}
+
+	return 1
+}
+
+//export Kalam_UploadFile
+func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char) int32 {
+	fmt.Println("Kalam_UploadFile: Upload functionality disabled due to stability issues")
+	fmt.Println("Kalam_UploadFile: The underlying go-mtpx library's SendObject function causes crashes")
+	fmt.Println("Kalam_UploadFile: Please use alternative tools like Android File Transfer or adb")
+	return 0
+}
+
+// Helper function
+func containsIgnoreCase(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
+func main() {}

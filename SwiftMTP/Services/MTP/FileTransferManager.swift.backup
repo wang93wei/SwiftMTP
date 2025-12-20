@@ -1,0 +1,150 @@
+//
+//  FileTransferManager.swift
+//  SwiftMTP
+//
+//  Manages file upload and download operations
+//
+
+import Foundation
+import Combine
+
+class FileTransferManager: ObservableObject {
+    static let shared = FileTransferManager()
+    
+    @Published var activeTasks: [TransferTask] = []
+    @Published var completedTasks: [TransferTask] = []
+    
+    private let transferQueue = DispatchQueue(label: "com.swiftmtp.transfer", qos: .userInitiated)
+    private var taskTrackingTimer: Timer?
+    
+    private init() {
+        startTaskTracking()
+    }
+    
+    deinit {
+        stopTaskTracking()
+    }
+    
+    // MARK: - Public Methods
+    
+    func downloadFile(from device: Device, fileItem: FileItem, to destinationURL: URL) {
+        let task = TransferTask(
+            type: .download,
+            fileName: fileItem.name,
+            sourceURL: URL(fileURLWithPath: "/device/\(fileItem.objectId)"),
+            destinationPath: destinationURL.path,
+            totalSize: fileItem.size
+        )
+        
+        DispatchQueue.main.async {
+            self.activeTasks.append(task)
+        }
+        
+        transferQueue.async {
+            self.performDownload(task: task, device: device, fileItem: fileItem)
+        }
+    }
+    
+    func uploadFile(to device: Device, sourceURL: URL, parentId: UInt32, storageId: UInt32) {
+        // Validate the file exists and is not a directory
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            print("Upload failed: File does not exist at \(sourceURL.path)")
+            return
+        }
+        
+        guard let fileAttributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
+              let fileSize = fileAttributes[.size] as? UInt64 else {
+            print("Upload failed: Could not get file size for \(sourceURL.path)")
+            return
+        }
+        
+        // Check if it's a directory
+        var isDirectory: ObjCBool = false
+        FileManager.default.fileExists(atPath: sourceURL.path, isDirectory: &isDirectory)
+        if isDirectory.boolValue {
+            print("Upload failed: Cannot upload directories: \(sourceURL.path)")
+            return
+        }
+        
+        print("Starting upload: \(sourceURL.lastPathComponent) (\(fileSize) bytes) to parentId: \(parentId), storageId: \(storageId)")
+        
+        let task = TransferTask(
+            type: .upload,
+            fileName: sourceURL.lastPathComponent,
+            sourceURL: sourceURL,
+            destinationPath: "/device/\(parentId)",
+            totalSize: fileSize
+        )
+        
+        DispatchQueue.main.async {
+            self.activeTasks.append(task)
+        }
+        
+        transferQueue.async {
+            self.performUpload(task: task, device: device, sourceURL: sourceURL, parentId: parentId, storageId: storageId)
+        }
+    }
+    
+    func cancelTask(_ task: TransferTask) {
+        task.updateStatus(.cancelled)
+        moveTaskToCompleted(task)
+    }
+    
+    func clearCompletedTasks() {
+        DispatchQueue.main.async {
+            self.completedTasks.removeAll()
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func performDownload(task: TransferTask, device: Device, fileItem: FileItem) {
+        task.updateStatus(.transferring)
+        
+        let result = task.destinationPath.withCString { cString in
+            Kalam_DownloadFile(fileItem.objectId, UnsafeMutablePointer(mutating: cString))
+        }
+        
+        if result > 0 {
+            task.updateProgress(transferred: fileItem.size, speed: 0)
+            task.updateStatus(.completed)
+        } else {
+            task.updateStatus(.failed("下载失败"))
+        }
+        
+        moveTaskToCompleted(task)
+    }
+    
+    private func performUpload(task: TransferTask, device: Device, sourceURL: URL, parentId: UInt32, storageId: UInt32) {
+        print("performUpload: Starting upload for \(task.fileName)")
+        print("  Source: \(sourceURL.path)")
+        print("  ParentID: \(parentId), StorageID: \(storageId)")
+        
+        task.updateStatus(.transferring)
+        
+        // CRITICAL: Go library's SendObject crashes on macOS
+        // Disable upload functionality until a stable solution is found
+        print("performUpload: Upload functionality temporarily disabled due to stability issues")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            task.updateStatus(.failed("上传功能暂时不可用\n\n由于底层 MTP 库的稳定性问题，\n文件上传功能暂时禁用。\n\n临时解决方案：\n1. 使用 Android File Transfer\n2. 使用 adb push 命令\n3. 使用云存储服务"))
+            self.moveTaskToCompleted(task)
+        }
+    }
+    
+    private func moveTaskToCompleted(_ task: TransferTask) {
+        DispatchQueue.main.async {
+            self.activeTasks.removeAll { $0.id == task.id }
+            self.completedTasks.insert(task, at: 0)
+        }
+    }
+    
+    private func startTaskTracking() {
+        // Optional: periodic cleanup or monitoring
+    }
+    
+    private func stopTaskTracking() {
+        taskTrackingTimer?.invalidate()
+        taskTrackingTimer = nil
+    }
+}
