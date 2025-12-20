@@ -84,6 +84,18 @@ struct FileBrowserView: View {
                             }
                             .help("上传文件到当前目录")
                         }
+                        
+                        ToolbarItem {
+                            Button {
+                                deleteSelectedFiles()
+                            } label: {
+                                Label("删除", systemImage: "trash")
+                                    .labelStyle(.iconOnly)
+                            }
+                            .help("删除选中的文件")
+                            .disabled(selectedFiles.isEmpty)
+                            .foregroundStyle(selectedFiles.isEmpty ? .secondary : .red)
+                        }
                     }
                     .toolbarLiquidGlass()            .sheet(isPresented: $showingCreateFolderDialog) {
                 createFolderDialog
@@ -396,6 +408,68 @@ struct FileBrowserView: View {
                     print("Failed to delete file: \(file.name)")
                     // TODO: Show error alert to user
                 }
+            }
+        }
+    }
+    
+    private func deleteSelectedFiles() {
+        let filesToDelete = currentFiles.filter { selectedFiles.contains($0.id) }
+        
+        guard !filesToDelete.isEmpty else {
+            return
+        }
+        
+        // Prepare alert message
+        let fileNames = filesToDelete.map { $0.name }.joined(separator: "、")
+        let alertTitle = filesToDelete.count == 1 ? "删除文件" : "删除多个文件"
+        let alertMessage = filesToDelete.count == 1 
+            ? "确定要删除 \"\(filesToDelete.first!.name)\" 吗？此操作无法撤销。"
+            : "确定要删除这 \(filesToDelete.count) 个文件吗？\n\n\(fileNames)\n\n此操作无法撤销。"
+        
+        // Create and show alert
+        let alert = NSAlert()
+        alert.messageText = alertTitle
+        alert.informativeText = alertMessage
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "取消")
+        alert.addButton(withTitle: "删除")
+        
+        alert.beginSheetModal(for: NSApp.keyWindow!) { response in
+            if response == .alertSecondButtonReturn {
+                // User confirmed deletion
+                performBatchDelete(files: filesToDelete)
+            }
+        }
+    }
+    
+    private func performBatchDelete(files: [FileItem]) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            var deletedCount = 0
+            var failedFiles: [String] = []
+            
+            for file in files {
+                let result = Kalam_DeleteObject(file.objectId)
+                if result > 0 {
+                    deletedCount += 1
+                } else {
+                    failedFiles.append(file.name)
+                }
+            }
+            
+            DispatchQueue.main.async {
+                // Clear cache and reload
+                FileSystemManager.shared.clearCache(for: device)
+                loadFiles()
+                
+                // Show result
+                if failedFiles.isEmpty {
+                    print("Successfully deleted \(deletedCount) files")
+                } else {
+                    print("Failed to delete some files: \(failedFiles.joined(separator: ", "))")
+                }
+                
+                // Clear selection after deletion
+                selectedFiles.removeAll()
             }
         }
     }
