@@ -50,7 +50,7 @@ class FileTransferManager: ObservableObject {
     
     // MARK: - Public Methods
     
-    func downloadFile(from device: Device, fileItem: FileItem, to destinationURL: URL) {
+    func downloadFile(from device: Device, fileItem: FileItem, to destinationURL: URL, shouldReplace: Bool = false) {
         let task = TransferTask(
             type: .download,
             fileName: fileItem.name,
@@ -64,7 +64,7 @@ class FileTransferManager: ObservableObject {
         }
         
         transferQueue.async {
-            self.performDownload(task: task, device: device, fileItem: fileItem)
+            self.performDownload(task: task, device: device, fileItem: fileItem, shouldReplace: shouldReplace)
         }
     }
     
@@ -121,7 +121,7 @@ class FileTransferManager: ObservableObject {
     
     // MARK: - Private Methods
     
-    private func performDownload(task: TransferTask, device: Device, fileItem: FileItem) {
+    private func performDownload(task: TransferTask, device: Device, fileItem: FileItem, shouldReplace: Bool) {
         currentDownloadTask = task
         task.updateStatus(.transferring)
         
@@ -142,11 +142,24 @@ class FileTransferManager: ObservableObject {
         
         // Check if file already exists
         if FileManager.default.fileExists(atPath: task.destinationPath) {
-            DispatchQueue.main.async {
-                task.updateStatus(.failed("文件已存在于目标位置"))
+            if shouldReplace {
+                // Remove existing file before download
+                do {
+                    try FileManager.default.removeItem(atPath: task.destinationPath)
+                } catch {
+                    DispatchQueue.main.async {
+                        task.updateStatus(.failed("无法替换已存在的文件: \(error.localizedDescription)"))
+                    }
+                    moveTaskToCompleted(task)
+                    return
+                }
+            } else {
+                DispatchQueue.main.async {
+                    task.updateStatus(.failed("文件已存在于目标位置"))
+                }
+                moveTaskToCompleted(task)
+                return
             }
-            moveTaskToCompleted(task)
-            return
         }
         
         // Add device connection validation before download

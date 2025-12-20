@@ -360,7 +360,9 @@ struct FileBrowserView: View {
         
         panel.begin { response in
             if response == .OK, let url = panel.url {
-                FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: url)
+                // System NSSavePanel already handles file replacement confirmation
+                // Just download directly - if file exists, system would have asked user
+                FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: url, shouldReplace: true)
             }
         }
     }
@@ -375,9 +377,79 @@ struct FileBrowserView: View {
         panel.begin { response in
             if response == .OK, let directory = panel.url {
                 let filesToDownload = currentFiles.filter { selectedFiles.contains($0.id) && !$0.isDirectory }
-                for file in filesToDownload {
+                
+                // Check for existing files
+                let existingFiles = filesToDownload.filter { file in
                     let destination = directory.appendingPathComponent(file.name)
-                    FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination)
+                    return FileManager.default.fileExists(atPath: destination.path)
+                }
+                
+                if !existingFiles.isEmpty {
+                    // Show confirmation dialog for file replacement
+                    let alert = NSAlert()
+                    alert.messageText = "部分文件已存在"
+                    alert.informativeText = "有 \(existingFiles.count) 个文件已存在于目标位置。是否要替换这些文件？\n\n已存在的文件：\n" + 
+                        existingFiles.map { "• \($0.name)" }.joined(separator: "\n")
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "取消")
+                    alert.addButton(withTitle: "跳过已存在的文件")
+                    alert.addButton(withTitle: "替换所有")
+                    
+                    if let window = NSApp.keyWindow {
+                        alert.beginSheetModal(for: window) { response in
+                            switch response {
+                            case .alertSecondButtonReturn:
+                                // Skip existing files
+                                let filesToActuallyDownload = filesToDownload.filter { file in
+                                    let destination = directory.appendingPathComponent(file.name)
+                                    return !FileManager.default.fileExists(atPath: destination.path)
+                                }
+                                for file in filesToActuallyDownload {
+                                    let destination = directory.appendingPathComponent(file.name)
+                                    FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination)
+                                }
+                            case .alertThirdButtonReturn:
+                                // Replace all files
+                                for file in filesToDownload {
+                                    let destination = directory.appendingPathComponent(file.name)
+                                    FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination, shouldReplace: true)
+                                }
+                            default:
+                                // Cancel
+                                break
+                            }
+                        }
+                    } else {
+                        // Fallback to modal dialog if no key window is available
+                        let response = alert.runModal()
+                        switch response {
+                        case .alertSecondButtonReturn:
+                            // Skip existing files
+                            let filesToActuallyDownload = filesToDownload.filter { file in
+                                let destination = directory.appendingPathComponent(file.name)
+                                return !FileManager.default.fileExists(atPath: destination.path)
+                            }
+                            for file in filesToActuallyDownload {
+                                let destination = directory.appendingPathComponent(file.name)
+                                FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination)
+                            }
+                        case .alertThirdButtonReturn:
+                            // Replace all files
+                            for file in filesToDownload {
+                                let destination = directory.appendingPathComponent(file.name)
+                                FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination, shouldReplace: true)
+                            }
+                        default:
+                            // Cancel
+                            break
+                        }
+                    }
+                } else {
+                    // No existing files, download all normally
+                    for file in filesToDownload {
+                        let destination = directory.appendingPathComponent(file.name)
+                        FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination)
+                    }
                 }
             }
         }
@@ -455,7 +527,16 @@ struct FileBrowserView: View {
         alert.addButton(withTitle: "取消")
         alert.addButton(withTitle: "删除")
         
-        alert.beginSheetModal(for: NSApp.keyWindow!) { response in
+        if let window = NSApp.keyWindow {
+            alert.beginSheetModal(for: window) { response in
+                if response == .alertSecondButtonReturn {
+                    // User confirmed deletion
+                    performBatchDelete(files: filesToDelete)
+                }
+            }
+        } else {
+            // Fallback to modal dialog if no key window is available
+            let response = alert.runModal()
             if response == .alertSecondButtonReturn {
                 // User confirmed deletion
                 performBatchDelete(files: filesToDelete)
