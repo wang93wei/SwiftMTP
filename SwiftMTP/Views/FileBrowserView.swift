@@ -533,7 +533,7 @@ struct TableDoubleClickModifier: NSViewRepresentable {
             manufacturer: "Google",
             model: "Pixel 7",
             serialNumber: "ABC123",
-            batteryLevel: 85,
+            batteryLevel: nil,
             storageInfo: [
                 StorageInfo(storageId: 1, maxCapacity: 128_000_000_000, freeSpace: 32_000_000_000, description: "内部存储")
             ]
