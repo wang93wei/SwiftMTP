@@ -18,6 +18,11 @@ struct FileBrowserView: View {
     @State private var isLoading = false
     @State private var pendingNavigation: FileItem?
     @State private var isDropTargeted = false
+    
+    // Check if any selected items are folders
+    private var hasSelectedFolders: Bool {
+        currentFiles.contains { selectedFiles.contains($0.id) && $0.isDirectory }
+    }
 
     @State private var showingDeleteAlert = false
     @State private var fileToDelete: FileItem?
@@ -83,6 +88,17 @@ struct FileBrowserView: View {
                                 selectFilesToUpload()
                             }
                             .help("上传文件到当前目录")
+                        }
+                        
+                        ToolbarItem {
+                            Button {
+                                downloadSelectedFiles()
+                            } label: {
+                                Label("下载", systemImage: "arrow.down.circle")
+                                    .labelStyle(.iconOnly)
+                            }
+                            .help("下载选中的文件")
+                            .disabled(selectedFiles.isEmpty || hasSelectedFolders)
                         }
                         
                         ToolbarItem {
@@ -587,6 +603,31 @@ struct FileBrowserView: View {
             
             // Upload file
             FileTransferManager.shared.uploadFile(to: device, sourceURL: url, parentId: parentId, storageId: storageId)
+        }
+    }
+    
+    private func downloadSelectedFiles() {
+        let filesToDownload = currentFiles.filter { selectedFiles.contains($0.id) && !$0.isDirectory }
+        
+        guard !filesToDownload.isEmpty else {
+            return
+        }
+        
+        // Show save panel for the first file
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.prompt = "选择下载位置"
+        panel.title = filesToDownload.count == 1 ? "下载文件" : "下载 \(filesToDownload.count) 个文件"
+        
+        panel.begin { response in
+            if response == .OK, let directory = panel.url {
+                for file in filesToDownload {
+                    let destination = directory.appendingPathComponent(file.name)
+                    FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination)
+                }
+            }
         }
     }
 }
