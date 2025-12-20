@@ -60,7 +60,7 @@ class FileSystemManager {
                     size: kFile.size,
                     modifiedDate: modDate,
                     isDirectory: kFile.isFolder,
-                    fileType: kFile.isFolder ? "Folder" : (kFile.name as NSString).pathExtension.uppercased()
+                    fileType: kFile.isFolder ? "文件夹" : (kFile.name as NSString).pathExtension.uppercased()
                 )
             }
             
