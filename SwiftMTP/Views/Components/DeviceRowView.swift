@@ -15,7 +15,7 @@ struct DeviceRowView: View {
             HStack {
                 Image(systemName: "smartphone")
                     .font(.title2)
-                    .foregroundStyle(.blue)
+                    .tint(.blue)
                     .symbolEffect(.pulse.byLayer, isActive: device.batteryLevel != nil)
                 
                 VStack(alignment: .leading, spacing: 2) {
@@ -35,7 +35,7 @@ struct DeviceRowView: View {
                 if let batteryLevel = device.batteryLevel {
                     HStack(spacing: 4) {
                         Image(systemName: batteryIcon(for: batteryLevel))
-                            .foregroundStyle(batteryColor(for: batteryLevel))
+                            .tint(batteryColor(for: batteryLevel))
                             .font(.caption)
                         Text("\(batteryLevel)%")
                             .font(.caption2)

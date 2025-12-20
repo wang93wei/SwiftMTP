@@ -188,7 +188,7 @@ struct FileBrowserView: View {
     private func nameCell(for file: FileItem) -> some View {
         HStack(spacing: 8) {
             Image(systemName: file.isDirectory ? "folder.fill" : "doc.fill")
-                .foregroundStyle(file.isDirectory ? .blue : .gray)
+                .tint(file.isDirectory ? .blue : .gray)
             Text(file.name)
         }
     }
@@ -256,7 +256,7 @@ struct FileBrowserView: View {
                 
                 ForEach(Array(currentPath.enumerated()), id: \.element.id) { index, item in
                     Image(systemName: "chevron.right")
-                        .foregroundStyle(.secondary)
+                        .tint(.secondary)
                         .font(.caption)
                     
                     Button {
