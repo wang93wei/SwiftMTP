@@ -11,25 +11,29 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# 获取脚本所在目录的父目录（项目根目录）
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$SCRIPT_DIR/.."
+
 # 项目配置
 PROJECT_NAME="SwiftMTP"
 SCHEME_NAME="SwiftMTP"
-WORKSPACE_PATH="SwiftMTP.xcodeproj"
+WORKSPACE_PATH="$PROJECT_ROOT/SwiftMTP.xcodeproj"
 CONFIGURATION="Release"
-ARCHIVE_PATH="$PWD/build/$PROJECT_NAME.xcarchive"
-EXPORT_PATH="$PWD/build"
-DMG_PATH="$PWD/build"
+ARCHIVE_PATH="$PROJECT_ROOT/build/$PROJECT_NAME.xcarchive"
+EXPORT_PATH="$PROJECT_ROOT/build"
+DMG_PATH="$PROJECT_ROOT/build"
 APP_NAME="$PROJECT_NAME.app"
 DMG_NAME="$PROJECT_NAME"
-VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "1.0.0")
+VERSION=$(cd "$PROJECT_ROOT" && git describe --tags --always --dirty 2>/dev/null || echo "1.0.0")
 
 echo -e "${GREEN}开始打包 $PROJECT_NAME...${NC}"
 echo -e "${YELLOW}版本: $VERSION${NC}"
 
 # 清理旧的构建文件
 echo -e "${YELLOW}清理旧的构建文件...${NC}"
-rm -rf "$PWD/build"
-mkdir -p "$PWD/build"
+rm -rf "$BUILD_PATH"
+mkdir -p "$BUILD_PATH"
 
 # 1. Archive 项目
 echo -e "${YELLOW}正在 Archive 项目...${NC}"
@@ -49,7 +53,7 @@ echo -e "${YELLOW}正在导出 APP...${NC}"
 xcodebuild -exportArchive \
            -archivePath "$ARCHIVE_PATH" \
            -exportPath "$EXPORT_PATH" \
-           -exportOptionsPlist "$PWD/Scripts/ExportOptions.plist"
+           -exportOptionsPlist "$SCRIPT_DIR/ExportOptions.plist"
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}导出 APP 失败！${NC}"
