@@ -89,3 +89,7 @@ playground.xcworkspace
 !default.xcodeproj
 iOSInjectionProject/
 .kiro
+
+# AI docs
+gemini.md
+IFLOW.md
