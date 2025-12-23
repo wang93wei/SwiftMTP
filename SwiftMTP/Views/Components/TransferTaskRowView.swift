@@ -52,6 +52,7 @@ struct TransferTaskRowView: View {
             }
         }
         .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
     }
     
     private var statusColor: Color {

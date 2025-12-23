@@ -15,12 +15,11 @@ struct MainWindowView: View {
     
     var body: some View {
         NavigationSplitView {
-            // Sidebar: Device List
             DeviceListView()
                 .environmentObject(deviceManager)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
+                .navigationSubtitle("设备列表")
         } detail: {
-            // Main content: File Browser
             if let selectedDevice = deviceManager.selectedDevice {
                 FileBrowserView(device: selectedDevice)
             } else {
@@ -31,12 +30,10 @@ struct MainWindowView: View {
                 )
             }
         }
-        .background()
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
                 Button {
                     if deviceManager.selectedDevice != nil {
-                        // Refresh file list by posting notification
                         NotificationCenter.default.post(name: NSNotification.Name("RefreshFileList"), object: nil)
                     } else {
                         deviceManager.scanDevices()

@@ -44,7 +44,8 @@ struct DeviceRowView: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    .background(.ultraThickMaterial, in: Capsule())
+                    .backgroundExtensionEffect()
                 }
             }
             
@@ -66,12 +67,10 @@ struct DeviceRowView: View {
                             
                             GeometryReader { geometry in
                                 ZStack(alignment: .leading) {
-                                    // Background
                                     RoundedRectangle(cornerRadius: 2)
                                         .fill(.quaternary)
                                         .frame(height: 4)
                                     
-                                    // Progress
                                     RoundedRectangle(cornerRadius: 2)
                                         .fill(storageColor(for: storage.usagePercentage))
                                         .frame(width: geometry.size.width * (storage.usagePercentage / 100), height: 4)
@@ -85,7 +84,8 @@ struct DeviceRowView: View {
             }
         }
         .padding(.vertical, 8)
-        .padding(.horizontal, 12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
     }
     
     private func batteryIcon(for level: Int) -> String {

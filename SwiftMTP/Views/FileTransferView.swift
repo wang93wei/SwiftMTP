@@ -13,25 +13,11 @@ struct FileTransferView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("文件传输")
-                    .font(.headline)
-                
-                Spacer()
-                
-                Button("完成") {
-                    dismiss()
-                }
-                .buttonStyle(.borderedProminent)
-                .help("关闭传输窗口")
-            }
-            .padding()
-            .background(Color(nsColor: .windowBackgroundColor))
+            headerView
             
             Divider()
+                .opacity(0.15)
             
-            // Transfer lists
             if transferManager.activeTasks.isEmpty && transferManager.completedTasks.isEmpty {
                 emptyStateView
             } else {
@@ -39,6 +25,26 @@ struct FileTransferView: View {
             }
         }
         .frame(minWidth: 500, minHeight: 300)
+        .toolbarLiquidGlass()
+        .background(.ultraThinMaterial)
+    }
+    
+    private var headerView: some View {
+        HStack {
+            Text("文件传输")
+                .font(.headline)
+            
+            Spacer()
+            
+            Button("完成") {
+                dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+            .liquidGlass(style: .thin, cornerRadius: 8)
+            .help("关闭传输窗口")
+        }
+        .padding()
+        .background(.ultraThinMaterial)
     }
     
     private var emptyStateView: some View {
@@ -83,7 +89,7 @@ struct FileTransferView: View {
                 ForEach(transferManager.activeTasks) { task in
                     TransferTaskRowView(task: task)
                         .padding(12)
-                        .background(Color(nsColor: .controlBackgroundColor))
+                        .background(.ultraThinMaterial)
                         .cornerRadius(8)
                 }
             }
@@ -111,7 +117,7 @@ struct FileTransferView: View {
                 ForEach(transferManager.completedTasks) { task in
                     TransferTaskRowView(task: task)
                         .padding(12)
-                        .background(Color(nsColor: .controlBackgroundColor))
+                        .background(.ultraThinMaterial)
                         .cornerRadius(8)
                 }
             }

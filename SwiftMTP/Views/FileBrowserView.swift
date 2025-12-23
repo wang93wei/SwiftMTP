@@ -133,7 +133,9 @@ struct FileBrowserView: View {
     private var contentView: some View {
         VStack(spacing: 0) {
             breadcrumbBar
+                .background(.ultraThinMaterial)
             Divider()
+                .opacity(0.15)
             fileContentView
         }
     }
@@ -156,10 +158,7 @@ struct FileBrowserView: View {
             emptyFolderMessageView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(NSColor.windowBackgroundColor))
-        )
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             Group {
                 if isDropTargeted {
@@ -245,15 +244,7 @@ struct FileBrowserView: View {
                 pendingNavigation = nil
             }
         }
-        .overlay {
-            if isDropTargeted {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(.blue, lineWidth: 2)
-                    .background(.blue.opacity(0.1))
-                    .padding(4)
-                    .allowsHitTesting(false)
-            }
-        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
     }
     
@@ -339,10 +330,10 @@ struct FileBrowserView: View {
                     .buttonStyle(.borderless)
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
-        .liquidGlass(style: .thin, cornerRadius: 0, padding: EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .liquidGlass(style: .thin, cornerRadius: 0, padding: EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
     }
     
     private func loadFiles() {

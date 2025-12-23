@@ -14,22 +14,18 @@ struct DeviceListView: View {
         List(deviceManager.devices, selection: $deviceManager.selectedDevice) { device in
             DeviceRowView(device: device)
                 .tag(device)
-                .listRowBackground(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.thinMaterial)
-                        .padding(.horizontal, 4)
-                )
         }
         .listStyle(.sidebar)
         .navigationTitle("设备")
-        .toolbarBackground(.hidden, for: .windowToolbar)
         .scrollContentBackground(.hidden)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            Color.clear.frame(height: 1)
+        .background(.ultraThickMaterial)
+        .backgroundExtensionEffect()
+        .overlay(alignment: .top) {
+            Divider()
+                .opacity(0.2)
         }
         .overlay {
             if deviceManager.devices.isEmpty {
-                // Only show scanning indicator on first scan, not during periodic scans
                 if deviceManager.isScanning && !deviceManager.hasScannedOnce {
                     ProgressView("正在扫描设备...")
                         .liquidGlass(style: .regular, cornerRadius: 12)
