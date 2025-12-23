@@ -50,42 +50,15 @@ struct DeviceRowView: View {
             }
             
             if !device.storageInfo.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 4) {
                     ForEach(device.storageInfo) { storage in
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack {
-                                Text(storage.description)
-                                    .font(.caption2)
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(ByteCountFormatter.string(fromByteCount: Int64(storage.freeSpace), countStyle: .file))
-                                    .font(.caption2)
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(.primary)
-                            }
-                            
-                            GeometryReader { geometry in
-                                ZStack(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(.quaternary)
-                                        .frame(height: 4)
-                                    
-                                    RoundedRectangle(cornerRadius: 2)
-                                        .fill(storageColor(for: storage.usagePercentage))
-                                        .frame(width: geometry.size.width * (storage.usagePercentage / 100), height: 4)
-                                        .animation(.easeInOut(duration: 0.3), value: storage.usagePercentage)
-                                }
-                            }
-                            .frame(height: 4)
-                        }
+                        StorageIndicatorView(storage: storage)
                     }
                 }
+                .padding(.top, 4)
             }
         }
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
-        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
     }
     
     private func batteryIcon(for level: Int) -> String {
@@ -100,6 +73,38 @@ struct DeviceRowView: View {
     
     private func batteryColor(for level: Int) -> Color {
         level < 20 ? .red : .green
+    }
+}
+
+struct StorageIndicatorView: View {
+    let storage: StorageInfo
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(storage.description)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(ByteCountFormatter.string(fromByteCount: Int64(storage.freeSpace), countStyle: .file))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(.quaternary.opacity(0.5))
+                        .frame(height: 3)
+                    
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(storageColor(for: storage.usagePercentage))
+                        .frame(width: geometry.size.width * (storage.usagePercentage / 100), height: 3)
+                        .animation(.easeInOut(duration: 0.3), value: storage.usagePercentage)
+                }
+            }
+            .frame(height: 3)
+        }
     }
     
     private func storageColor(for percentage: Double) -> Color {
