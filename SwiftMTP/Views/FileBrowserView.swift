@@ -144,22 +144,66 @@ struct FileBrowserView: View {
             ProgressView("加载文件列表...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if currentFiles.isEmpty {
-            ContentUnavailableView(
-                "文件夹为空",
-                systemImage: "folder",
-                description: Text("此文件夹中没有文件")
-            )
-            .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
-                handleDroppedFiles(providers)
-            }
+            emptyFolderView
         } else {
             fileTableView
-                .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
-                    handleDroppedFiles(providers)
-                }
         }
     }
     
+    private var emptyFolderView: some View {
+        VStack(spacing: 16) {
+            emptyFolderIconView
+            emptyFolderMessageView
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(NSColor.windowBackgroundColor))
+        )
+        .overlay(
+            Group {
+                if isDropTargeted {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.blue, lineWidth: 2)
+                        .background(Color.blue.opacity(0.1))
+                }
+            }
+        )
+        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+            handleDroppedFiles(providers)
+        }
+        .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
+    }
+    
+    private var emptyFolderIconView: some View {
+        ZStack {
+            Circle()
+                .fill(Color.blue.opacity(0.1))
+                .frame(width: 80, height: 80)
+            
+            Image(systemName: "folder")
+                .font(.system(size: 40))
+                .foregroundColor(.blue)
+        }
+    }
+    
+    private var emptyFolderMessageView: some View {
+        VStack(spacing: 8) {
+            Text("文件夹为空")
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Text("此文件夹中没有文件")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Text("或将文件拖拽到此处以上传")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    @ViewBuilder
     private var fileTableView: some View {
         Table(currentFiles, selection: $selectedFiles, sortOrder: $sortOrder) {
             TableColumn("名称", value: \.name) { file in

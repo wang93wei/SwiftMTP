@@ -563,9 +563,10 @@ func (d *Device) bulkWrite(hdr *usbBulkHeader, r io.Reader, size int64, req *Con
 		size -= cpSize
 		n += cpSize
 
-		// Ignore progress callback errors to prevent crashes
 		if progressCb != nil {
-			_ = progressCb(totalSize - size)
+			if err := progressCb(totalSize - size); err != nil {
+				return n, err
+			}
 		}
 	}
 
@@ -593,9 +594,10 @@ func (d *Device) bulkWrite(hdr *usbBulkHeader, r io.Reader, size int64, req *Con
 			break
 		}
 
-		// Ignore progress callback errors to prevent crashes
 		if progressCb != nil {
-			_ = progressCb(totalSize - size)
+			if err := progressCb(totalSize - size); err != nil {
+				return n, err
+			}
 		}
 	}
 

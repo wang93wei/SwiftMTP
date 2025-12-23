@@ -125,6 +125,9 @@ class FileTransferManager: ObservableObject {
     
     func cancelTask(_ task: TransferTask) {
         task.isCancelled = true
+        task.id.uuidString.withCString { cString in
+            Kalam_CancelTask(UnsafeMutablePointer(mutating: cString))
+        }
         task.updateStatus(.cancelled)
         moveTaskToCompleted(task)
     }
@@ -201,7 +204,9 @@ class FileTransferManager: ObservableObject {
         // Perform download with enhanced error handling
         print("Starting download of file \(fileItem.name) (ID: \(fileItem.objectId))")
         let result = task.destinationPath.withCString { cString in
-            Kalam_DownloadFile(fileItem.objectId, UnsafeMutablePointer(mutating: cString))
+            task.id.uuidString.withCString { taskCString in
+                Kalam_DownloadFile(fileItem.objectId, UnsafeMutablePointer(mutating: cString), UnsafeMutablePointer(mutating: taskCString))
+            }
         }
         
         // Add a small delay to ensure file operations complete
@@ -269,8 +274,16 @@ class FileTransferManager: ObservableObject {
             print("performUpload: Large file detected (\(fileSize / 1024 / 1024)MB), upload may take time")
         }
 
-        let uploadResult = sourceURL.path.withCString { cString in
-            Kalam_UploadFile(storageId, parentId, UnsafeMutablePointer(mutating: cString))
+        if task.isCancelled {
+            task.updateStatus(.cancelled)
+            moveTaskToCompleted(task)
+            return
+        }
+
+        let uploadResult = sourceURL.path.withCString { sourceCString in
+            task.id.uuidString.withCString { taskCString in
+                Kalam_UploadFile(storageId, parentId, UnsafeMutablePointer(mutating: sourceCString), UnsafeMutablePointer(mutating: taskCString))
+            }
         }
 
         if task.isCancelled {
@@ -316,6 +329,9 @@ class FileTransferManager: ObservableObject {
     
     private func moveTaskToCompleted(_ task: TransferTask) {
         DispatchQueue.main.async {
+            if self.completedTasks.contains(where: { $0.id == task.id }) {
+                return
+            }
             self.activeTasks.removeAll { $0.id == task.id }
             self.completedTasks.insert(task, at: 0)
         }

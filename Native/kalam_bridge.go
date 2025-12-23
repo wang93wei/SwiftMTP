@@ -421,10 +421,17 @@ func Kalam_SetProgressCallback(cb C.uintptr_t) {
 }
 
 //export Kalam_DownloadFile
-func Kalam_DownloadFile(objectID uint32, destinationPath *C.char) int32 {
+func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char) int32 {
 	destPath := C.GoString(destinationPath)
+	taskIDStr := C.GoString(taskID)
+	
 	if destPath == "" {
 		fmt.Printf("Kalam_DownloadFile: Empty destination path\n")
+		return 0
+	}
+
+	if isTaskCancelled(taskIDStr) {
+		fmt.Printf("Kalam_DownloadFile: Task %s was cancelled before start\n", taskIDStr)
 		return 0
 	}
 
@@ -480,8 +487,11 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char) int32 {
 		progressCb := func(sent int64) error {
 			writtenBytes = sent
 			
-			// Disable progress callbacks during download to prevent crashes
-			// Progress updates will be handled by periodic checks instead
+			// Check for cancellation during download
+			if isTaskCancelled(taskIDStr) {
+				fmt.Printf("Kalam_DownloadFile: Task %s cancelled during download (received %d bytes)\n", taskIDStr, sent)
+				return fmt.Errorf("task %s cancelled during download", taskIDStr)
+			}
 			return nil
 		}
 		
@@ -610,11 +620,54 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char) int32 {
 	return 0
 }
 
+// -- Cancellation State --
+
+var (
+	cancelMu       sync.Mutex
+	cancelledTasks = make(map[string]bool)
+)
+
+type cancelError struct {
+	taskID string
+}
+
+func (e *cancelError) Error() string {
+	return fmt.Sprintf("task %s cancelled", e.taskID)
+}
+
+func isTaskCancelled(taskID string) bool {
+	cancelMu.Lock()
+	defer cancelMu.Unlock()
+	return cancelledTasks[taskID]
+}
+
+func markTaskCancelled(taskID string) {
+	cancelMu.Lock()
+	defer cancelMu.Unlock()
+	cancelledTasks[taskID] = true
+}
+
+//export Kalam_CancelTask
+func Kalam_CancelTask(taskID *C.char) {
+	id := C.GoString(taskID)
+	cancelMu.Lock()
+	cancelledTasks[id] = true
+	cancelMu.Unlock()
+	fmt.Printf("Kalam_CancelTask: Task %s marked for cancellation\n", id)
+}
+
 //export Kalam_UploadFile
-func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char) int32 {
+func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char, taskID *C.char) int32 {
 	path := C.GoString(sourcePath)
+	taskIDStr := C.GoString(taskID)
+
 	if path == "" {
 		fmt.Printf("Kalam_UploadFile: Empty source path\n")
+		return 0
+	}
+
+	if isTaskCancelled(taskIDStr) {
+		fmt.Printf("Kalam_UploadFile: Task %s was cancelled before start\n", taskIDStr)
 		return 0
 	}
 
@@ -658,6 +711,11 @@ func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char) int
 
 		fmt.Printf("Kalam_UploadFile: Got handle %d for %s\n", newHandle, fileName)
 
+		if isTaskCancelled(taskIDStr) {
+			fmt.Printf("Kalam_UploadFile: Task %s cancelled before data transfer\n", taskIDStr)
+			return fmt.Errorf("task cancelled")
+		}
+
 		// Step 2: Open the file for reading
 		file, err := os.Open(path)
 		if err != nil {
@@ -676,8 +734,17 @@ func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char) int
 			return fmt.Errorf("failed to seek file: %w", err)
 		}
 		
-		// Try to send the object
-		err = dev.SendObject(file, fileSize, nil)
+		// Create progress callback to check cancellation during transfer
+		progressCb := func(sent int64) error {
+			if isTaskCancelled(taskIDStr) {
+				fmt.Printf("Kalam_UploadFile: Task %s cancelled during transfer (sent %d bytes)\n", taskIDStr, sent)
+				return fmt.Errorf("task cancelled during transfer")
+			}
+			return nil
+		}
+		
+		// Try to send the object with cancellation checking
+		err = dev.SendObject(file, fileSize, progressCb)
 		file.Close() // Close file immediately after SendObject
 		
 		if err != nil {

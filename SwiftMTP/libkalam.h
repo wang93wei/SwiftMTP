@@ -94,8 +94,9 @@ extern void Kalam_FreeString(char* str);
 extern GoUint32 Kalam_CreateFolder(GoUint32 storageID, GoUint32 parentID, char* folderName);
 extern GoInt32 Kalam_DeleteObject(GoUint32 objectID);
 extern void Kalam_SetProgressCallback(uintptr_t cb);
-extern GoInt32 Kalam_DownloadFile(GoUint32 objectID, char* destinationPath);
-extern GoInt32 Kalam_UploadFile(GoUint32 storageID, GoUint32 parentID, char* sourcePath);
+extern GoInt32 Kalam_DownloadFile(GoUint32 objectID, char* destinationPath, char* taskID);
+extern void Kalam_CancelTask(char* taskID);
+extern GoInt32 Kalam_UploadFile(GoUint32 storageID, GoUint32 parentID, char* sourcePath, char* taskID);
 extern GoInt32 Kalam_RefreshStorage(GoUint32 storageID);
 extern GoInt32 Kalam_ResetDeviceCache(void);
 
