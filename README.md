@@ -1,55 +1,81 @@
 # SwiftMTP
 
+<div align="center">
+
+![SwiftMTP Logo](SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png)
+
 一个 macOS 原生的 Android MTP (Media Transfer Protocol) 文件传输工具，使用 Swift 和 SwiftUI 构建。
 
-## 功能特性
+[![Swift Version](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift)](https://swift.org)
+[![Platform](https://img.shields.io/badge/macOS-13.0+-000000?logo=apple)](https://www.apple.com/macos/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-- ✅ 自动检测连接的 Android 设备
-- ✅ 浏览设备文件系统
-- ✅ 文件上传和下载
-- ✅ 支持大文件传输 (>4GB)
-- ✅ 批量文件操作
-- ✅ 现代化的 SwiftUI 界面
-- ✅ 设备存储信息显示
+</div>
 
-## 系统要求
+## ✨ 功能特性
 
-- macOS 13.0+ (Ventura 或更高版本)
-- Xcode 15.0+
-- Homebrew (用于安装 libmtp)
+| 功能 | 描述 |
+|------|------|
+| 🔌 **设备自动检测** | 自动识别连接 Android 设备 |
+| 📁 **文件浏览** | 流畅浏览设备文件系统 |
+| ⬇️ **文件下载** | 支持单个和批量文件下载 |
+| ⬆️ **文件上传** | 快速上传文件到设备 |
+| 💾 **大文件支持** | 支持 >4GB 文件传输 |
+| 📦 **批量操作** | 批量选择和处理文件 |
+| 🎨 **现代化 UI** | 精美的 SwiftUI 界面 |
+| 📊 **存储信息** | 显示设备存储使用情况 |
 
-## 安装步骤
+## 📸 应用界面
 
-### 1. 安装依赖
+<div align="center">
+  <img src="SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png" alt="SwiftMTP 应用界面" width="800"/>
+</div>
+
+## 🚀 快速开始
+
+### 环境要求
+
+| 依赖 | 版本要求 |
+|------|----------|
+| macOS | 13.0+ (Ventura 或更高) |
+| Xcode | 15.0+ |
+| Homebrew | 最新版本 |
+
+### 安装依赖
 
 ```bash
 brew install libmtp go
 ```
 
-### 2. 构建项目
+### 构建运行
 
-1. 克隆仓库到本地
-2. 打开 `SwiftMTP.xcodeproj`
-3. 连接 Android 设备并设置为 MTP 模式
-4. 在 Xcode 中按 `Cmd + R` 构建并运行
-
-### 3. 创建 DMG 安装包
-
-项目提供了两个脚本来创建 DMG 安装包：
-
-#### 简化版打包（推荐，无需开发者证书）
 ```bash
-./Scripts/create_dmg_simple.sh
+# 克隆项目
+git clone https://github.com/wang93wei/SwiftMTP.git
+cd SwiftMTP
+
+# 构建 Go 桥接层
+./Scripts/build_kalam.sh
+
+# 在 Xcode 中打开并运行
+open SwiftMTP.xcodeproj
 ```
 
-#### 完整版打包（需要开发者证书）
+> 💡 **提示**: 连接 Android 设备后，在设备上选择 **文件传输 (MTP)** 模式即可使用。
+
+### 创建安装包
+
 ```bash
+# 简化版打包（无需开发者证书）
+./Scripts/create_dmg_simple.sh
+
+# 完整版打包（需要开发者证书）
 ./Scripts/create_dmg.sh
 ```
 
-DMG 文件将生成在 `build/` 目录中，文件名格式为 `SwiftMTP_版本号.dmg`。
+DMG 文件将生成在 `build/` 目录中。
 
-## 使用说明
+## 📖 使用指南
 
 ### 连接设备
 
@@ -57,72 +83,97 @@ DMG 文件将生成在 `build/` 目录中，文件名格式为 `SwiftMTP_版本�
 2. 在设备上选择 **文件传输 (MTP)** 模式
 3. SwiftMTP 会自动检测并显示设备
 
-### 浏览文件
+### 文件操作
 
-- 从左侧设备列表选择设备
-- 双击文件夹进入
-- 使用面包屑导航返回上级目录
+| 操作 | 方法 |
+|------|------|
+| 浏览文件 | 双击文件夹进入，面包屑导航返回 |
+| 下载文件 | 右键点击文件 → **下载** |
+| 批量下载 | 多选文件 → 右键 → **下载所选文件** |
+| 上传文件 | 点击工具栏 **上传文件** 按钮 |
 
-### 下载文件
-
-- 右键点击文件 > **下载**
-- 或选择多个文件，右键 > **下载所选文件**
-- 选择保存位置
-
-### 上传文件
-
-- 点击工具栏的 **上传文件** 按钮
-- 选择要上传的文件
-- 文件会上传到当前浏览的文件夹
-
-## 项目结构
+## 🏗️ 项目架构
 
 ```
 SwiftMTP/
 ├── Native/                         # Go 桥接层 (Kalam Kernel)
-│   ├── kalam_bridge.go            # 主要 Go 桥接实现
-│   └── vendor/                    # Go 依赖
+│   ├── kalam_bridge.go            # 主要桥接实现 (CGO)
+│   └── vendor/                    # Go 依赖 (go-mtpx, usb)
 ├── Scripts/
-│   └── build_kalam.sh             # Go 桥接构建脚本
+│   ├── build_kalam.sh             # 构建 Go 动态库
+│   ├── create_dmg.sh              # DMG 打包脚本
+│   └── create_dmg_simple.sh       # 简化版打包
 ├── SwiftMTP/                      # Swift 应用
-│   ├── App/
-│   ├── Models/
-│   ├── Services/MTP/
-│   ├── Views/
-│   └── Components/
-└── SwiftMTP.xcodeproj/
+│   ├── App/                       # 应用入口
+│   ├── Models/                    # 数据模型
+│   │   ├── Device.swift           # 设备模型
+│   │   ├── FileItem.swift         # 文件模型
+│   │   └── TransferTask.swift     # 传输任务模型
+│   ├── Services/MTP/              # MTP 服务层
+│   │   ├── DeviceManager.swift    # 设备管理
+│   │   ├── FileSystemManager.swift# 文件系统
+│   │   └── FileTransferManager.swift # 传输管理
+│   ├── Views/                     # SwiftUI 视图
+│   │   ├── MainWindowView.swift   # 主窗口
+│   │   ├── DeviceListView.swift   # 设备列表
+│   │   └── FileBrowserView.swift  # 文件浏览器
+│   └── Components/                # 可复用组件
+└── SwiftMTP.xcodeproj/            # Xcode 项目
 ```
 
-## 技术栈
+### 技术栈
 
-- **语言**: Swift 5.9+, Go
+- **语言**: Swift 5.9+, Go 1.22+
 - **UI 框架**: SwiftUI
 - **MTP 库**: libmtp 1.1.22, go-mtpx
-- **架构**: MVVM
+- **架构模式**: MVVM
+- **桥接方式**: CGO
 
-## 已知限制
+## ⚠️ 已知限制
 
 1. 需要禁用沙盒才能访问 USB 设备
 2. 传输速度受 MTP 协议限制
-3. 目前不支持文件夹上传（仅支持单个文件）
+3. 目前仅支持单个文件上传（不支持文件夹）
 
-## 故障排除
+## 🔧 故障排除
 
 ### 设备未被检测到
 
-- 确保设备已开启 **文件传输 (MTP)** 模式
-- 尝试断开重连 USB 线
-- 重启应用
+```
+✓ 确保设备已开启 MTP 模式
+✓ 尝试断开重连 USB 线
+✓ 重启应用
+✓ 检查 USB 线是否支持数据传输
+```
 
 ### 编译错误
 
-- 检查 libmtp 是否正确安装：`brew list libmtp`
-- 运行构建脚本：`./Scripts/build_kalam.sh`
+```bash
+# 检查 libmtp 安装
+brew list libmtp
 
-## 许可证
+# 重新构建 Go 桥接层
+./Scripts/build_kalam.sh
 
-MIT License
+# 清理并重新构建
+xcodebuild clean
+xcodebuild
+```
 
-## Star History
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📄 许可证
+
+本项目采用 MIT License - 详见 [LICENSE](LICENSE) 文件。
+
+---
+
+<div align="center">
+
+**如果这个项目对你有帮助，欢迎 ⭐ Star 支持！**
 
 [![Star History Chart](https://api.star-history.com/svg?repos=wang93wei/SwiftMTP&type=Date)](https://star-history.com/#wang93wei/SwiftMTP&Date)
+
+</div>
