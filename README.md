@@ -2,9 +2,11 @@
 
 <div align="center">
 
+<img src="SwiftMTP/App/Resources/SwiftMTP_Logo.svg" alt="SwiftMTP Logo" width="128">
+
 ![SwiftMTP Logo](SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png)
 
-一个 macOS 原生的 Android MTP (Media Transfer Protocol) 文件传输工具，使用 Swift 和 SwiftUI 构建。
+**macOS 原生 Android MTP 文件传输工具**
 
 [![Swift Version](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift)](https://swift.org)
 [![Platform](https://img.shields.io/badge/macOS-13.0+-000000?logo=apple)](https://www.apple.com/macos/)
