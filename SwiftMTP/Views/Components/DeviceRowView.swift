@@ -9,6 +9,7 @@ import SwiftUI
 
 struct DeviceRowView: View {
     let device: Device
+    @State private var showMtpDetails = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -56,6 +57,11 @@ struct DeviceRowView: View {
                     }
                 }
                 .padding(.top, 4)
+            }
+            
+            if let mtpInfo = device.mtpSupportInfo {
+                MtpSupportIndicatorView(mtpInfo: mtpInfo)
+                    .padding(.top, 4)
             }
         }
         .padding(.vertical, 8)
@@ -118,6 +124,38 @@ struct StorageIndicatorView: View {
     }
 }
 
+struct MtpSupportIndicatorView: View {
+    let mtpInfo: MTPSupportInfo
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                HStack(spacing: 2) {
+                    Image(systemName: "cable.connector")
+                        .font(.caption2)
+                        .tint(.green)
+                    Text("MTP \(mtpInfo.mtpVersion)")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                }
+                
+                if !mtpInfo.vendorExtension.isEmpty {
+                    Text("|")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Text(mtpInfo.vendorExtension)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
+            }
+        }
+        .padding(.top, 2)
+    }
+}
+
 #Preview {
     List {
         DeviceRowView(device: Device(
@@ -129,7 +167,12 @@ struct StorageIndicatorView: View {
             batteryLevel: nil,
             storageInfo: [
                 StorageInfo(storageId: 1, maxCapacity: 128_000_000_000, freeSpace: 32_000_000_000, description: "内部存储")
-            ]
+            ],
+            mtpSupportInfo: MTPSupportInfo(
+                mtpVersion: "1.0",
+                deviceVersion: "1.0",
+                vendorExtension: "Google"
+            )
         ))
     }
     .frame(width: 250)

@@ -32,6 +32,20 @@ struct StorageInfo: Identifiable, Codable {
     }
 }
 
+struct MTPSupportInfo: Identifiable, Codable {
+    let id: UUID
+    let mtpVersion: String
+    let deviceVersion: String
+    let vendorExtension: String
+    
+    init(id: UUID = UUID(), mtpVersion: String, deviceVersion: String, vendorExtension: String) {
+        self.id = id
+        self.mtpVersion = mtpVersion
+        self.deviceVersion = deviceVersion
+        self.vendorExtension = vendorExtension
+    }
+}
+
 struct Device: Identifiable, Hashable {
     let id: UUID
     let deviceIndex: Int
@@ -41,11 +55,13 @@ struct Device: Identifiable, Hashable {
     let serialNumber: String
     let batteryLevel: Int?
     var storageInfo: [StorageInfo]
+    var mtpSupportInfo: MTPSupportInfo?
     var isConnected: Bool
     
     init(id: UUID = UUID(), deviceIndex: Int, name: String, manufacturer: String, 
          model: String, serialNumber: String, batteryLevel: Int?, 
-         storageInfo: [StorageInfo] = [], isConnected: Bool = true) {
+         storageInfo: [StorageInfo] = [], mtpSupportInfo: MTPSupportInfo? = nil,
+         isConnected: Bool = true) {
         self.id = id
         self.deviceIndex = deviceIndex
         self.name = name
@@ -54,6 +70,7 @@ struct Device: Identifiable, Hashable {
         self.serialNumber = serialNumber
         self.batteryLevel = batteryLevel
         self.storageInfo = storageInfo
+        self.mtpSupportInfo = mtpSupportInfo
         self.isConnected = isConnected
     }
     

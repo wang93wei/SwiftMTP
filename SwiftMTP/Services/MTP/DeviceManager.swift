@@ -15,6 +15,13 @@ struct KalamDevice: Codable {
     let manufacturer: String
     let model: String
     let storage: [KalamStorage]
+    let mtpSupport: KalamMTPSupport
+}
+
+struct KalamMTPSupport: Codable {
+    let mtpVersion: String
+    let deviceVersion: String
+    let vendorExtension: String
 }
 
 struct KalamStorage: Codable {
@@ -188,7 +195,12 @@ class DeviceManager: ObservableObject {
             )
         }
         
-        // Use cached UUID for this device index, or create a new one
+        let mtpSupportInfo = MTPSupportInfo(
+            mtpVersion: kalamDevice.mtpSupport.mtpVersion,
+            deviceVersion: kalamDevice.mtpSupport.deviceVersion,
+            vendorExtension: kalamDevice.mtpSupport.vendorExtension
+        )
+        
         let deviceId = deviceIdCache[kalamDevice.id] ?? UUID()
         deviceIdCache[kalamDevice.id] = deviceId
         
@@ -201,6 +213,7 @@ class DeviceManager: ObservableObject {
             serialNumber: "",
             batteryLevel: nil,
             storageInfo: storageInfos,
+            mtpSupportInfo: mtpSupportInfo,
             isConnected: true
         )
     }

@@ -208,12 +208,19 @@ func withDevice(fn func(*mtp.Device) error) error {
 
 // -- Data Structures for JSON --
 
+type MTPSupportJSON struct {
+	MtpVersion      string `json:"mtpVersion"`
+	DeviceVersion   string `json:"deviceVersion"`
+	VendorExtension string `json:"vendorExtension"`
+}
+
 type DeviceJSON struct {
-	ID           int            `json:"id"`
-	Name         string         `json:"name"`
-	Manufacturer string         `json:"manufacturer"`
-	Model        string         `json:"model"`
-	Storage      []StorageJSON  `json:"storage"`
+	ID           int             `json:"id"`
+	Name         string          `json:"name"`
+	Manufacturer string          `json:"manufacturer"`
+	Model        string          `json:"model"`
+	Storage      []StorageJSON   `json:"storage"`
+	MTPSupport   MTPSupportJSON  `json:"mtpSupport"`
 }
 
 type StorageJSON struct {
@@ -267,12 +274,23 @@ func Kalam_Scan() *C.char {
 			deviceName = info.Manufacturer + " " + info.Model
 		}
 
+		majorVersion := info.MTPVersion / 100
+		minorVersion := (info.MTPVersion % 100) / 10
+		mtpVersion := fmt.Sprintf("%d.%d", majorVersion, minorVersion)
+
+		mtpSupport := MTPSupportJSON{
+			MtpVersion:      mtpVersion,
+			DeviceVersion:   info.DeviceVersion,
+			VendorExtension: info.Manufacturer,
+		}
+
 		d := DeviceJSON{
 			ID:           1,
 			Name:         deviceName,
 			Manufacturer: info.Manufacturer,
 			Model:        info.Model,
 			Storage:      []StorageJSON{},
+			MTPSupport:   mtpSupport,
 		}
 
 		for _, s := range storages {
