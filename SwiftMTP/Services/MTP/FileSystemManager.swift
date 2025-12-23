@@ -114,37 +114,4 @@ class FileSystemManager {
     }
 
     // MARK: - Private Methods
-
-    /*
-    private func createFileItem(from file: LIBMTP_file_t) -> FileItem {
-        let name = String(cString: file.filename)
-        let size = file.filesize
-        let objectId = file.item_id
-        let parentId = file.parent_id
-        let storageId = file.storage_id
-        let isDirectory = file.filetype == LIBMTP_FILETYPE_FOLDER
-
-        let fileTypePtr = LIBMTP_Get_Filetype_Description(LIBMTP_filetype_t(file.filetype.rawValue))
-        let fileType = fileTypePtr != nil ? String(cString: fileTypePtr!) : "Unknown"
-
-        var modifiedDate: Date?
-        if file.modificationdate > 0 {
-            modifiedDate = Date(timeIntervalSince1970: TimeInterval(file.modificationdate))
-        }
-
-        let path = name
-
-        return FileItem(
-            objectId: objectId,
-            parentId: parentId,
-            storageId: storageId,
-            name: name,
-            path: path,
-            size: size,
-            modifiedDate: modifiedDate,
-            isDirectory: isDirectory,
-            fileType: fileType
-        )
-    }
-    */
 }

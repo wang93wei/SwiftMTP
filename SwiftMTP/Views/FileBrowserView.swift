@@ -31,6 +31,8 @@ struct FileBrowserView: View {
 
     @State private var showingDeleteAlert = false
     @State private var fileToDelete: FileItem?
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
     
     // Sorting state
     @State private var sortOrder: [KeyPathComparator<FileItem>] = [
@@ -68,6 +70,11 @@ struct FileBrowserView: View {
                 if let file = fileToDelete {
                     Text("确定要删除 \"\(file.name)\" 吗？此操作无法撤销。")
                 }
+            }
+            .alert("操作失败", isPresented: $showingErrorAlert) {
+                Button("确定") {}
+            } message: {
+                Text(errorMessage)
             }
             .toolbar {
                         ToolbarItem(placement: .navigation) {
@@ -498,8 +505,8 @@ struct FileBrowserView: View {
                     loadFiles()
                 } else {
                     // Show error alert
-                    print("Failed to delete file: \(file.name)")
-                    // TODO: Show error alert to user
+                    errorMessage = "无法删除文件: \(file.name)"
+                    showingErrorAlert = true
                 }
             }
         }
@@ -562,14 +569,15 @@ struct FileBrowserView: View {
                 // Clear cache and reload
                 FileSystemManager.shared.clearCache(for: device)
                 loadFiles()
-                
+
                 // Show result
                 if failedFiles.isEmpty {
                     print("Successfully deleted \(deletedCount) files")
                 } else {
-                    print("Failed to delete some files: \(failedFiles.joined(separator: ", "))")
+                    errorMessage = "以下文件删除失败:\n\n\(failedFiles.joined(separator: "\n"))"
+                    showingErrorAlert = true
                 }
-                
+
                 // Clear selection after deletion
                 selectedFiles.removeAll()
             }
