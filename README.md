@@ -25,12 +25,6 @@
 | 🎨 **现代化 UI** | 精美的 SwiftUI 界面 |
 | 📊 **存储信息** | 显示设备存储使用情况 |
 
-## 📸 应用界面
-
-<div align="center">
-  <img src="SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png" alt="SwiftMTP 应用界面" width="800"/>
-</div>
-
 ## 🚀 快速开始
 
 ### 环境要求
