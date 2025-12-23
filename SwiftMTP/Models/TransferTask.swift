@@ -52,9 +52,25 @@ class TransferTask: Identifiable, ObservableObject {
     
     @Published var transferredSize: UInt64 = 0
     @Published var status: TransferStatus = .pending
-    @Published var speed: Double = 0 // bytes per second
+    @Published var speed: Double = 0
     @Published var startTime: Date?
     @Published var endTime: Date?
+    
+    private var _isCancelled = false
+    private let cancelLock = NSLock()
+    
+    var isCancelled: Bool {
+        get {
+            cancelLock.lock()
+            defer { cancelLock.unlock() }
+            return _isCancelled
+        }
+        set {
+            cancelLock.lock()
+            defer { cancelLock.unlock() }
+            _isCancelled = newValue
+        }
+    }
     
     var progress: Double {
         guard totalSize > 0 else { return 0 }

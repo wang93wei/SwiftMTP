@@ -299,7 +299,7 @@ func Kalam_Scan() *C.char {
 		fmt.Printf("Kalam_Scan: %v\n", err)
 		return C.CString("[]")
 	}
-	
+
 	return C.CString(result)
 }
 
@@ -349,7 +349,7 @@ func Kalam_ListFiles(storageID uint32, parentID uint32) *C.char {
 		fmt.Printf("Kalam_ListFiles: %v\n", err)
 		return C.CString("[]")
 	}
-	
+
 	return C.CString(result)
 }
 

@@ -36,7 +36,22 @@ class FileTransferManager: ObservableObject {
     
     private let transferQueue = DispatchQueue(label: "com.swiftmtp.transfer", qos: .userInitiated)
     private var taskTrackingTimer: Timer?
-    var currentDownloadTask: TransferTask?
+    private var _currentDownloadTask: TransferTask?
+    private let taskLock = NSLock()
+    
+    // Thread-safe access to currentDownloadTask
+    fileprivate var currentDownloadTask: TransferTask? {
+        get {
+            taskLock.lock()
+            defer { taskLock.unlock() }
+            return _currentDownloadTask
+        }
+        set {
+            taskLock.lock()
+            defer { taskLock.unlock() }
+            _currentDownloadTask = newValue
+        }
+    }
     
     private init() {
         currentTransferManager = self
@@ -109,6 +124,7 @@ class FileTransferManager: ObservableObject {
     }
     
     func cancelTask(_ task: TransferTask) {
+        task.isCancelled = true
         task.updateStatus(.cancelled)
         moveTaskToCompleted(task)
     }
@@ -238,69 +254,63 @@ class FileTransferManager: ObservableObject {
         print("performUpload: Starting upload for \(task.fileName)")
         print("  Source: \(sourceURL.path)")
         print("  ParentID: \(parentId), StorageID: \(storageId)")
-        
+
         task.updateStatus(.transferring)
-        
-        // Check file size to warn about large files
-        if let fileAttributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
-           let fileSize = fileAttributes[.size] as? UInt64 {
-            
-            // Warn for files larger than 100MB
-            if fileSize > 100 * 1024 * 1024 {
-                print("performUpload: Large file detected (\(fileSize / 1024 / 1024)MB), upload may take time")
-            }
-            
-            // Perform the actual upload
-            let result = sourceURL.path.withCString { cString in
-                Kalam_UploadFile(storageId, parentId, UnsafeMutablePointer(mutating: cString))
-            }
-            
-            // Even if result is 0, check if file was actually uploaded
-            // because the app might crash after successful upload
-            task.updateProgress(transferred: fileSize, speed: 0)
-            task.updateStatus(.completed)
-            print("performUpload: Upload completed for \(task.fileName)")
-            
-            // Refresh device storage to clear cache
-            print("performUpload: Refreshing device storage...")
-            let refreshResult = Kalam_RefreshStorage(storageId)
-            if refreshResult > 0 {
-                print("performUpload: Storage refreshed successfully")
-            } else {
-                print("performUpload: Failed to refresh storage")
-            }
-            
-            // Try a more aggressive cache reset
-            print("performUpload: Resetting device cache...")
-            let resetResult = Kalam_ResetDeviceCache()
-            if resetResult > 0 {
-                print("performUpload: Device cache reset successfully")
-            } else {
-                print("performUpload: Failed to reset device cache")
-            }
-            
-            // Clear the file cache to force refresh
-            FileSystemManager.shared.clearCache(for: device)
-            // Also try force clear all cache
-            FileSystemManager.shared.forceClearCache()
-            
-            // Longer delay to ensure all refresh operations complete
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                // Refresh file list
-                NotificationCenter.default.post(name: NSNotification.Name("RefreshFileList"), object: nil)
-            }
-            
-            // Only show failure if result is negative (error code)
-            if result < 0 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    task.updateStatus(.failed("上传可能失败\n\n注意：文件可能已成功上传。\n请检查设备确认。"))
-                }
-            }
-        } else {
+
+        guard let fileAttributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
+              let fileSize = fileAttributes[.size] as? UInt64 else {
             task.updateStatus(.failed("无法读取文件信息"))
             print("performUpload: Failed to get file attributes for \(task.fileName)")
+            moveTaskToCompleted(task)
+            return
         }
-        
+
+        if fileSize > 100 * 1024 * 1024 {
+            print("performUpload: Large file detected (\(fileSize / 1024 / 1024)MB), upload may take time")
+        }
+
+        let uploadResult = sourceURL.path.withCString { cString in
+            Kalam_UploadFile(storageId, parentId, UnsafeMutablePointer(mutating: cString))
+        }
+
+        if task.isCancelled {
+            task.updateStatus(.cancelled)
+            moveTaskToCompleted(task)
+            return
+        }
+
+        if uploadResult > 0 {
+            task.updateProgress(transferred: fileSize, speed: 0)
+            task.updateStatus(.completed)
+            print("performUpload: Upload completed successfully for \(task.fileName)")
+        } else {
+            task.updateStatus(.failed("上传失败"))
+            print("performUpload: Upload failed for \(task.fileName)")
+        }
+
+        print("performUpload: Refreshing device storage...")
+        let refreshResult = Kalam_RefreshStorage(storageId)
+        if refreshResult > 0 {
+            print("performUpload: Storage refreshed successfully")
+        } else {
+            print("performUpload: Failed to refresh storage")
+        }
+
+        print("performUpload: Resetting device cache...")
+        let resetResult = Kalam_ResetDeviceCache()
+        if resetResult > 0 {
+            print("performUpload: Device cache reset successfully")
+        } else {
+            print("performUpload: Failed to reset device cache")
+        }
+
+        FileSystemManager.shared.clearCache(for: device)
+        FileSystemManager.shared.forceClearCache()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshFileList"), object: nil)
+        }
+
         moveTaskToCompleted(task)
     }
     
