@@ -133,7 +133,7 @@ struct AboutView: View {
                 .padding(.horizontal, 40)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("基于 libmtp 构建")
+                Text("基于 libusb-1.0 + go-mtpx 构建")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

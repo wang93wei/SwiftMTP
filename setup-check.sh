@@ -8,22 +8,20 @@ echo "SwiftMTP Xcode 项目配置检查"
 echo "======================================"
 echo ""
 
-# 检查 libmtp 安装
-echo "1. 检查 libmtp 安装..."
-if brew list libmtp &>/dev/null; then
-    echo "   ✓ libmtp 已安装"
-    LIBMTP_VERSION=$(brew list --versions libmtp | awk '{print $2}')
-    echo "   版本: $LIBMTP_VERSION"
-    
+# 检查 libusb-1.0 安装
+echo "1. 检查 libusb-1.0 安装..."
+if brew list libusb-1.0 &>/dev/null; then
+    echo "   ✓ libusb-1.0 已安装"
+    LIBUSB_VERSION=$(brew list --versions libusb-1.0 | awk '{print $2}')
+    echo "   版本: $LIBUSB_VERSION"
+
     # 获取路径
-    LIBMTP_PREFIX=$(brew --prefix libmtp)
-    LIBUSB_PREFIX=$(brew --prefix libusb)
-    
-    echo "   libmtp 路径: $LIBMTP_PREFIX"
-    echo "   libusb 路径: $LIBUSB_PREFIX"
+    LIBUSB_PREFIX=$(brew --prefix libusb-1.0)
+
+    echo "   libusb-1.0 路径: $LIBUSB_PREFIX"
 else
-    echo "   ✗ libmtp 未安装"
-    echo "   请运行: brew install libmtp"
+    echo "   ✗ libusb-1.0 未安装"
+    echo "   请运行: brew install libusb-1.0"
     exit 1
 fi
 
@@ -31,18 +29,16 @@ echo ""
 echo "2. 检查源文件..."
 if [ -d "SwiftMTP" ]; then
     echo "   ✓ SwiftMTP 源代码目录存在"
-    
+
     # 检查关键文件
     REQUIRED_FILES=(
         "SwiftMTP/App/SwiftMTPApp.swift"
         "SwiftMTP/SwiftMTP-Bridging-Header.h"
-        "SwiftMTP/Services/MTP/MTPBridge.h"
-        "SwiftMTP/Services/MTP/MTPBridge.c"
         "SwiftMTP/Services/MTP/DeviceManager.swift"
         "SwiftMTP/Services/MTP/FileSystemManager.swift"
         "SwiftMTP/Services/MTP/FileTransferManager.swift"
     )
-    
+
     for file in "${REQUIRED_FILES[@]}"; do
         if [ -f "$file" ]; then
             echo "   ✓ $file"
@@ -69,22 +65,12 @@ echo ""
 echo "2. 头文件搜索路径:"
 echo "   Build Settings > Header Search Paths"
 echo "   添加:"
-echo "   - $LIBMTP_PREFIX/include"
-echo "   - $LIBUSB_PREFIX/include/libusb-1.0"
+echo "   - $LIBUSB_PREFIX/include"
 echo ""
-echo "3. 库搜索路径:"
-echo "   Build Settings > Library Search Paths"
-echo "   添加:"
-echo "   - $LIBMTP_PREFIX/lib"
-echo ""
-echo "4. 链接库:"
-echo "   Target > General > Frameworks, Libraries, and Embedded Content"
-echo "   添加: $LIBMTP_PREFIX/lib/libmtp.dylib"
-echo ""
-echo "5. 部署目标:"
+echo "3. 部署目标:"
 echo "   设置为 macOS 13.0 或更高"
 echo ""
-echo "6. 禁用沙盒:"
+echo "4. 禁用沙盒:"
 echo "   Target > Signing & Capabilities"
 echo "   移除 App Sandbox (如果存在)"
 echo ""

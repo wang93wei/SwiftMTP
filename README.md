@@ -38,7 +38,7 @@
 ### 安装依赖
 
 ```bash
-brew install libmtp go
+brew install libusb-1.0 go
 ```
 
 ### 构建运行
@@ -119,7 +119,7 @@ SwiftMTP/
 
 - **语言**: Swift 5.9+, Go 1.22+
 - **UI 框架**: SwiftUI
-- **MTP 库**: libmtp 1.1.22, go-mtpx
+- **MTP 库**: go-mtpx (基于 libusb-1.0)
 - **架构模式**: MVVM
 - **桥接方式**: CGO
 
@@ -143,8 +143,8 @@ SwiftMTP/
 ### 编译错误
 
 ```bash
-# 检查 libmtp 安装
-brew list libmtp
+# 检查 libusb-1.0 安装
+brew list libusb-1.0
 
 # 重新构建 Go 桥接层
 ./Scripts/build_kalam.sh
