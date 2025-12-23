@@ -4,8 +4,6 @@
 
 <img src="SwiftMTP/App/Resources/SwiftMTP_Logo.svg" alt="SwiftMTP Logo" width="128">
 
-![SwiftMTP Logo](SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png)
-
 **macOS 原生 Android MTP 文件传输工具**
 
 [![Swift Version](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift)](https://swift.org)
@@ -26,6 +24,9 @@
 | 📦 **批量操作** | 批量选择和处理文件 |
 | 🎨 **现代化 UI** | 精美的 SwiftUI 界面 |
 | 📊 **存储信息** | 显示设备存储使用情况 |
+
+## 应用截图
+![SwiftMTP Logo](SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png)
 
 ## 🚀 快速开始
 
