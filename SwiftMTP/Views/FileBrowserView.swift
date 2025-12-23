@@ -164,7 +164,6 @@ struct FileBrowserView: View {
                 if isDropTargeted {
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(Color.blue, lineWidth: 2)
-                        .background(Color.blue.opacity(0.1))
                 }
             }
         )
@@ -177,7 +176,7 @@ struct FileBrowserView: View {
     private var emptyFolderIconView: some View {
         ZStack {
             Circle()
-                .fill(Color.blue.opacity(0.1))
+                .fill(.ultraThinMaterial)
                 .frame(width: 80, height: 80)
             
             Image(systemName: "folder")
