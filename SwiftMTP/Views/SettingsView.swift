@@ -111,17 +111,26 @@ struct AdvancedSettingsView: View {
 }
 
 struct AboutView: View {
+    private var appIcon: NSImage {
+        NSImage(named: "AppIcon") ?? NSImage()
+    }
+
     var body: some View {
         VStack(spacing: 20) {
-            Image(systemName: "smartphone")
-                .font(.system(size: 60))
-                .foregroundStyle(.blue)
+            Image(nsImage: appIcon)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 60, height: 60)
 
             Text("SwiftMTP")
                 .font(.title)
                 .fontWeight(.bold)
 
             Text("版本 1.0.0")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Text("作者：Alan Wang")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -132,12 +141,13 @@ struct AboutView: View {
             Divider()
                 .padding(.horizontal, 40)
 
+            Text("© 2025 SwiftMTP")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("基于 libusb-1.0 + go-mtpx 构建")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text("© 2025 SwiftMTP")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

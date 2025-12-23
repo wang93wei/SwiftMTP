@@ -34,5 +34,14 @@
     <true/>
     <key>NSSupportsSuddenTermination</key>
     <true/>
+    <key>CFBundleIcons</key>
+    <dict>
+        <key>CFBundleIconsName</key>
+        <string>AppIcon</string>
+        <key>CFBundleIconFile</key>
+        <string>AppIcon</string>
+    </dict>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
 </dict>
 </plist>

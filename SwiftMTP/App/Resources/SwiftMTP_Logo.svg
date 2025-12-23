@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f8f9ff"/>
+      <stop offset="100%" stop-color="#e8ecff"/>
+    </linearGradient>
+    <linearGradient id="deviceGradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5ae0a0"/>
+      <stop offset="100%" stop-color="#28c76f"/>
+    </linearGradient>
+    <linearGradient id="screenGradient" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#e8f5e9"/>
+      <stop offset="50%" stop-color="#c8e6c9"/>
+      <stop offset="100%" stop-color="#a5d6a7"/>
+    </linearGradient>
+    <linearGradient id="arrowGradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff7675"/>
+      <stop offset="100%" stop-color="#e84393"/>
+    </linearGradient>
+    <linearGradient id="swiftGradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff9f43"/>
+      <stop offset="100%" stop-color="#ff6b6b"/>
+    </linearGradient>
+    <linearGradient id="syncGradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#74b9ff"/>
+      <stop offset="100%" stop-color="#0984e3"/>
+    </linearGradient>
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- 背景圆角矩形 -->
+  <rect x="30" y="30" width="452" height="452" rx="80" fill="url(#bgGradient)" filter="url(#dropShadow)"/>
+
+  <!-- 装饰性圆点 -->
+  <circle cx="80" cy="80" r="12" fill="#ffeaa7" opacity="0.8"/>
+  <circle cx="420" cy="430" r="20" fill="#fab1a0" opacity="0.6"/>
+  <circle cx="450" cy="100" r="8" fill="#81ecec" opacity="0.8"/>
+  <circle cx="60" cy="400" r="15" fill="#a29bfe" opacity="0.7"/>
+
+  <!-- Android 设备 -->
+  <rect x="120" y="90" width="200" height="340" rx="30" fill="url(#deviceGradient)" filter="url(#dropShadow)"/>
+  <rect x="135" y="110" width="170" height="280" rx="12" fill="url(#screenGradient)"/>
+
+  <!-- 设备摄像头 -->
+  <circle cx="220" cy="100" r="10" fill="#2d3436"/>
+  <circle cx="220" cy="100" r="6" fill="#636e72"/>
+  <circle cx="220" cy="100" r="3" fill="#2d3436"/>
+
+  <!-- 设备扬声器 -->
+  <rect x="190" y="95" width="60" height="6" rx="3" fill="#2d3436" opacity="0.3"/>
+
+  <!-- 设备Home键 -->
+  <circle cx="220" cy="405" r="20" fill="none" stroke="#fff" stroke-width="3" opacity="0.6"/>
+
+  <!-- 屏幕内容 - 文件图标 -->
+  <g transform="translate(155, 140)">
+    <rect x="0" y="0" width="40" height="50" rx="4" fill="#fff" stroke="#5ae0a0" stroke-width="2"/>
+    <rect x="8" y="15" width="24" height="3" rx="1" fill="#5ae0a0"/>
+    <rect x="8" y="22" width="24" height="3" rx="1" fill="#5ae0a0"/>
+    <rect x="8" y="29" width="16" height="3" rx="1" fill="#5ae0a0"/>
+    <path d="M28 0 L28 12 L40 12" fill="#5ae0a0"/>
+  </g>
+
+  <!-- 屏幕内容 - 第二个文件 -->
+  <g transform="translate(155, 210)">
+    <rect x="0" y="0" width="35" height="45" rx="4" fill="#ffeaa7" stroke="#fdcb6e" stroke-width="2"/>
+    <rect x="6" y="12" width="23" height="3" rx="1" fill="#fdcb6e"/>
+    <rect x="6" y="19" width="23" height="3" rx="1" fill="#fdcb6e"/>
+    <rect x="6" y="26" width="15" height="3" rx="1" fill="#fdcb6e"/>
+    <path d="M23 0 L23 10 L35 10" fill="#fdcb6e"/>
+  </g>
+
+  <!-- 同步/传输动画线条 -->
+  <g>
+    <rect x="240" y="280" width="60" height="6" rx="3" fill="#dfe6e9">
+      <animate attributeName="width" values="20;60;20" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="240" y="295" width="45" height="6" rx="3" fill="#dfe6e9">
+      <animate attributeName="width" values="15;45;15" dur="1.5s" repeatCount="indefinite" begin="0.2s"/>
+    </rect>
+    <rect x="240" y="310" width="55" height="6" rx="3" fill="#dfe6e9">
+      <animate attributeName="width" values="18;55;18" dur="1.5s" repeatCount="indefinite" begin="0.4s"/>
+    </rect>
+  </g>
+
+  <!-- 上传箭头（更活泼的设计） -->
+  <g transform="translate(340, 200)">
+    <circle cx="30" cy="30" r="35" fill="#fff" filter="url(#dropShadow)"/>
+    <path d="M30 15 L30 50 M30 50 L15 32 M30 50 L45 32" stroke="url(#arrowGradient)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <animate attributeName="d" values="M30 15 L30 50 M30 50 L15 32 M30 50 L45 32;M30 12 L30 53 M30 53 L12 33 M30 53 L48 33;M30 15 L30 50 M30 50 L15 32 M30 50 L45 32" dur="1.2s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <!-- 下载箭头 -->
+  <g transform="translate(340, 300)">
+    <circle cx="30" cy="30" r="35" fill="#fff" filter="url(#dropShadow)"/>
+    <path d="M30 45 L30 10 M30 10 L15 28 M30 10 L45 28" stroke="url(#syncGradient)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <animate attributeName="d" values="M30 45 L30 10 M30 10 L15 28 M30 10 L45 28;M30 48 L30 7 M30 7 L12 27 M30 7 L48 27;M30 45 L30 10 M30 10 L15 28 M30 10 L45 28" dur="1.2s" repeatCount="indefinite" begin="0.6s"/>
+    </path>
+  </g>
+
+  <!-- Swift 蝴蝶结（更活泼的版本） -->
+  <g transform="translate(380, 380) scale(0.7)">
+    <path d="M60 35 Q35 0 10 35 Q-5 60 30 60 Q55 85 85 60 Q120 60 110 35 Q100 0 60 35" fill="url(#swiftGradient)"/>
+    <path d="M60 35 Q85 0 110 35 Q120 60 85 60 Q60 85 30 60 Q-5 60 10 35 Q20 0 60 35" fill="url(#swiftGradient)"/>
+    <circle cx="60" cy="45" r="15" fill="#ffeaa7"/>
+    <circle cx="60" cy="45" r="8" fill="url(#swiftGradient)"/>
+  </g>
+
+  <!-- 连接状态指示灯 -->
+  <circle cx="135" cy="100" r="5" fill="#00b894">
+    <animate attributeName="opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- 装饰性闪光 -->
+  <g opacity="0.9">
+    <polygon points="450,70 455,85 470,85 458,95 463,110 450,100 437,110 442,95 430,85 445,85" fill="#ffeaa7">
+      <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
+    </polygon>
+  </g>
+
+  <!-- 数据流装饰 -->
+  <g opacity="0.6">
+    <circle cx="200" cy="130" r="3" fill="#5ae0a0">
+      <animate attributeName="cy" values="130;350;130" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="210" cy="130" r="3" fill="#74b9ff">
+      <animate attributeName="cy" values="130;350;130" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+      <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+    </circle>
+    <circle cx="220" cy="130" r="3" fill="#ff7675">
+      <animate attributeName="cy" values="130;350;130" dur="3s" repeatCount="indefinite" begin="1s"/>
+      <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite" begin="1s"/>
+    </circle>
+    <circle cx="230" cy="130" r="3" fill="#ffeaa7">
+      <animate attributeName="cy" values="130;350;130" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+      <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite" begin="1.5s"/>
+    </circle>
+  </g>
+</svg>
