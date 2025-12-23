@@ -11,30 +11,32 @@ struct SettingsView: View {
     @AppStorage("defaultDownloadPath") private var downloadPath = NSHomeDirectory() + "/Downloads"
     @AppStorage("scanInterval") private var scanInterval = 3.0
     @AppStorage("enableNotifications") private var enableNotifications = true
-    
+
     var body: some View {
         TabView {
             GeneralSettingsView(downloadPath: $downloadPath)
                 .tabItem {
                     Label("通用", systemImage: "gear")
                 }
-            
+
             TransferSettingsView(enableNotifications: $enableNotifications)
                 .tabItem {
                     Label("传输", systemImage: "arrow.up.arrow.down")
                 }
-            
+
             AdvancedSettingsView(scanInterval: $scanInterval)
                 .tabItem {
                     Label("高级", systemImage: "slider.horizontal.3")
                 }
-            
+
             AboutView()
                 .tabItem {
                     Label("关于", systemImage: "info.circle")
                 }
         }
         .frame(width: 500, height: 400)
+        .background(Color(NSColor.windowBackgroundColor))
+        .padding(8)
     }
 }
 
