@@ -59,20 +59,20 @@ struct FileBrowserView: View {
                 selectedFiles.removeAll()
                 isLoading = false
             }
-            .alert("删除文件", isPresented: $showingDeleteAlert) {
-                Button("取消", role: .cancel) {}
-                Button("删除", role: .destructive) {
+            .alert(L10n.FileBrowser.deleteFile, isPresented: $showingDeleteAlert) {
+                Button(L10n.FileBrowser.cancel, role: .cancel) {}
+                Button(L10n.FileBrowser.delete, role: .destructive) {
                     if let file = fileToDelete {
                         deleteFile(file)
                     }
                 }
             } message: {
                 if let file = fileToDelete {
-                    Text("确定要删除 \"\(file.name)\" 吗？此操作无法撤销。")
+                    Text(L10n.FileBrowser.confirmDeleteFileWithName.localized(file.name))
                 }
             }
-            .alert("操作失败", isPresented: $showingErrorAlert) {
-                Button("确定") {}
+            .alert(L10n.FileBrowser.operationFailed, isPresented: $showingErrorAlert) {
+                Button(L10n.MainWindow.ok) {}
             } message: {
                 Text(errorMessage)
             }
@@ -81,35 +81,35 @@ struct FileBrowserView: View {
                             Button {
                                 navigateUp()
                             } label: {
-                                Label("返回", systemImage: "chevron.left")
+                                Label(L10n.FileBrowser.back, systemImage: "chevron.left")
                                     .labelStyle(.iconOnly)
                             }
-                            .help("返回上一级")
+                            .help(L10n.FileBrowser.goBack)
                             .disabled(currentPath.isEmpty)
                         }
                         
                         ToolbarItem {
-                            Button("新建文件夹", systemImage: "folder.badge.plus") {
+                            Button(L10n.FileBrowser.newFolder, systemImage: "folder.badge.plus") {
                                 showingCreateFolderDialog = true
                             }
-                            .help("创建新文件夹")
+                            .help(L10n.FileBrowser.createNewFolderHelp)
                         }
                         
                         ToolbarItem {
-                            Button("上传文件", systemImage: "square.and.arrow.up") {
+                            Button(L10n.FileBrowser.uploadFiles, systemImage: "square.and.arrow.up") {
                                 selectFilesToUpload()
                             }
-                            .help("上传文件到当前目录")
+                            .help(L10n.FileBrowser.uploadFilesHelp)
                         }
                         
                         ToolbarItem {
                             Button {
                                 downloadSelectedFiles()
                             } label: {
-                                Label("下载", systemImage: "arrow.down.circle")
+                                Label(L10n.FileBrowser.download, systemImage: "arrow.down.circle")
                                     .labelStyle(.iconOnly)
                             }
-                            .help("下载选中的文件")
+                            .help(L10n.FileBrowser.downloadHelp)
                             .disabled(!hasDownloadableFiles)
                         }
                         
@@ -117,10 +117,10 @@ struct FileBrowserView: View {
                             Button {
                                 deleteSelectedFiles()
                             } label: {
-                                Label("删除", systemImage: "trash")
+                                Label(L10n.FileBrowser.deleteFile, systemImage: "trash")
                                     .labelStyle(.iconOnly)
                             }
-                            .help("删除选中的文件")
+                            .help(L10n.FileBrowser.deleteHelp)
                             .disabled(selectedFiles.isEmpty)
                             .tint(selectedFiles.isEmpty ? .secondary : .red)
                         }
@@ -143,7 +143,7 @@ struct FileBrowserView: View {
     @ViewBuilder
     private var fileContentView: some View {
         if isLoading {
-            ProgressView("加载文件列表...")
+            ProgressView(L10n.FileBrowser.loadingFiles)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if currentFiles.isEmpty {
             emptyFolderView
@@ -187,15 +187,15 @@ struct FileBrowserView: View {
     
     private var emptyFolderMessageView: some View {
         VStack(spacing: 8) {
-            Text("文件夹为空")
+            Text(L10n.FileBrowser.folderEmpty)
                 .font(.headline)
                 .foregroundColor(.primary)
             
-            Text("此文件夹中没有文件")
+            Text(L10n.FileBrowser.noFilesInFolder)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
             
-            Text("或将文件拖拽到此处以上传")
+            Text(L10n.FileBrowser.dragFilesToUpload)
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -204,22 +204,22 @@ struct FileBrowserView: View {
     @ViewBuilder
     private var fileTableView: some View {
         Table(currentFiles, selection: $selectedFiles, sortOrder: $sortOrder) {
-            TableColumn("名称", value: \.name) { file in
+            TableColumn(L10n.FileBrowser.name, value: \.name) { file in
                 nameCell(for: file)
             }
             .width(min: 200, ideal: 400)
             
-            TableColumn("大小", value: \.size) { file in
+            TableColumn(L10n.FileBrowser.size, value: \.size) { file in
                 sizeCell(for: file)
             }
             .width(100)
             
-            TableColumn("类型", value: \.fileType) { file in
+            TableColumn(L10n.FileBrowser.type, value: \.fileType) { file in
                 typeCell(for: file)
             }
             .width(120)
             
-            TableColumn("修改日期", value: \.sortableDate) { file in
+            TableColumn(L10n.FileBrowser.modifiedDate, value: \.sortableDate) { file in
                 dateCell(for: file)
             }
             .width(180)
@@ -260,7 +260,14 @@ struct FileBrowserView: View {
     }
     
     private func typeCell(for file: FileItem) -> some View {
-        Text(file.fileType)
+        // 根据文件类型返回本地化字符串
+        let localizedType: String
+        if file.fileType == "folder" {
+            localizedType = L10n.FileBrowser.folder
+        } else {
+            localizedType = file.fileType
+        }
+        return Text(localizedType)
     }
     
     private func dateCell(for file: FileItem) -> some View {
@@ -287,19 +294,19 @@ struct FileBrowserView: View {
            let file = currentFiles.first(where: { $0.id == fileId }) {
             
             if !file.isDirectory {
-                Button("下载", systemImage: "arrow.down.circle") {
+                Button(L10n.FileBrowser.download, systemImage: "arrow.down.circle") {
                     downloadFile(file)
                 }
             }
             
             Divider()
             
-            Button("删除", systemImage: "trash", role: .destructive) {
+            Button(L10n.FileBrowser.delete, systemImage: "trash", role: .destructive) {
                 fileToDelete = file
                 showingDeleteAlert = true
             }
         } else if items.count > 1 {
-            Button("下载所选文件", systemImage: "arrow.down.circle") {
+            Button(L10n.FileBrowser.downloadSelectedFiles, systemImage: "arrow.down.circle") {
                 downloadSelectedFiles()
             }
         }
@@ -311,7 +318,7 @@ struct FileBrowserView: View {
                 Button {
                     navigateToRoot()
                 } label: {
-                    Label("根目录", systemImage: "house.fill")
+                    Label(L10n.FileBrowser.rootDirectory, systemImage: "house.fill")
                         .labelStyle(.titleAndIcon)
                 }
                 .buttonStyle(.borderless)
@@ -413,7 +420,10 @@ struct FileBrowserView: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
-        panel.prompt = "选择下载位置"
+        panel.prompt = L10n.FileBrowser.chooseDownloadLocation
+        
+        // 在显示文件选择器之前，确保 AppleLanguages 设置正确
+        ensureAppleLanguages()
         
         panel.begin { response in
             if response == .OK, let directory = panel.url {
@@ -428,13 +438,15 @@ struct FileBrowserView: View {
                 if !existingFiles.isEmpty {
                     // Show confirmation dialog for file replacement
                     let alert = NSAlert()
-                    alert.messageText = "部分文件已存在"
-                    alert.informativeText = "有 \(existingFiles.count) 个文件已存在于目标位置。是否要替换这些文件？\n\n已存在的文件：\n" + 
+                    alert.messageText = L10n.FileBrowser.someFilesAlreadyExist
+                    alert.informativeText = L10n.FileBrowser.filesAlreadyExistMessage.localized(
+                        existingFiles.count,
                         existingFiles.map { "• \($0.name)" }.joined(separator: "\n")
+                    )
                     alert.alertStyle = .warning
-                    alert.addButton(withTitle: "取消")
-                    alert.addButton(withTitle: "跳过已存在的文件")
-                    alert.addButton(withTitle: "替换所有")
+                    alert.addButton(withTitle: L10n.FileBrowser.cancel)
+                    alert.addButton(withTitle: L10n.FileBrowser.skipExistingFiles)
+                    alert.addButton(withTitle: L10n.FileBrowser.replaceAll)
                     
                     if let window = NSApp.keyWindow {
                         alert.beginSheetModal(for: window) { response in
@@ -496,11 +508,43 @@ struct FileBrowserView: View {
         }
     }
     
+    // MARK: - Helper Methods
+    
+    private func ensureAppleLanguages() {
+        // 确保 AppleLanguages 设置正确，以便文件选择器使用正确的语言
+        let savedLanguage = UserDefaults.standard.string(forKey: "appLanguage")
+        var languages: [String]?
+        
+        if let savedLanguage = savedLanguage, let validLanguage = AppLanguage(rawValue: savedLanguage) {
+            switch validLanguage {
+            case .chinese:
+                languages = ["zh-Hans", "zh-CN", "zh"]
+            case .english:
+                languages = ["en", "en-US"]
+            case .system:
+                languages = nil
+            }
+        } else {
+            languages = nil
+        }
+        
+        if let languages = languages {
+            UserDefaults.standard.set(languages, forKey: "AppleLanguages")
+            UserDefaults.standard.synchronize()
+        } else {
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+            UserDefaults.standard.synchronize()
+        }
+    }
+    
     private func selectFilesToUpload() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
+        
+        // 在显示文件选择器之前，确保 AppleLanguages 设置正确
+        ensureAppleLanguages()
         
         panel.begin { response in
             if response == .OK {
@@ -539,7 +583,7 @@ struct FileBrowserView: View {
                     loadFiles()
                 } else {
                     // Show error alert
-                    errorMessage = "无法删除文件: \(file.name)"
+                    errorMessage = L10n.FileBrowser.operationFailedWithMessage.localized(file.name)
                     showingErrorAlert = true
                 }
             }
@@ -555,18 +599,18 @@ struct FileBrowserView: View {
         
         // Prepare alert message
         let fileNames = filesToDelete.map { $0.name }.joined(separator: "、")
-        let alertTitle = filesToDelete.count == 1 ? "删除文件" : "删除多个文件"
+        let alertTitle = filesToDelete.count == 1 ? L10n.FileBrowser.deleteFile : "Delete Multiple Files"
         let alertMessage = filesToDelete.count == 1 
-            ? "确定要删除 \"\(filesToDelete.first!.name)\" 吗？此操作无法撤销。"
-            : "确定要删除这 \(filesToDelete.count) 个文件吗？\n\n\(fileNames)\n\n此操作无法撤销。"
+            ? L10n.FileBrowser.confirmDeleteFileWithName.localized(filesToDelete.first!.name)
+            : "Are you sure you want to delete these \(filesToDelete.count) files?\n\n\(fileNames)\n\nThis action cannot be undone."
         
         // Create and show alert
         let alert = NSAlert()
         alert.messageText = alertTitle
         alert.informativeText = alertMessage
         alert.alertStyle = .critical
-        alert.addButton(withTitle: "取消")
-        alert.addButton(withTitle: "删除")
+        alert.addButton(withTitle: L10n.FileBrowser.cancel)
+        alert.addButton(withTitle: L10n.FileBrowser.delete)
         
         if let window = NSApp.keyWindow {
             alert.beginSheetModal(for: window) { response in
@@ -608,7 +652,7 @@ struct FileBrowserView: View {
                 if failedFiles.isEmpty {
                     print("Successfully deleted \(deletedCount) files")
                 } else {
-                    errorMessage = "以下文件删除失败:\n\n\(failedFiles.joined(separator: "\n"))"
+                    errorMessage = "The following files failed to delete:\n\n\(failedFiles.joined(separator: "\n"))"
                     showingErrorAlert = true
                 }
 
@@ -622,21 +666,21 @@ struct FileBrowserView: View {
     
     private var createFolderDialog: some View {
         VStack(spacing: 16) {
-            Text("新建文件夹")
+            Text(L10n.FileBrowser.createNewFolderDialog)
                 .font(.headline)
             
-            TextField("文件夹名称", text: $newFolderName)
+            TextField(L10n.FileBrowser.folderNamePlaceholder, text: $newFolderName)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 300)
             
             HStack(spacing: 12) {
-                Button("取消") {
+                Button(L10n.FileBrowser.cancel) {
                     showingCreateFolderDialog = false
                     newFolderName = ""
                 }
                 .keyboardShortcut(.cancelAction)
                 
-                Button("创建") {
+                Button(L10n.FileBrowser.create) {
                     createFolder()
                 }
                 .keyboardShortcut(.defaultAction)

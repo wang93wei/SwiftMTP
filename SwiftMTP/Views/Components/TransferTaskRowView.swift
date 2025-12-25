@@ -103,7 +103,7 @@ struct TransferTaskRowView: View {
                 destinationPath: "/Users/test/Downloads/large_file.zip",
                 totalSize: 500_000_000
             )
-            task.updateStatus(.failed("设备连接已断开"))
+            task.updateStatus(.failed("Device connection lost"))
             return task
         }())
     }

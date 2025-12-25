@@ -24,6 +24,7 @@
 | 📦 **批量操作** | 批量选择和处理文件 |
 | 🎨 **现代化 UI** | 精美的 SwiftUI 界面 |
 | 📊 **存储信息** | 显示设备存储使用情况 |
+| 🌍 **多语言支持** | 支持简体中文、英文，可跟随系统语言 |
 
 ## 📸 应用截图
 ![SwiftMTP Logo](SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png)
@@ -89,6 +90,17 @@ DMG 文件将生成在 `build/` 目录中。
 | 批量下载 | 多选文件 → 右键 → **下载所选文件** |
 | 上传文件 | 点击工具栏 **上传文件** 按钮 |
 
+### 语言设置
+
+1. 打开 **设置** 窗口（⌘ + ,）
+2. 在 **通用** 标签页中选择语言
+3. 可选语言：
+   - **系统默认** - 跟随 macOS 系统语言
+   - **English** - 英文界面
+   - **中文** - 简体中文界面
+4. 应用内界面会立即更新语言
+5. **菜单栏和文件选择器**需要重启应用才能生效，系统会提示是否立即重启
+
 ## 🏗️ 项目架构
 
 ```
@@ -105,16 +117,26 @@ SwiftMTP/
 │   ├── Models/                    # 数据模型
 │   │   ├── Device.swift           # 设备模型
 │   │   ├── FileItem.swift         # 文件模型
-│   │   └── TransferTask.swift     # 传输任务模型
-│   ├── Services/MTP/              # MTP 服务层
-│   │   ├── DeviceManager.swift    # 设备管理
-│   │   ├── FileSystemManager.swift# 文件系统
-│   │   └── FileTransferManager.swift # 传输管理
+│   │   ├── TransferTask.swift     # 传输任务模型
+│   │   └── AppLanguage.swift      # 语言模型
+│   ├── Services/                  # 服务层
+│   │   ├── MTP/                   # MTP 服务
+│   │   │   ├── DeviceManager.swift    # 设备管理
+│   │   │   ├── FileSystemManager.swift# 文件系统
+│   │   │   └── FileTransferManager.swift # 传输管理
+│   │   ├── LanguageManager.swift  # 语言管理器
+│   │   └── LocalizationManager.swift # 本地化管理器
 │   ├── Views/                     # SwiftUI 视图
 │   │   ├── MainWindowView.swift   # 主窗口
 │   │   ├── DeviceListView.swift   # 设备列表
-│   │   └── FileBrowserView.swift  # 文件浏览器
-│   └── Components/                # 可复用组件
+│   │   ├── FileBrowserView.swift  # 文件浏览器
+│   │   ├── FileTransferView.swift # 传输视图
+│   │   ├── SettingsView.swift     # 设置窗口
+│   │   └── Components/            # 可复用组件
+│   └── Resources/                 # 资源文件
+│       ├── Base.lproj/            # 基础语言包（英文）
+│       ├── en.lproj/              # 英文语言包
+│       └── zh-Hans.lproj/         # 简体中文语言包
 └── SwiftMTP.xcodeproj/            # Xcode 项目
 ```
 
@@ -125,6 +147,7 @@ SwiftMTP/
 - **MTP 库**: go-mtpx (基于 libusb-1.0)
 - **架构模式**: MVVM
 - **桥接方式**: CGO
+- **国际化**: Swift 本地化框架 (NSLocalizedString)
 
 ## ⚠️ 已知限制
 

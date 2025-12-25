@@ -64,8 +64,35 @@ struct FileItem: Identifiable, Hashable, Comparable {
     var formattedDate: String {
         guard let date = modifiedDate else { return "--" }
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
+        
+        // 根据当前语言设置 locale
+        var locale: Locale
+        if let localeIdentifier = LanguageManager.shared.currentLanguage.localeIdentifier {
+            locale = Locale(identifier: localeIdentifier)
+        } else {
+            // 系统默认模式：从系统设置获取正确的 locale
+            if let systemUserDefaults = UserDefaults(suiteName: ".GlobalPreferences"),
+               let langs = systemUserDefaults.array(forKey: "AppleLanguages") as? [String],
+               let firstLang = langs.first {
+                locale = Locale(identifier: firstLang)
+            } else {
+                locale = Locale.current
+            }
+        }
+        
+        formatter.locale = locale
+        
+        // 使用固定宽度的格式确保对齐
+        // 中文：2024年12月26日 14:30
+        // 英文：Dec 26, 2024, 2:30 PM
+        if locale.language.languageCode?.identifier == "zh" {
+            // 中文格式：使用两位数月份确保对齐
+            formatter.dateFormat = "yyyy年MM月dd日 HH:mm"
+        } else {
+            // 英文格式：使用固定格式确保对齐
+            formatter.dateFormat = "MMM dd, yyyy, h:mm a"
+        }
+        
         return formatter.string(from: date)
     }
     

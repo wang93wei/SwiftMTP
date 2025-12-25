@@ -1,0 +1,202 @@
+/* Main Window */
+"deviceList" = "设备列表";
+"noDeviceSelected" = "未选择设备";
+"selectDeviceFromList" = "请从左侧列表选择一个 Android 设备";
+"refresh" = "刷新";
+"refreshFileList" = "刷新文件列表";
+"refreshDeviceList" = "刷新设备列表";
+"transferTasks" = "传输任务";
+"viewTransferTasks" = "查看文件传输任务";
+"deviceDisconnected" = "设备已断开";
+"ok" = "确定";
+"deviceDisconnectedMessage" = "Android 设备已断开连接，请重新连接设备。";
+"androidDevice" = "Android 设备";
+
+/* Device List */
+"devices" = "设备";
+"scanningDevices" = "正在扫描设备...";
+"noDevices" = "无设备";
+"connectDeviceViaUSB" = "请通过 USB 连接 Android 设备\n并确保设备已开启文件传输模式";
+
+/* File Browser */
+"deleteFile" = "删除文件";
+"cancel" = "取消";
+"delete" = "删除";
+"confirmDeleteFile" = "确定要删除 \"%1$@\" 吗？此操作无法撤销。";
+"operationFailed" = "操作失败";
+"back" = "返回";
+"goBack" = "返回上一级";
+"newFolder" = "新建文件夹";
+"createNewFolder" = "创建新文件夹";
+"folder" = "文件夹";
+"create" = "创建";
+"uploadFiles" = "上传文件";
+"uploadToCurrentDir" = "上传文件到当前目录";
+"download" = "下载";
+"downloadSelectedFiles" = "下载选中的文件";
+"deleteSelectedFiles" = "删除选中的文件";
+"folderEmpty" = "文件夹为空";
+"noFilesInFolder" = "此文件夹中没有文件";
+"dragFilesToUpload" = "或将文件拖拽到此处以上传";
+"loadingFileList" = "加载文件列表...";
+"deleteFailed" = "删除失败";
+"confirmDeleteFolder" = "确定要删除此文件夹吗？此操作将递归删除所有内容。";
+"moveToTrash" = "移至废纸篓";
+"uploadSuccess" = "上传成功";
+"uploadSuccessMessage" = "%1$@ 上传成功";
+"uploadFailed" = "上传失败";
+"uploadFailedMessage" = "上传 %1$@ 失败：%2$@";
+"downloadSuccess" = "下载成功";
+"downloadSuccessMessage" = "%1$@ 已保存至 %2$@";
+"downloadFailed" = "下载失败";
+"downloadFailedMessage" = "下载 %1$@ 失败：%2$@";
+"createFolderFailed" = "创建文件夹失败";
+"createFolderFailedMessage" = "创建文件夹失败：%1$@";
+"folderNamePlaceholder" = "文件夹名称";
+
+/* File Browser Table Headers */
+"name" = "名称";
+"size" = "大小";
+"type" = "类型";
+"modifiedDate" = "修改日期";
+"rootDirectory" = "根目录";
+"downloadFile" = "下载";
+"downloadSelected" = "下载所选文件";
+"someFilesExist" = "部分文件已存在";
+"filesExistMessage" = "有 %1$d 个文件已存在于目标位置。是否要替换这些文件？\n\n已存在的文件：\n%2$@";
+"skip" = "取消";
+"skipExisting" = "跳过已存在的文件";
+"replaceAll" = "替换所有";
+"replace" = "替换";
+"cancelDownload" = "取消";
+"selectDownloadLocation" = "选择下载位置";
+"selectUploadFiles" = "选择要上传的文件";
+"selectUploadFolder" = "选择要上传的文件夹";
+"newFolderName" = "新建文件夹名称";
+"enterFolderName" = "请输入文件夹名称";
+"selectDestination" = "选择目标位置";
+"cancelUpload" = "取消上传";
+"uploadFile" = "上传文件";
+"uploadToDevice" = "上传到设备";
+"deleteConfirmTitle" = "确认删除";
+"deleteFolderConfirmMessage" = "确定要删除 \"%1$@\" 吗？此操作将递归删除所有内容且无法撤销。";
+"moveToTrashConfirm" = "移至废纸篓";
+"downloadTo" = "下载至：%1$@";
+"status" = "状态";
+"progress" = "进度";
+"noFilesSelected" = "未选择文件";
+"selectFilesToOperate" = "请选择要操作的文件";
+
+/* File Transfer */
+"fileTransfer" = "文件传输";
+"done" = "完成";
+"closeTransferWindow" = "关闭传输窗口";
+"noTransferTasks" = "无传输任务";
+"noActiveTransfers" = "当前没有文件传输任务";
+"inProgress" = "进行中";
+"completed" = "已完成";
+"clearCompleted" = "清空";
+"clearCompletedTasks" = "清空已完成的传输任务";
+"transferring" = "传输中";
+"completedStatus" = "已完成";
+"failedStatus" = "失败";
+"cancelledStatus" = "已取消";
+"pendingStatus" = "等待中";
+
+/* Settings */
+"general" = "通用";
+"transfer" = "传输";
+"advanced" = "高级";
+"about" = "关于";
+"downloadSettings" = "下载设置";
+"defaultDownloadLocation" = "默认下载位置:";
+"select" = "选择...";
+"path" = "路径";
+"notifications" = "通知";
+"showNotificationOnTransferComplete" = "传输完成时显示通知";
+"deviceDetection" = "设备检测";
+"scanInterval" = "扫描间隔:";
+"seconds" = "%1$d 秒";
+"appName" = "SwiftMTP";
+"version" = "版本 %1$@";
+"author" = "作者：Alan Wang";
+"mtpFileTransferTool" = "macOS Android MTP 文件传输工具";
+"copyright" = "© 2025 SwiftMTP";
+"builtWith" = "基于 libusb-1.0 + go-mtpx 构建";
+
+/* Additional */
+"createNewFolderDialog" = "新建文件夹";
+"uploadFilesToCurrentDir" = "上传文件到当前目录：%1$@";
+"confirmDeleteFileWithName" = "确定要删除 \"%1$@\" 吗？此操作无法撤销。";
+"operationFailedWithMessage" = "操作失败：%1$@";
+"help" = "帮助";
+"createNewFolderHelp" = "在当前目录创建新文件夹";
+"uploadFilesHelp" = "将文件从 Mac 上传到当前目录";
+"downloadHelp" = "将选中的文件下载到 Mac";
+"deleteHelp" = "从设备删除选中的文件";
+"loadingFiles" = "正在加载文件列表...";
+
+/* Download Panel */
+"selectDownloadLocation" = "选择下载位置";
+"someFilesAlreadyExist" = "部分文件已存在";
+"filesAlreadyExistMessage" = "有 %1$d 个文件已存在于目标位置。是否要替换它们？\n\n已存在的文件：\n%2$@";
+"cancel" = "取消";
+"skipExistingFiles" = "跳过已存在的文件";
+"replaceAll" = "替换所有";
+"chooseDownloadLocation" = "选择下载位置";
+
+/* Upload Panel */
+"selectUploadFiles" = "选择要上传的文件";
+"selectUploadLocation" = "选择上传位置";
+"uploadingTo" = "上传到：%1$@";
+"uploadToDevice" = "上传到设备";
+
+/* File Transfer View */
+"fileTransferTitle" = "文件传输";
+"done" = "完成";
+"closeTransferWindow" = "关闭传输窗口";
+"noTransferTasks" = "无传输任务";
+"noActiveTransfers" = "当前没有活动的文件传输";
+"inProgress" = "进行中";
+"completed" = "已完成";
+"clear" = "清空";
+"clearCompletedTasks" = "清空已完成的传输任务";
+"uploadType" = "上传";
+"downloadType" = "下载";
+"statusPending" = "等待中";
+"statusTransferring" = "传输中";
+"statusPaused" = "已暂停";
+"statusFailed" = "失败：%1$@";
+"statusCancelled" = "已取消";
+"estimatedTimeSeconds" = "%1$d 秒";
+"estimatedTimeMinutes" = "%1$d 分钟";
+"estimatedTimeHours" = "%1$@ 小时";
+
+/* Language Settings */
+"language" = "语言";
+"languageSettings" = "语言设置";
+"selectLanguage" = "选择语言:";
+"languageEnglish" = "English (英语)";
+"languageChinese" = "中文";
+"languageChangeConfirm" = "确定要切换语言吗?";
+"languageChangeMessage" = "确定要更改界面语言吗？";
+"languageChangeImmediate" = "立即应用更改";
+"languageChangeRestart" = "重启应用程序以应用更改";
+"apply" = "应用";
+"restartRequired" = "需要重启";
+"restartMessage" = "语言更改将在重启应用程序后生效。";
+"restartNow" = "立即重启";
+"restartLater" = "稍后";
+"systemDefault" = "系统默认";
+
+// FileTransfer error messages
+"cannotCreateDirectory" = "无法创建目标目录: %@";
+"cannotReplaceExistingFile" = "无法替换已存在的文件: %@";
+"fileAlreadyExistsAtDestination" = "文件已存在于目标位置";
+"deviceDisconnectedReconnect" = "设备连接已断开，请重新连接设备";
+"downloadedFileInvalidOrCorrupted" = "下载的文件无效或已损坏";
+"downloadFailed" = "下载失败";
+"deviceDisconnectedCheckUSB" = "设备连接已断开，请检查USB连接并重试";
+"checkConnectionAndStorage" = "下载失败，请检查设备连接和存储空间";
+"cannotReadFileInfo" = "无法读取文件信息";
+"uploadFailed" = "上传失败";

@@ -10,26 +10,29 @@ import SwiftUI
 struct MainWindowView: View {
     @StateObject private var deviceManager = DeviceManager.shared
     @StateObject private var transferManager = FileTransferManager.shared
+    @ObservedObject var languageManager = LanguageManager.shared
     @State private var showTransferPanel = false
     @State private var showDisconnectionAlert = false
+    @State private var refreshID = UUID()
     
     var body: some View {
         NavigationSplitView {
             DeviceListView()
                 .environmentObject(deviceManager)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
-                .navigationSubtitle("设备列表")
+                .navigationSubtitle(L10n.MainWindow.deviceList)
         } detail: {
             if let selectedDevice = deviceManager.selectedDevice {
                 FileBrowserView(device: selectedDevice)
             } else {
                 ContentUnavailableView(
-                    "未选择设备",
+                    L10n.MainWindow.noDeviceSelected,
                     systemImage: "iphone.slash",
-                    description: Text("请从左侧列表选择一个 Android 设备")
+                    description: Text(L10n.MainWindow.selectDeviceFromList)
                 )
             }
         }
+        .id(refreshID)
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
                 Button {
@@ -39,20 +42,20 @@ struct MainWindowView: View {
                         deviceManager.scanDevices()
                     }
                 } label: {
-                    Label("刷新", systemImage: "arrow.clockwise")
+                    Label(L10n.MainWindow.refresh, systemImage: "arrow.clockwise")
                 }
                 .disabled(deviceManager.isScanning)
-                .help(deviceManager.selectedDevice != nil ? "刷新文件列表" : "刷新设备列表")
+                .help(deviceManager.selectedDevice != nil ? L10n.MainWindow.refreshFileList : L10n.MainWindow.refreshDeviceList)
                 
                 Divider()
                 
                 Button {
                     showTransferPanel.toggle()
                 } label: {
-                    Label("传输任务", systemImage: "arrow.up.arrow.down.circle")
+                    Label(L10n.MainWindow.transferTasks, systemImage: "arrow.up.arrow.down.circle")
                 }
                 .badge(transferManager.activeTasks.count)
-                .help("查看文件传输任务")
+                .help(L10n.MainWindow.viewTransferTasks)
             }
         }
         .toolbarLiquidGlass()
@@ -64,10 +67,13 @@ struct MainWindowView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("DeviceDisconnected"))) { _ in
             showDisconnectionAlert = true
         }
-        .alert("设备已断开", isPresented: $showDisconnectionAlert) {
-            Button("确定", role: .cancel) {}
+        .alert(L10n.MainWindow.deviceDisconnected, isPresented: $showDisconnectionAlert) {
+            Button(L10n.MainWindow.ok, role: .cancel) {}
         } message: {
-            Text("Android 设备已断开连接，请重新连接设备。")
+            Text(L10n.MainWindow.deviceDisconnectedMessage)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .languageDidChange)) { _ in
+            refreshID = UUID()
         }
     }
 }

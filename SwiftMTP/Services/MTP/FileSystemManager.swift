@@ -60,6 +60,12 @@ class FileSystemManager {
             let kalamFiles = try JSONDecoder().decode([KalamFile].self, from: data)
             let items = kalamFiles.map { kFile -> FileItem in
                 let modDate = kFile.modTime > 0 ? Date(timeIntervalSince1970: TimeInterval(kFile.modTime)) : nil
+                let fileType: String
+                if kFile.isFolder {
+                    fileType = "folder"  // 使用标识符而不是本地化字符串
+                } else {
+                    fileType = (kFile.name as NSString).pathExtension.uppercased()
+                }
                 return FileItem(
                     objectId: kFile.id,
                     parentId: kFile.parentId,
@@ -69,7 +75,7 @@ class FileSystemManager {
                     size: kFile.size,
                     modifiedDate: modDate,
                     isDirectory: kFile.isFolder,
-                    fileType: kFile.isFolder ? "文件夹" : (kFile.name as NSString).pathExtension.uppercased()
+                    fileType: fileType
                 )
             }
 

@@ -1,6 +1,106 @@
 # SwiftMTP 时序图
 
-## 1. 设备检测时序图
+## 1. 语言切换时序图
+
+```mermaid
+sequenceDiagram
+    participant User as 用户
+    participant App as SwiftMTPApp
+    participant SV as SettingsView
+    participant LM as LanguageManager
+    participant Bundle as Bundle
+    participant NC as NotificationCenter
+    participant Views as 所有视图
+    participant Menu as 菜单栏
+
+    Note over User,App: 应用启动
+    App->>LM: init() 初始化
+    LM->>LM: 从 UserDefaults 读取语言设置
+    LM->>LM: updateBundle() 更新语言包
+    
+    alt 已保存语言设置
+        LM->>Bundle: path(forResource: "en/zh-Hans", ofType: "lproj")
+        Bundle-->>LM: 返回语言包路径
+        LM->>LM: 加载对应语言包
+        LM->>App: setAppleLanguages()
+        App->>App: 设置 AppleLanguages
+        Note over App: 影响菜单栏和文件选择器
+    else 无保存设置
+        LM->>Bundle: 使用 Bundle.main (系统默认)
+    end
+
+    Note over App: 自定义菜单栏
+    App->>App: .commands 修饰符
+    App->>Menu: 创建应用菜单
+    App->>Menu: 创建语言菜单
+    Note over Menu: 菜单项使用 L10n 本地化
+
+    Note over User,LM: 用户切换语言 (方式1: 菜单栏)
+    User->>Menu: 点击菜单栏语言菜单
+    Menu->>LM: currentLanguage = .english/.chinese/.system
+    Note over LM: 语言切换流程
+    LM->>LM: didSet 触发
+    LM->>LM: saveLanguage() 保存到 UserDefaults
+    LM->>LM: updateBundle() 更新语言包
+    LM->>Bundle: path(forResource: localeIdentifier, ofType: "lproj")
+    Bundle-->>LM: 返回新语言包路径
+    LM->>LM: 加载新语言包
+    LM->>NC: post(.languageDidChange)
+    
+    Note over SV: 显示重启提示
+    SV->>SV: .onChange(of: currentLanguage)
+    SV->>SV: showingRestartAlert = true
+    SV->>User: 显示重启确认对话框
+    
+    alt 用户点击"立即重启"
+        User->>SV: 确认重启
+        SV->>SV: restartApplication()
+        SV->>SV: /usr/bin/open bundleURL
+        SV->>SV: NSApp.terminate()
+        Note over App: 应用重启，AppleLanguages 生效
+    else 用户点击"稍后"
+        Note over App: 继续使用，下次启动生效
+    end
+
+    Note over User,LM: 用户切换语言 (方式2: 设置窗口)
+    User->>SV: 打开设置窗口
+    SV->>SV: 显示语言选择器
+    User->>SV: 选择新语言
+    SV->>LM: currentLanguage = .english/.chinese/.system
+    Note over LM: 语言切换流程 (同上)
+    LM->>LM: saveLanguage()
+    LM->>LM: updateBundle()
+    LM->>NC: post(.languageDidChange)
+    Note over SV: 显示重启提示 (同上)
+    
+    Note over NC,Views: 视图刷新 (立即生效)
+    NC->>Views: 发送语言改变通知
+    
+    par 所有视图响应
+        Views->>MainWindowView: onReceive(.languageDidChange)
+        MainWindowView->>MainWindowView: refreshID = UUID()
+        MainWindowView->>MainWindowView: 强制刷新视图
+        
+        Views->>DeviceListView: onReceive(.languageDidChange)
+        DeviceListView->>DeviceListView: refreshID = UUID()
+        DeviceListView->>DeviceListView: title = L10n.DeviceList.devices
+        
+        Views->>FileBrowserView: onReceive(.languageDidChange)
+        FileBrowserView->>FileBrowserView: refreshID = UUID()
+        
+        Views->>FileTransferView: onReceive(.languageDidChange)
+        FileTransferView->>FileTransferView: refreshID = UUID()
+        
+        Views->>SettingsView: onReceive(.languageDidChange)
+        SettingsView->>SettingsView: refreshID = UUID()
+    end
+    
+    Note over Views: UI 更新完成
+    Views->>Views: 应用内文本显示新语言
+    Note over Menu,Views: 菜单栏和文件选择器<br/>需要重启后生效
+```
+
+## 2. 设备检测时序图
 
 ```mermaid
 sequenceDiagram
@@ -66,7 +166,7 @@ sequenceDiagram
     end
 ```
 
-## 2. 文件浏览时序图
+## 3. 文件浏览时序图
 
 ```mermaid
 sequenceDiagram
@@ -111,7 +211,7 @@ sequenceDiagram
     END
 ```
 
-## 3. 文件下载时序图
+## 4. 文件下载时序图
 
 ```mermaid
 sequenceDiagram
@@ -192,7 +292,7 @@ sequenceDiagram
     Note over View: 更新传输列表 UI
 ```
 
-## 4. 文件上传时序图
+## 5. 文件上传时序图
 
 ```mermaid
 sequenceDiagram
@@ -270,21 +370,26 @@ sequenceDiagram
     Note over View: 更新传输列表 UI
 ```
 
-## 5. 核心组件交互关系图
+## 6. 核心组件交互关系图
 
 ```mermaid
 graph TB
     subgraph SwiftUI 层
+        APP[SwiftMTPApp<br/>应用入口]
         MV[MainWindowView]
         DL[DeviceListView]
         FB[FileBrowserView]
         FT[FileTransferView]
+        SV[SettingsView]
+        Menu[自定义菜单栏<br/>Commands]
     end
 
     subgraph Service 层
         DM[DeviceManager<br/>单例 - 设备检测]
         FSM[FileSystemManager<br/>单例 - 文件浏览]
         FTM[FileTransferManager<br/>单例 - 传输管理]
+        LM[LanguageManager<br/>单例 - 语言管理]
+        L10N[LocalizationManager<br/>静态 - 本地化访问]
     end
 
     subgraph CGo Bridge 层
@@ -300,13 +405,50 @@ graph TB
         MTP[MTP Protocol]
     end
 
+    subgraph 语言资源
+        Base[Base.lproj<br/>基础语言包]
+        EN[en.lproj<br/>英文语言包]
+        ZH[zh-Hans.lproj<br/>简体中文语言包]
+    end
+
+    subgraph 系统设置
+        UD[UserDefaults<br/>语言设置]
+        AL[AppleLanguages<br/>菜单栏和文件选择器]
+    end
+
+    APP -->|初始化| LM
+    APP -->|设置 AppleLanguages| AL
+    APP -->|创建| Menu
+    APP -->|环境对象| MV
+    APP -->|环境对象| SV
+
     MV --> DM
     MV --> FSM
     MV --> FTM
+    MV --> LM
 
     DM --> Bridge
     FSM --> Bridge
     FTM --> Bridge
+
+    SV --> LM
+    SV --> L10N
+
+    Menu --> LM
+    Menu --> L10N
+
+    DL --> L10N
+    FB --> L10N
+    FT --> L10N
+    MV --> L10N
+    SV --> L10N
+
+    LM -->|保存语言设置| UD
+    LM -->|语言包切换| Base
+    LM -->|语言包切换| EN
+    LM -->|语言包切换| ZH
+
+    L10N --> LM
 
     Bridge -->|CGo 调用| Go
 
@@ -315,9 +457,12 @@ graph TB
 
     USB -->|USB 协议| Device[Android 设备]
     MTP -->|MTP 协议| Device
+
+    AL -->|影响| Menu
+    AL -->|影响| Panel[文件选择器]
 ```
 
-## 6. 线程模型时序图
+## 7. 线程模型时序图
 
 ```mermaid
 sequenceDiagram
@@ -370,3 +515,52 @@ sequenceDiagram
 | 文件下载 | FileTransferManager | Kalam_DownloadFile | withDevice + 重试 | 传输队列 → 主线程 |
 | 文件上传 | FileTransferManager | Kalam_UploadFile | withDevice | 传输队列 → 主线程 |
 | 设备断开 | DeviceManager | Kalam_Scan 返回空 | - | 主线程处理通知 |
+| 语言切换 (菜单栏) | SwiftMTPApp | - | - | 主线程 + 通知机制 |
+| 语言切换 (设置) | SettingsView | - | - | 主线程 + 通知机制 |
+| 应用重启 | SettingsView | - | - | Process + NSApp.terminate |
+| 本地化访问 | 各视图 | - | - | 计算属性实时获取 |
+
+## 语言切换机制说明
+
+### 组件职责
+
+- **SwiftMTPApp**: 应用启动时设置 AppleLanguages，创建自定义菜单栏
+- **LanguageManager**: 管理语言状态，保存用户偏好，切换语言包
+- **LocalizationManager (L10n)**: 提供类型安全的本地化字符串访问
+- **各视图**: 监听语言改变通知，触发视图刷新
+- **菜单栏**: 通过 SwiftUI commands 自定义，使用 L10n 本地化
+
+### 刷新机制
+
+各视图通过以下方式响应语言切换：
+1. 添加 `@State private var refreshID = UUID()`
+2. 监听 `.languageDidChange` 通知
+3. 通知触发时更新 `refreshID = UUID()`
+4. 使用 `.id(refreshID)` 修饰符强制视图重建
+5. 计算属性 `L10n.*` 自动获取新语言的文本
+
+### 语言包优先级
+
+1. **系统默认**: 使用 `Bundle.main`，跟随 macOS 系统语言
+2. **English**: 使用 `en.lproj` 语言包
+3. **中文**: 使用 `zh-Hans.lproj` 语言包
+
+语言设置保存在 `UserDefaults`，应用重启后自动恢复。
+
+### 语言切换生效范围
+
+| 组件 | 生效方式 | 是否需要重启 |
+|------|----------|--------------|
+| 应用内界面 (所有视图) | NotificationCenter + refreshID | ❌ 否 |
+| 自定义菜单栏 | L10n 本地化字符串 | ❌ 否 |
+| macOS 系统菜单栏 | AppleLanguages | ✅ 是 |
+| 文件选择器 (NSOpenPanel/NSSavePanel) | AppleLanguages | ✅ 是 |
+
+### 重启机制
+
+当用户切换语言时：
+1. 应用内界面立即更新语言
+2. 系统显示重启提示对话框
+3. 用户可选择"立即重启"或"稍后"
+4. 重启后，AppleLanguages 生效，菜单栏和文件选择器使用新语言
+5. 重启通过 `/usr/bin/open` 命令实现，确保应用正常启动

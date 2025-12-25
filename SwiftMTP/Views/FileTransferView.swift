@@ -10,6 +10,7 @@ import SwiftUI
 struct FileTransferView: View {
     @EnvironmentObject private var transferManager: FileTransferManager
     @Environment(\.dismiss) private var dismiss
+    @State private var refreshID = UUID()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -27,21 +28,25 @@ struct FileTransferView: View {
         .frame(minWidth: 500, minHeight: 300)
         .toolbarLiquidGlass()
         .background(.ultraThinMaterial)
+        .id(refreshID)
+        .onReceive(NotificationCenter.default.publisher(for: .languageDidChange)) { _ in
+            refreshID = UUID()
+        }
     }
     
     private var headerView: some View {
         HStack {
-            Text("文件传输")
+            Text(L10n.FileTransfer.fileTransferTitle)
                 .font(.headline)
             
             Spacer()
             
-            Button("完成") {
+            Button(L10n.FileTransfer.done) {
                 dismiss()
             }
             .buttonStyle(.borderedProminent)
             .liquidGlass(style: .thin, cornerRadius: 8)
-            .help("关闭传输窗口")
+            .help(L10n.FileTransfer.closeTransferWindow)
         }
         .padding()
         .background(.ultraThinMaterial)
@@ -53,11 +58,11 @@ struct FileTransferView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
             
-            Text("无传输任务")
+            Text(L10n.FileTransfer.noTransferTasks)
                 .font(.title2)
                 .fontWeight(.medium)
             
-            Text("当前没有文件传输任务")
+            Text(L10n.FileTransfer.noActiveTransfers)
                 .font(.body)
                 .foregroundStyle(.secondary)
         }
@@ -81,7 +86,7 @@ struct FileTransferView: View {
     
     private var activeTasksSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("进行中")
+            Text(L10n.FileTransfer.inProgress)
                 .font(.headline)
                 .foregroundStyle(.secondary)
             
@@ -99,18 +104,18 @@ struct FileTransferView: View {
     private var completedTasksSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("已完成")
+                Text(L10n.FileTransfer.completed)
                     .font(.headline)
                     .foregroundStyle(.secondary)
                 
                 Spacer()
                 
-                Button("清空") {
+                Button(L10n.FileTransfer.clear) {
                     transferManager.clearCompletedTasks()
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.blue)
-                .help("清空已完成的传输任务")
+                .help(L10n.FileTransfer.clearCompletedTasks)
             }
             
             VStack(spacing: 8) {

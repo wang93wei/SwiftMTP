@@ -1,0 +1,202 @@
+/* Main Window */
+"deviceList" = "Device List";
+"noDeviceSelected" = "No Device Selected";
+"selectDeviceFromList" = "Please select an Android device from the list on the left";
+"refresh" = "Refresh";
+"refreshFileList" = "Refresh file list";
+"refreshDeviceList" = "Refresh device list";
+"transferTasks" = "Transfer Tasks";
+"viewTransferTasks" = "View file transfer tasks";
+"deviceDisconnected" = "Device Disconnected";
+"ok" = "OK";
+"deviceDisconnectedMessage" = "Android device disconnected, please reconnect the device.";
+"androidDevice" = "Android Device";
+
+/* Device List */
+"devices" = "Devices";
+"scanningDevices" = "Scanning for devices...";
+"noDevices" = "No Devices";
+"connectDeviceViaUSB" = "Please connect an Android device via USB\nand ensure file transfer mode is enabled";
+
+/* File Browser */
+"deleteFile" = "Delete File";
+"cancel" = "Cancel";
+"delete" = "Delete";
+"confirmDeleteFile" = "Are you sure you want to delete \"%1$@\"? This action cannot be undone.";
+"operationFailed" = "Operation Failed";
+"back" = "Back";
+"goBack" = "Go back to previous level";
+"newFolder" = "New Folder";
+"createNewFolder" = "Create new folder";
+"folder" = "Folder";
+"create" = "Create";
+"uploadFiles" = "Upload Files";
+"uploadToCurrentDir" = "Upload files to current directory";
+"download" = "Download";
+"downloadSelectedFiles" = "Download selected files";
+"deleteSelectedFiles" = "Delete selected files";
+"folderEmpty" = "Folder is Empty";
+"noFilesInFolder" = "This folder has no files";
+"dragFilesToUpload" = "Or drag files here to upload";
+"loadingFileList" = "Loading file list...";
+"deleteFailed" = "Delete Failed";
+"confirmDeleteFolder" = "Are you sure you want to delete this folder? This action will recursively delete all contents.";
+"moveToTrash" = "Move to Trash";
+"uploadSuccess" = "Upload Successful";
+"uploadSuccessMessage" = "%1$@ uploaded successfully";
+"uploadFailed" = "Upload Failed";
+"uploadFailedMessage" = "Failed to upload %1$@: %2$@";
+"downloadSuccess" = "Download Successful";
+"downloadSuccessMessage" = "%1$@ saved to %2$@";
+"downloadFailed" = "Download Failed";
+"downloadFailedMessage" = "Failed to download %1$@: %2$@";
+"createFolderFailed" = "Create Folder Failed";
+"createFolderFailedMessage" = "Failed to create folder: %1$@";
+"folderNamePlaceholder" = "Folder Name";
+
+/* File Browser Table Headers */
+"name" = "Name";
+"size" = "Size";
+"type" = "Type";
+"modifiedDate" = "Modified Date";
+"rootDirectory" = "Root Directory";
+"downloadFile" = "Download";
+"downloadSelected" = "Download Selected";
+"someFilesExist" = "Some Files Already Exist";
+"filesExistMessage" = "%1$d files already exist in the destination. Do you want to replace them?\n\nExisting files:\n%2$@";
+"skip" = "Skip";
+"skipExisting" = "Skip Existing Files";
+"replaceAll" = "Replace All";
+"replace" = "Replace";
+"cancelDownload" = "Cancel";
+"selectDownloadLocation" = "Select Download Location";
+"selectUploadFiles" = "Select Files to Upload";
+"selectUploadFolder" = "Select Folder to Upload";
+"newFolderName" = "New Folder Name";
+"enterFolderName" = "Enter folder name";
+"selectDestination" = "Select Destination";
+"cancelUpload" = "Cancel Upload";
+"uploadFile" = "Upload File";
+"uploadToDevice" = "Upload to Device";
+"deleteConfirmTitle" = "Confirm Delete";
+"deleteFolderConfirmMessage" = "Are you sure you want to delete \"%1$@\"? This action will recursively delete all contents and cannot be undone.";
+"moveToTrashConfirm" = "Move to Trash";
+"downloadTo" = "Download to: %1$@";
+"status" = "Status";
+"progress" = "Progress";
+"noFilesSelected" = "No files selected";
+"selectFilesToOperate" = "Select files to perform this operation";
+
+/* File Transfer */
+"fileTransfer" = "File Transfer";
+"done" = "Done";
+"closeTransferWindow" = "Close transfer window";
+"noTransferTasks" = "No Transfer Tasks";
+"noActiveTransfers" = "No active file transfers";
+"inProgress" = "In Progress";
+"completed" = "Completed";
+"clearCompleted" = "Clear";
+"clearCompletedTasks" = "Clear completed transfer tasks";
+"transferring" = "Transferring";
+"completedStatus" = "Completed";
+"failedStatus" = "Failed";
+"cancelledStatus" = "Cancelled";
+"pendingStatus" = "Pending";
+
+/* Settings */
+"general" = "General";
+"transfer" = "Transfer";
+"advanced" = "Advanced";
+"about" = "About";
+"downloadSettings" = "Download Settings";
+"defaultDownloadLocation" = "Default Download Location:";
+"select" = "Select...";
+"path" = "Path";
+"notifications" = "Notifications";
+"showNotificationOnTransferComplete" = "Show notification when transfer completes";
+"deviceDetection" = "Device Detection";
+"scanInterval" = "Scan Interval:";
+"seconds" = "%1$d seconds";
+"appName" = "SwiftMTP";
+"version" = "Version %1$@";
+"author" = "Author: Alan Wang";
+"mtpFileTransferTool" = "macOS Android MTP File Transfer Tool";
+"copyright" = "© 2025 SwiftMTP";
+"builtWith" = "Built with libusb-1.0 + go-mtpx";
+
+/* Additional */
+"createNewFolderDialog" = "Create New Folder";
+"uploadFilesToCurrentDir" = "Upload files to current directory: %1$@";
+"confirmDeleteFileWithName" = "Are you sure you want to delete \"%1$@\"? This action cannot be undone.";
+"operationFailedWithMessage" = "Operation failed: %1$@";
+"help" = "Help";
+"createNewFolderHelp" = "Create a new folder in the current directory";
+"uploadFilesHelp" = "Upload files from your Mac to the current directory";
+"downloadHelp" = "Download selected files to your Mac";
+"deleteHelp" = "Delete selected files from the device";
+"loadingFiles" = "Loading file list...";
+
+/* Download Panel */
+"selectDownloadLocation" = "Select Download Location";
+"someFilesAlreadyExist" = "Some Files Already Exist";
+"filesAlreadyExistMessage" = "%1$d files already exist at the destination. Do you want to replace them?\n\nExisting files:\n%2$@";
+"cancel" = "Cancel";
+"skipExistingFiles" = "Skip Existing Files";
+"replaceAll" = "Replace All";
+"chooseDownloadLocation" = "Choose Download Location";
+
+/* Upload Panel */
+"selectUploadFiles" = "Select Files to Upload";
+"selectUploadLocation" = "Select Upload Location";
+"uploadingTo" = "Uploading to: %1$@";
+"uploadToDevice" = "Upload to Device";
+
+/* File Transfer View */
+"fileTransferTitle" = "File Transfer";
+"done" = "Done";
+"closeTransferWindow" = "Close Transfer Window";
+"noTransferTasks" = "No Transfer Tasks";
+"noActiveTransfers" = "No active file transfers at the moment";
+"inProgress" = "In Progress";
+"completed" = "Completed";
+"clear" = "Clear";
+"clearCompletedTasks" = "Clear completed transfer tasks";
+"uploadType" = "Upload";
+"downloadType" = "Download";
+"statusPending" = "Pending";
+"statusTransferring" = "Transferring";
+"statusPaused" = "Paused";
+"statusFailed" = "Failed: %1$@";
+"statusCancelled" = "Cancelled";
+"estimatedTimeSeconds" = "%1$d sec";
+"estimatedTimeMinutes" = "%1$d min";
+"estimatedTimeHours" = "%1$@ hr";
+
+/* Language Settings */
+"language" = "Language";
+"languageSettings" = "Language Settings";
+"selectLanguage" = "Select Language:";
+"languageEnglish" = "English";
+"languageChinese" = "中文 (Chinese)";
+"languageChangeConfirm" = "Change Language?";
+"languageChangeMessage" = "Are you sure you want to change the language?";
+"languageChangeImmediate" = "Apply changes immediately";
+"languageChangeRestart" = "Restart the application to apply changes";
+"apply" = "Apply";
+"restartRequired" = "Restart Required";
+"restartMessage" = "The language change will take effect after restarting the application.";
+"restartNow" = "Restart Now";
+"restartLater" = "Later";
+"systemDefault" = "System Default";
+
+// FileTransfer error messages
+"cannotCreateDirectory" = "Cannot create destination directory: %@";
+"cannotReplaceExistingFile" = "Cannot replace existing file: %@";
+"fileAlreadyExistsAtDestination" = "File already exists at destination";
+"deviceDisconnectedReconnect" = "Device disconnected, please reconnect the device";
+"downloadedFileInvalidOrCorrupted" = "Downloaded file is invalid or corrupted";
+"downloadFailed" = "Download failed";
+"deviceDisconnectedCheckUSB" = "Device disconnected, please check USB connection and try again";
+"checkConnectionAndStorage" = "Download failed, please check device connection and storage space";
+"cannotReadFileInfo" = "Cannot read file information";
+"uploadFailed" = "Upload failed";

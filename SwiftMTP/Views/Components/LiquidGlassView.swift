@@ -282,14 +282,14 @@ extension View {
 
                     GlassEffectBadge(
                         icon: "folder.fill",
-                        label: "文件夹",
+                        label: L10n.FileBrowser.folder,
                         isActive: true,
                         color: .blue
                     )
 
                     GlassEffectBadge(
                         icon: "square.and.arrow.down.fill",
-                        label: "下载",
+                        label: L10n.FileBrowser.download,
                         isActive: false,
                         color: .green
                     )

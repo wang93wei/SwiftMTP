@@ -153,7 +153,7 @@ class FileTransferManager: ObservableObject {
             try FileManager.default.createDirectory(at: destinationDir, withIntermediateDirectories: true)
         } catch {
             DispatchQueue.main.async {
-                task.updateStatus(.failed("无法创建目标目录: \(error.localizedDescription)"))
+                task.updateStatus(.failed(L10n.FileTransfer.cannotCreateDirectory.localized(error.localizedDescription)))
             }
             moveTaskToCompleted(task)
             return
@@ -167,14 +167,14 @@ class FileTransferManager: ObservableObject {
                     try FileManager.default.removeItem(atPath: task.destinationPath)
                 } catch {
                     DispatchQueue.main.async {
-                        task.updateStatus(.failed("无法替换已存在的文件: \(error.localizedDescription)"))
+                        task.updateStatus(.failed(L10n.FileTransfer.cannotReplaceExistingFile.localized(error.localizedDescription)))
                     }
                     moveTaskToCompleted(task)
                     return
                 }
             } else {
                 DispatchQueue.main.async {
-                    task.updateStatus(.failed("文件已存在于目标位置"))
+                    task.updateStatus(.failed(L10n.FileTransfer.fileAlreadyExistsAtDestination))
                 }
                 moveTaskToCompleted(task)
                 return
@@ -185,7 +185,7 @@ class FileTransferManager: ObservableObject {
         print("Validating device connection before download...")
         guard let testResult = Kalam_Scan() else {
             DispatchQueue.main.async {
-                task.updateStatus(.failed("设备连接已断开，请重新连接设备"))
+                task.updateStatus(.failed(L10n.FileTransfer.deviceDisconnectedReconnect))
             }
             currentDownloadTask = nil
             moveTaskToCompleted(task)
@@ -194,7 +194,7 @@ class FileTransferManager: ObservableObject {
         
         if strlen(testResult) == 0 {
             DispatchQueue.main.async {
-                task.updateStatus(.failed("设备连接已断开，请重新连接设备"))
+                task.updateStatus(.failed(L10n.FileTransfer.deviceDisconnectedReconnect))
             }
             currentDownloadTask = nil
             moveTaskToCompleted(task)
@@ -229,23 +229,23 @@ class FileTransferManager: ObservableObject {
                         print("Failed to remove corrupted file: \(error)")
                     }
                 }
-                task.updateStatus(.failed("下载的文件无效或已损坏"))
+                task.updateStatus(.failed(L10n.FileTransfer.downloadedFileInvalidOrCorrupted))
             }
         } else {
             // Provide more specific error messages based on common issues
-            var errorMessage = "下载失败"
+            var errorMessage = L10n.FileTransfer.downloadFailed
             
             // Check if device is still connected
             guard let testResult2 = Kalam_Scan() else {
-                errorMessage = "设备连接已断开，请检查USB连接并重试"
+                errorMessage = L10n.FileTransfer.deviceDisconnectedCheckUSB
                 task.updateStatus(.failed(errorMessage))
                 return
             }
             
             if strlen(testResult2) == 0 {
-                errorMessage = "设备连接已断开，请检查USB连接并重试"
+                errorMessage = L10n.FileTransfer.deviceDisconnectedCheckUSB
             } else {
-                errorMessage += "，请检查设备连接和存储空间"
+                errorMessage = L10n.FileTransfer.checkConnectionAndStorage
             }
             
             task.updateStatus(.failed(errorMessage))
@@ -264,7 +264,7 @@ class FileTransferManager: ObservableObject {
 
         guard let fileAttributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
               let fileSize = fileAttributes[.size] as? UInt64 else {
-            task.updateStatus(.failed("无法读取文件信息"))
+            task.updateStatus(.failed(L10n.FileTransfer.cannotReadFileInfo))
             print("performUpload: Failed to get file attributes for \(task.fileName)")
             moveTaskToCompleted(task)
             return
@@ -297,7 +297,7 @@ class FileTransferManager: ObservableObject {
             task.updateStatus(.completed)
             print("performUpload: Upload completed successfully for \(task.fileName)")
         } else {
-            task.updateStatus(.failed("上传失败"))
+            task.updateStatus(.failed(L10n.FileTransfer.uploadFailed))
             print("performUpload: Upload failed for \(task.fileName)")
         }
 

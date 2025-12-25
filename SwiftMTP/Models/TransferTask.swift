@@ -9,8 +9,15 @@ import Foundation
 import Combine
 
 enum TransferType: String, Codable {
-    case upload = "上传"
-    case download = "下载"
+    case upload = "upload"
+    case download = "download"
+    
+    var displayName: String {
+        switch self {
+        case .upload: return L10n.FileTransfer.uploadType
+        case .download: return L10n.FileTransfer.downloadType
+        }
+    }
 }
 
 enum TransferStatus: Codable, Equatable {
@@ -23,12 +30,12 @@ enum TransferStatus: Codable, Equatable {
     
     var displayName: String {
         switch self {
-        case .pending: return "等待中"
-        case .transferring: return "传输中"
-        case .paused: return "已暂停"
-        case .completed: return "已完成"
-        case .failed(let error): return "失败: \(error)"
-        case .cancelled: return "已取消"
+        case .pending: return L10n.FileTransfer.statusPending
+        case .transferring: return L10n.FileTransfer.statusTransferring
+        case .paused: return L10n.FileTransfer.statusPaused
+        case .completed: return L10n.FileTransfer.statusCompleted
+        case .failed(let error): return L10n.FileTransfer.statusFailed.localized(error)
+        case .cancelled: return L10n.FileTransfer.statusCancelled
         }
     }
     
@@ -97,11 +104,13 @@ class TransferTask: Identifiable, ObservableObject {
         let seconds = Double(remaining) / speed
         
         if seconds < 60 {
-            return String(format: "%.0f 秒", seconds)
+            return L10n.FileTransfer.estimatedTimeSeconds.localized(Int(seconds))
         } else if seconds < 3600 {
-            return String(format: "%.0f 分钟", seconds / 60)
+            let minutes = seconds / 60
+            return L10n.FileTransfer.estimatedTimeMinutes.localized(Int(minutes))
         } else {
-            return String(format: "%.1f 小时", seconds / 3600)
+            let hours = seconds / 3600
+            return L10n.FileTransfer.estimatedTimeHours.localized(String(format: "%.1f", hours))
         }
     }
     

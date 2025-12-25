@@ -173,7 +173,7 @@ class DeviceManager: ObservableObject {
             // Clear everything
             devices = []
             selectedDevice = nil
-            connectionError = "设备已断开连接"
+            connectionError = L10n.MainWindow.deviceDisconnected
             
             // Clear file system cache
             FileSystemManager.shared.clearCache()
