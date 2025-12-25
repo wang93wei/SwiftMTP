@@ -16,6 +16,9 @@ USB 自动检测、文件浏览/上传/下载（支持 >4GB）、批量操作、
 ## 项目结构
 Native/ (Go 桥接), Scripts/ (构建脚本), SwiftMTP/ (App/Models/Services/Views/Resources/)
 
+## 核心原则
+增量开发 → 编译验证 → 测试通过 → 提交
+
 ## 常用命令
 ```bash
 # 构建
@@ -26,12 +29,6 @@ xcodebuild clean -project SwiftMTP.xcodeproj -scheme SwiftMTP
 
 # 依赖
 brew install go
-```
-
-## 代码验证
-每次修改代码后必须编译验证：
-```bash
-xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP -configuration Debug
 ```
 
 ## 状态管理
