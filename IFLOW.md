@@ -13,6 +13,7 @@ SwiftMTP 是一个原生的 macOS 应用程序，用于在 Mac 和 Android 设�
 - ✅ 批量文件操作
 - ✅ 实时显示设备存储和电池信息
 - ✅ 现代化的 SwiftUI 界面
+- ✅ 多语言支持：简体中文、英文、日语、韩语
 
 ## 技术架构
 
@@ -72,7 +73,12 @@ SwiftMTP/
 │   │       └── TransferTaskRowView.swift # 传输任务项
 │   │
 │   ├── ViewModels/                 # (空 - 在视图中使用 @StateObject)
-│   ├── Resources/                  # (空 - 保留给资源)
+│   ├── Resources/                  # 资源文件
+│   │   ├── Base.lproj/            # 基础语言包（英文）
+│   │   ├── en.lproj/              # 英文语言包
+│   │   ├── zh-Hans.lproj/         # 简体中文语言包
+│   │   ├── ja.lproj/              # 日语语言包
+│   │   └── ko.lproj/              # 韩语语言包
 │   │
 │   ├── SwiftMTP-Bridging-Header.h # Swift-C 桥接头文件
 │   ├── libkalam.dylib             # 编译的 Go 桥接 (生成)
@@ -188,6 +194,25 @@ Swift ↔ C ↔ Go 通信:
 - 复杂数据结构使用 JSON 序列化
 - 内存管理: 使用 C.CString 分配，使用 Kalam_FreeString 释放
 
+## 代码验证
+
+**重要**: 每次修改代码后，务必执行编译以确保修改正确无误，避免引入语法错误或逻辑错误。
+
+```bash
+# 编译项目（Debug 配置）
+xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP -configuration Debug
+
+# 如果需要清理后重新编译
+xcodebuild clean -project SwiftMTP.xcodeproj -scheme SwiftMTP
+xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP -configuration Debug
+```
+
+### 验证要点
+- 检查编译是否成功（应看到 `** BUILD SUCCEEDED **`）
+- 如果编译失败，检查错误信息并修复
+- 修改本地化文件（Localizable.strings）后，确保所有语言文件同步更新
+- 修改枚举类型（如 AppLanguage）后，确保所有 switch 语句都已更新
+
 ## 状态管理模式
 
 应用使用集中管理器模式:
@@ -227,7 +252,11 @@ Swift ↔ C ↔ Go 通信:
 
 ## 语言
 
-主要文档和 UI 文本是中文 (简体)。
+主要文档和 UI 文本支持以下语言：
+- 简体中文 (zh-Hans)
+- 英文 (en)
+- 日语 (ja)
+- 韩语 (ko)
 
 ## 故障排除
 
@@ -254,7 +283,7 @@ Swift ↔ C ↔ Go 通信:
 - [ ] 拖拽文件上传支持
 - [ ] 文件搜索功能
 - [ ] 自动备份功能
-- [ ] 完整的国际化支持
+- [x] 完整的国际化支持 (已支持简体中文、英文、日语、韩语)
 - [ ] 沙盒支持 (需要申请 USB 权限)
 
 ## 许可证

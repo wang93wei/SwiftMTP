@@ -40,6 +40,12 @@ struct SwiftMTPApp: App {
                 Button(L10n.Common.languageEnglish) {
                     languageManager.currentLanguage = .english
                 }
+                Button(L10n.Common.languageJapanese) {
+                    languageManager.currentLanguage = .japanese
+                }
+                Button(L10n.Common.languageKorean) {
+                    languageManager.currentLanguage = .korean
+                }
                 Button(L10n.Common.systemDefault) {
                     languageManager.currentLanguage = .system
                 }
@@ -71,6 +77,10 @@ struct SwiftMTPApp: App {
                 languages = ["zh-Hans", "zh-CN", "zh"]
             case .english:
                 languages = ["en", "en-US"]
+            case .japanese:
+                languages = ["ja", "ja-JP"]
+            case .korean:
+                languages = ["ko", "ko-KR"]
             case .system:
                 // 系统默认：清除 AppleLanguages
                 logLanguageSetup("Using system default language")

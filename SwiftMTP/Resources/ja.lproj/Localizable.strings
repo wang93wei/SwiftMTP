@@ -1,0 +1,204 @@
+/* Main Window */
+"deviceList" = "デバイス一覧";
+"noDeviceSelected" = "デバイスが選択されていません";
+"selectDeviceFromList" = "左のリストからAndroidデバイスを選択してください";
+"refresh" = "更新";
+"refreshFileList" = "ファイルリストを更新";
+"refreshDeviceList" = "デバイスリストを更新";
+"transferTasks" = "転送タスク";
+"viewTransferTasks" = "ファイル転送タスクを表示";
+"deviceDisconnected" = "デバイスが切断されました";
+"ok" = "OK";
+"deviceDisconnectedMessage" = "Androidデバイスが切断されました。再度接続してください。";
+"androidDevice" = "Androidデバイス";
+
+/* Device List */
+"devices" = "デバイス";
+"scanningDevices" = "デバイスをスキャン中...";
+"noDevices" = "デバイスがありません";
+"connectDeviceViaUSB" = "USB経由でAndroidデバイスを接続してください\nファイル転送モードが有効になっていることを確認してください";
+
+/* File Browser */
+"deleteFile" = "ファイルを削除";
+"cancel" = "キャンセル";
+"delete" = "削除";
+"confirmDeleteFile" = "\"%1$@\"を削除してもよろしいですか？この操作は取り消せません。";
+"operationFailed" = "操作に失敗しました";
+"back" = "戻る";
+"goBack" = "前のレベルに戻る";
+"newFolder" = "新しいフォルダ";
+"createNewFolder" = "新しいフォルダを作成";
+"folder" = "フォルダ";
+"create" = "作成";
+"uploadFiles" = "ファイルをアップロード";
+"uploadToCurrentDir" = "ファイルを現在のディレクトリにアップロード";
+"download" = "ダウンロード";
+"downloadSelectedFiles" = "選択したファイルをダウンロード";
+"deleteSelectedFiles" = "選択したファイルを削除";
+"folderEmpty" = "フォルダは空です";
+"noFilesInFolder" = "このフォルダにはファイルがありません";
+"dragFilesToUpload" = "またはファイルをここにドラッグしてアップロード";
+"loadingFileList" = "ファイルリストを読み込み中...";
+"deleteFailed" = "削除に失敗しました";
+"confirmDeleteFolder" = "このフォルダを削除してもよろしいですか？この操作はすべての内容を再帰的に削除します。";
+"moveToTrash" = "ゴミ箱に移動";
+"uploadSuccess" = "アップロード成功";
+"uploadSuccessMessage" = "%1$@のアップロードが成功しました";
+"uploadFailed" = "アップロード失敗";
+"uploadFailedMessage" = "%1$@のアップロードに失敗しました：%2$@";
+"downloadSuccess" = "ダウンロード成功";
+"downloadSuccessMessage" = "%1$@を%2$@に保存しました";
+"downloadFailed" = "ダウンロード失敗";
+"downloadFailedMessage" = "%1$@のダウンロードに失敗しました：%2$@";
+"createFolderFailed" = "フォルダ作成失敗";
+"createFolderFailedMessage" = "フォルダの作成に失敗しました：%1$@";
+"folderNamePlaceholder" = "フォルダ名";
+
+/* File Browser Table Headers */
+"name" = "名前";
+"size" = "サイズ";
+"type" = "タイプ";
+"modifiedDate" = "変更日";
+"rootDirectory" = "ルートディレクトリ";
+"downloadFile" = "ダウンロード";
+"downloadSelected" = "選択したファイルをダウンロード";
+"someFilesExist" = "一部のファイルが既に存在します";
+"filesExistMessage" = "%1$d個のファイルが宛先に既に存在します。置き換えますか？\n\n既存のファイル：\n%2$@";
+"skip" = "スキップ";
+"skipExisting" = "既存のファイルをスキップ";
+"replaceAll" = "すべて置換";
+"replace" = "置換";
+"cancelDownload" = "キャンセル";
+"selectDownloadLocation" = "ダウンロード場所を選択";
+"selectUploadFiles" = "アップロードするファイルを選択";
+"selectUploadFolder" = "アップロードするフォルダを選択";
+"newFolderName" = "新しいフォルダ名";
+"enterFolderName" = "フォルダ名を入力";
+"selectDestination" = "宛先を選択";
+"cancelUpload" = "アップロードをキャンセル";
+"uploadFile" = "ファイルをアップロード";
+"uploadToDevice" = "デバイスにアップロード";
+"deleteConfirmTitle" = "削除の確認";
+"deleteFolderConfirmMessage" = "\"%1$@\"を削除してもよろしいですか？この操作はすべての内容を再帰的に削除し、取り消すことはできません。";
+"moveToTrashConfirm" = "ゴミ箱に移動";
+"downloadTo" = "ダウンロード先：%1$@";
+"status" = "ステータス";
+"progress" = "進行状況";
+"noFilesSelected" = "ファイルが選択されていません";
+"selectFilesToOperate" = "操作するファイルを選択してください";
+
+/* File Transfer */
+"fileTransfer" = "ファイル転送";
+"done" = "完了";
+"closeTransferWindow" = "転送ウィンドウを閉じる";
+"noTransferTasks" = "転送タスクがありません";
+"noActiveTransfers" = "アクティブなファイル転送はありません";
+"inProgress" = "進行中";
+"completed" = "完了";
+"clearCompleted" = "クリア";
+"clearCompletedTasks" = "完了した転送タスクをクリア";
+"transferring" = "転送中";
+"completedStatus" = "完了";
+"failedStatus" = "失敗";
+"cancelledStatus" = "キャンセル";
+"pendingStatus" = "保留中";
+
+/* Settings */
+"general" = "一般";
+"transfer" = "転送";
+"advanced" = "詳細";
+"about" = "について";
+"downloadSettings" = "ダウンロード設定";
+"defaultDownloadLocation" = "デフォルトのダウンロード場所：";
+"select" = "選択...";
+"path" = "パス";
+"notifications" = "通知";
+"showNotificationOnTransferComplete" = "転送完了時に通知を表示";
+"deviceDetection" = "デバイス検出";
+"scanInterval" = "スキャン間隔：";
+"seconds" = "%1$d秒";
+"appName" = "SwiftMTP";
+"version" = "バージョン %1$@";
+"author" = "作者：Alan Wang";
+"mtpFileTransferTool" = "macOS Android MTPファイル転送ツール";
+"copyright" = "© 2025 SwiftMTP";
+"builtWith" = "libusb-1.0 + go-mtpxで構築";
+
+/* Additional */
+"createNewFolderDialog" = "新しいフォルダを作成";
+"uploadFilesToCurrentDir" = "ファイルを現在のディレクトリにアップロード：%1$@";
+"confirmDeleteFileWithName" = "\"%1$@\"を削除してもよろしいですか？この操作は取り消せません。";
+"operationFailedWithMessage" = "操作に失敗しました：%1$@";
+"help" = "ヘルプ";
+"createNewFolderHelp" = "現在のディレクトリに新しいフォルダを作成";
+"uploadFilesHelp" = "Macから現在のディレクトリにファイルをアップロード";
+"downloadHelp" = "選択したファイルをMacにダウンロード";
+"deleteHelp" = "デバイスから選択したファイルを削除";
+"loadingFiles" = "ファイルリストを読み込み中...";
+
+/* Download Panel */
+"selectDownloadLocation" = "ダウンロード場所を選択";
+"someFilesAlreadyExist" = "一部のファイルが既に存在します";
+"filesAlreadyExistMessage" = "%1$d個のファイルが宛先に既に存在します。置き換えますか？\n\n既存のファイル：\n%2$@";
+"cancel" = "キャンセル";
+"skipExistingFiles" = "既存のファイルをスキップ";
+"replaceAll" = "すべて置換";
+"chooseDownloadLocation" = "ダウンロード場所を選択";
+
+/* Upload Panel */
+"selectUploadFiles" = "アップロードするファイルを選択";
+"selectUploadLocation" = "アップロード場所を選択";
+"uploadingTo" = "アップロード先：%1$@";
+"uploadToDevice" = "デバイスにアップロード";
+
+/* File Transfer View */
+"fileTransferTitle" = "ファイル転送";
+"done" = "完了";
+"closeTransferWindow" = "転送ウィンドウを閉じる";
+"noTransferTasks" = "転送タスクがありません";
+"noActiveTransfers" = "現在アクティブなファイル転送はありません";
+"inProgress" = "進行中";
+"completed" = "完了";
+"clear" = "クリア";
+"clearCompletedTasks" = "完了した転送タスクをクリア";
+"uploadType" = "アップロード";
+"downloadType" = "ダウンロード";
+"statusPending" = "保留中";
+"statusTransferring" = "転送中";
+"statusPaused" = "一時停止";
+"statusFailed" = "失敗：%1$@";
+"statusCancelled" = "キャンセル";
+"estimatedTimeSeconds" = "%1$d秒";
+"estimatedTimeMinutes" = "%1$d分";
+"estimatedTimeHours" = "%1$@時間";
+
+/* Language Settings */
+"language" = "言語";
+"languageSettings" = "言語設定";
+"selectLanguage" = "言語を選択：";
+"languageEnglish" = "English (英語)";
+"languageChinese" = "中文 (中国語)";
+"languageJapanese" = "日本語";
+"languageKorean" = "한국어 (韓国語)";
+"languageChangeConfirm" = "言語を変更しますか？";
+"languageChangeMessage" = "インターフェース言語を変更してもよろしいですか？";
+"languageChangeImmediate" = "変更をすぐに適用";
+"languageChangeRestart" = "アプリケーションを再起動して変更を適用";
+"apply" = "適用";
+"restartRequired" = "再起動が必要";
+"restartMessage" = "言語の変更はアプリケーションの再起動後に有効になります。";
+"restartNow" = "今すぐ再起動";
+"restartLater" = "後で";
+"systemDefault" = "システムデフォルト";
+
+// FileTransfer error messages
+"cannotCreateDirectory" = "宛先ディレクトリを作成できません: %@";
+"cannotReplaceExistingFile" = "既存のファイルを置換できません: %@";
+"fileAlreadyExistsAtDestination" = "ファイルが宛先に既に存在します";
+"deviceDisconnectedReconnect" = "デバイスが切断されました。再度接続してください";
+"downloadedFileInvalidOrCorrupted" = "ダウンロードしたファイルが無効または破損しています";
+"downloadFailed" = "ダウンロードに失敗しました";
+"deviceDisconnectedCheckUSB" = "デバイスが切断されました。USB接続を確認して再試行してください";
+"checkConnectionAndStorage" = "ダウンロードに失敗しました。デバイスの接続とストレージ容量を確認してください";
+"cannotReadFileInfo" = "ファイル情報を読み取れません";
+"uploadFailed" = "アップロードに失敗しました";

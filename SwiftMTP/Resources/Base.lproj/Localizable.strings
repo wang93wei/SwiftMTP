@@ -178,6 +178,8 @@
 "selectLanguage" = "Select Language:";
 "languageEnglish" = "English";
 "languageChinese" = "中文 (Chinese)";
+"languageJapanese" = "日本語 (Japanese)";
+"languageKorean" = "한국어 (Korean)";
 "languageChangeConfirm" = "Change Language?";
 "languageChangeMessage" = "Are you sure you want to change the language?";
 "languageChangeImmediate" = "Apply changes immediately";
