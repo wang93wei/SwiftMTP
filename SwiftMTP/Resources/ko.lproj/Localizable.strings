@@ -202,3 +202,5 @@
 "checkConnectionAndStorage" = "다운로드 실패, 장치 연결 및 저장 공간을 확인하세요";
 "cannotReadFileInfo" = "파일 정보를 읽을 수 없음";
 "uploadFailed" = "업로드 실패";
+"deleteMultipleFiles" = "여러 파일 삭제";
+"confirmDeleteMultipleFiles" = "이 %d개의 파일을 삭제하시겠습니까?\n\n%@\n\n이 작업은 취소할 수 없습니다.";

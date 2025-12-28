@@ -95,12 +95,10 @@ struct SwiftMTPApp: App {
         if let languages = languages {
             // 设置 AppleLanguages
             UserDefaults.standard.set(languages, forKey: "AppleLanguages")
-            UserDefaults.standard.synchronize()
             logLanguageSetup("AppleLanguages set to: \(languages)")
         } else {
             // 清除 AppleLanguages，使用系统默认
             UserDefaults.standard.removeObject(forKey: "AppleLanguages")
-            UserDefaults.standard.synchronize()
             logLanguageSetup("AppleLanguages cleared, using system default")
         }
     }
@@ -113,7 +111,7 @@ struct SwiftMTPApp: App {
     
     private func openSettingsWindow() {
         // SwiftUI 会自动处理 Settings scene 的打开
-        // 使用 NSApp.sendAction 打开设置窗口
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        // 使用标准的 macOS action 打开设置窗口
+        NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
     }
 }

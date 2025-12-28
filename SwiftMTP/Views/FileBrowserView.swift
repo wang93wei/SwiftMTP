@@ -534,10 +534,8 @@ struct FileBrowserView: View {
         
         if let languages = languages {
             UserDefaults.standard.set(languages, forKey: "AppleLanguages")
-            UserDefaults.standard.synchronize()
         } else {
             UserDefaults.standard.removeObject(forKey: "AppleLanguages")
-            UserDefaults.standard.synchronize()
         }
     }
     
@@ -603,10 +601,10 @@ struct FileBrowserView: View {
         
         // Prepare alert message
         let fileNames = filesToDelete.map { $0.name }.joined(separator: "、")
-        let alertTitle = filesToDelete.count == 1 ? L10n.FileBrowser.deleteFile : "Delete Multiple Files"
-        let alertMessage = filesToDelete.count == 1 
+        let alertTitle = filesToDelete.count == 1 ? L10n.FileBrowser.deleteFile : L10n.FileBrowser.deleteMultipleFiles
+        let alertMessage = filesToDelete.count == 1
             ? L10n.FileBrowser.confirmDeleteFileWithName.localized(filesToDelete.first!.name)
-            : "Are you sure you want to delete these \(filesToDelete.count) files?\n\n\(fileNames)\n\nThis action cannot be undone."
+            : L10n.FileBrowser.confirmDeleteMultipleFiles.localized(filesToDelete.count, fileNames)
         
         // Create and show alert
         let alert = NSAlert()

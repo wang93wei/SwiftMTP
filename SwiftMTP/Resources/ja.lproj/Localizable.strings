@@ -202,3 +202,5 @@
 "checkConnectionAndStorage" = "ダウンロードに失敗しました。デバイスの接続とストレージ容量を確認してください";
 "cannotReadFileInfo" = "ファイル情報を読み取れません";
 "uploadFailed" = "アップロードに失敗しました";
+"deleteMultipleFiles" = "複数のファイルを削除";
+"confirmDeleteMultipleFiles" = "これらの%d個のファイルを削除してもよろしいですか？\n\n%@\n\nこの操作は取り消せません。";

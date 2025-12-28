@@ -64,7 +64,6 @@ class LanguageManager: ObservableObject {
     
     private func saveLanguage() {
         UserDefaults.standard.set(currentLanguage.rawValue, forKey: languageKey)
-        UserDefaults.standard.synchronize()
         logLanguageChange("Saved language: \(currentLanguage.rawValue)")
     }
     

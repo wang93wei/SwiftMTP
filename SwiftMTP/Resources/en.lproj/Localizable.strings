@@ -202,3 +202,5 @@
 "checkConnectionAndStorage" = "Download failed, please check device connection and storage space";
 "cannotReadFileInfo" = "Cannot read file information";
 "uploadFailed" = "Upload failed";
+"deleteMultipleFiles" = "Delete Multiple Files";
+"confirmDeleteMultipleFiles" = "Are you sure you want to delete these %d files?\n\n%@\n\nThis action cannot be undone.";
