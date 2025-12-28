@@ -315,7 +315,8 @@ func Kalam_Scan() *C.char {
 	
 	if err != nil {
 		fmt.Printf("Kalam_Scan: %v\n", err)
-		return C.CString("[]")
+		// Return nil instead of empty array to indicate no devices found
+		return nil
 	}
 
 	return C.CString(result)

@@ -32,6 +32,30 @@ struct DeviceListView: View {
                 if deviceManager.isScanning && !deviceManager.hasScannedOnce {
                     ProgressView(L10n.DeviceList.scanningDevices)
                         .liquidGlass(style: .regular, cornerRadius: 12)
+                } else if deviceManager.showManualRefreshButton {
+                    VStack(spacing: 16) {
+                        ContentUnavailableView(
+                            L10n.DeviceList.noDevices,
+                            systemImage: "iphone.slash",
+                            description: Text(L10n.DeviceList.connectDeviceViaUSB)
+                        )
+                        
+                        Button(action: {
+                            deviceManager.manualRefresh()
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "arrow.clockwise")
+                                Text(L10n.MainWindow.refresh)
+                            }
+                            .font(.system(size: 14, weight: .medium))
+                        }
+                        .buttonStyle(.plain)
+                        .liquidGlass(style: .thin, cornerRadius: 10)
+                        .scaleEffect(deviceManager.isScanning ? 0.95 : 1.0)
+                        .animation(.easeInOut(duration: 0.2), value: deviceManager.isScanning)
+                        .disabled(deviceManager.isScanning)
+                    }
+                    .padding()
                 } else {
                     ContentUnavailableView(
                         L10n.DeviceList.noDevices,

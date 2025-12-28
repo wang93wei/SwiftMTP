@@ -39,12 +39,19 @@ class DeviceManager: ObservableObject {
     @Published var isScanning: Bool = false
     @Published var connectionError: String?
     @Published var hasScannedOnce: Bool = false
+    @Published var showManualRefreshButton: Bool = false
     
     private var scanTimer: Timer?
     // Cache device UUIDs by device index to maintain consistent IDs across scans
     private var deviceIdCache: [Int: UUID] = [:]
     // Track last successful scan to detect disconnections
     private var lastDeviceIds: Set<UUID> = []
+    // Exponential backoff properties
+    private var consecutiveFailures: Int = 0
+    private var currentScanInterval: TimeInterval = 3.0
+    private let minScanInterval: TimeInterval = 3.0
+    private let maxScanInterval: TimeInterval = 30.0
+    private let maxFailuresBeforeManualRefresh: Int = 3
     
     private init() {
         // Initialize Kalam
@@ -78,6 +85,15 @@ class DeviceManager: ObservableObject {
         // But avoid concurrent scans
         guard !isScanning else { return }
         
+        // Stop automatic scanning after max failures
+        if consecutiveFailures >= maxFailuresBeforeManualRefresh {
+            print("[DeviceManager] Max failures reached, stopping automatic scanning")
+            stopScanning()
+            return
+        }
+        
+        print("[DeviceManager] Starting scan, current failures: \(consecutiveFailures), interval: \(currentScanInterval)s")
+        
         // Set scanning flag on main thread
         DispatchQueue.main.async { [weak self] in
             self?.isScanning = true
@@ -88,10 +104,17 @@ class DeviceManager: ObservableObject {
             
             // Call Kalam_Scan via Go bridge
             guard let jsonPtr = Kalam_Scan() else {
+                print("[DeviceManager] Kalam_Scan returned nil - no devices found")
                 DispatchQueue.main.async {
                     self.handleDeviceDisconnection()
                     self.isScanning = false
                     self.hasScannedOnce = true
+                    
+                    // Stop automatic scanning after max failures
+                    if self.consecutiveFailures >= self.maxFailuresBeforeManualRefresh {
+                        print("[DeviceManager] Max failures reached, stopping automatic scanning")
+                        self.stopScanning()
+                    }
                 }
                 return
             }
@@ -100,11 +123,17 @@ class DeviceManager: ObservableObject {
             Kalam_FreeString(jsonPtr) // Important: Free memory allocated by C/Go
             
             guard let data = jsonString.data(using: .utf8) else {
-                print("Failed to convert device JSON string to data")
+                print("[DeviceManager] Failed to convert device JSON string to data")
                 DispatchQueue.main.async {
                     self.handleDeviceDisconnection()
                     self.isScanning = false
                     self.hasScannedOnce = true
+                    
+                    // Stop automatic scanning after max failures
+                    if self.consecutiveFailures >= self.maxFailuresBeforeManualRefresh {
+                        print("[DeviceManager] Max failures reached, stopping automatic scanning")
+                        self.stopScanning()
+                    }
                 }
                 return
             }
@@ -113,17 +142,25 @@ class DeviceManager: ObservableObject {
                 let kalamDevices = try JSONDecoder().decode([KalamDevice].self, from: data)
                 let newDevices = kalamDevices.map { self.mapToDevice($0) }
                 
+                print("[DeviceManager] Successfully found \(newDevices.count) device(s)")
+                
                 DispatchQueue.main.async {
                     self.updateDevices(newDevices)
                     self.isScanning = false
                     self.hasScannedOnce = true
                 }
             } catch {
-                print("Failed to decode devices JSON: \(error)")
+                print("[DeviceManager] Failed to decode devices JSON: \(error)")
                 DispatchQueue.main.async {
                     self.handleDeviceDisconnection()
                     self.isScanning = false
                     self.hasScannedOnce = true
+                    
+                    // Stop automatic scanning after max failures
+                    if self.consecutiveFailures >= self.maxFailuresBeforeManualRefresh {
+                        print("[DeviceManager] Max failures reached, stopping automatic scanning")
+                        self.stopScanning()
+                    }
                 }
             }
         }
@@ -132,6 +169,18 @@ class DeviceManager: ObservableObject {
     func selectDevice(_ device: Device) {
         selectedDevice = device
         connectionError = nil
+    }
+    
+    func manualRefresh() {
+        // Reset failure counter and scan interval
+        consecutiveFailures = 0
+        currentScanInterval = minScanInterval
+        showManualRefreshButton = false
+        
+        // Restart automatic scanning
+        startScanning()
+        
+        print("[DeviceManager] Manual refresh triggered - counters reset, automatic scanning restarted")
     }
     
     // MARK: - Private Methods
@@ -149,9 +198,16 @@ class DeviceManager: ObservableObject {
         devices = newDevices
         lastDeviceIds = newIds
         
+        // Reset failure counter and scan interval on successful device detection
+        if !newDevices.isEmpty {
+            consecutiveFailures = 0
+            currentScanInterval = minScanInterval
+            showManualRefreshButton = false
+        }
+        
         // Adaptive scanning frequency based on device connection state
         let previousInterval = scanTimer?.timeInterval ?? 3.0
-        let newInterval: TimeInterval = newDevices.isEmpty ? 3.0 : 5.0
+        let newInterval: TimeInterval = newDevices.isEmpty ? currentScanInterval : 5.0
         
         // Update scanning interval if needed
         if abs(previousInterval - newInterval) > 0.5 {
@@ -183,6 +239,20 @@ class DeviceManager: ObservableObject {
             
             print("Device disconnected - UI reset")
         }
+        
+        // Increment failure counter
+        consecutiveFailures += 1
+        
+        // Exponential backoff: interval = min(3 * 2^failures, maxInterval)
+        let backoffInterval = min(minScanInterval * pow(2.0, Double(consecutiveFailures)), maxScanInterval)
+        currentScanInterval = backoffInterval
+        
+        // Show manual refresh button after max failures
+        if consecutiveFailures >= maxFailuresBeforeManualRefresh {
+            showManualRefreshButton = true
+        }
+        
+        print("Scan failed \(consecutiveFailures) times, next scan in \(backoffInterval)s")
     }
     
     private func mapToDevice(_ kalamDevice: KalamDevice) -> Device {
