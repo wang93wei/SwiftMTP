@@ -20,26 +20,79 @@ import (
 	"github.com/ganeshrvel/go-mtpx"
 )
 
-// -- Internal State --
+// MARK: - 常量定义
+
+// 超时设置（毫秒）
+const (
+	// 快速扫描超时（5秒）
+	QuickScanTimeout = 5000
+	// 正常操作超时（45秒）
+	NormalOperationTimeout = 45000
+	// 大文件下载超时（300秒 = 5分钟）
+	LargeFileDownloadTimeout = 300000
+)
+
+// 重试设置
+const (
+	// 快速扫描最大重试次数
+	QuickScanMaxRetries = 1
+	// 正常操作最大重试次数
+	NormalOperationMaxRetries = 3
+	// 下载最大重试次数
+	DownloadMaxRetries = 3
+)
+
+// 退避设置
+const (
+	// 快速扫描退避时间（毫秒）
+	QuickScanBackoffDuration = 200
+	// 退避时间上限（毫秒）
+	MaxBackoffDuration = 2000
+	// 最大连续失败次数
+	MaxConsecutiveFailures = 3
+)
+
+// 文件大小限制
+const (
+	// 大文件阈值（100MB）
+	LargeFileThreshold = 100 * 1024 * 1024
+	// 最大文件大小（10GB）
+	MaxFileSize = 10 * 1024 * 1024 * 1024
+)
+
+// MTP 对象格式
+const (
+	// 文件夹格式
+	ObjectFormatFolder = 0x3001
+	// 通用文件格式
+	ObjectFormatGenericFile = 0x3000
+)
+
+// MARK: - 内部状态
 
 var (
+	// 设备互斥锁
 	deviceMu sync.Mutex
-	staticProgressCounter uint64
+	// 取消任务互斥锁
+	cancelMu sync.Mutex
+	// 已取消的任务映射
+	cancelledTasks = make(map[string]bool)
 )
 
 // withDeviceQuick executes a function with a fresh device connection using faster settings for scanning
+// withDeviceQuick 使用快速设置执行设备连接操作
+// 用于设备扫描，使用较短的超时和重试次数
 func withDeviceQuick(fn func(*mtp.Device) error) error {
 	deviceMu.Lock()
 	defer deviceMu.Unlock()
 	
 	var lastError error
-	maxRetries := 1  // Only 1 retry for quick scans
 	
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := 0; attempt < QuickScanMaxRetries; attempt++ {
 		if attempt > 0 {
-			fmt.Printf("withDeviceQuick: Reinitializing device connection (attempt %d/%d)\n", attempt+1, maxRetries)
-			// Short backoff for quick scans
-			time.Sleep(200 * time.Millisecond)
+			fmt.Printf("withDeviceQuick: Reinitializing device connection (attempt %d/%d)\n", attempt+1, QuickScanMaxRetries)
+			// 快速扫描使用短退避时间
+			time.Sleep(time.Duration(QuickScanBackoffDuration) * time.Millisecond)
 		}
 		
 		dev, err := mtpx.Initialize(mtpx.Init{
@@ -61,7 +114,7 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 			}()
 			
 			// Configure device with shorter timeout for quick scans
-			dev.Timeout = 5000  // 5 seconds only for quick scans
+			dev.Timeout = QuickScanTimeout
 			
 			// Skip additional connection test for quick scans to save time
 			// Execute the function with panic recovery
@@ -105,21 +158,21 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 	return lastError
 }
 
-// withDevice executes a function with a fresh device connection
+// withDevice 使用正常设置执行设备连接操作
+// 用于文件传输等正常操作，使用较长的超时和重试次数
 func withDevice(fn func(*mtp.Device) error) error {
 	deviceMu.Lock()
 	defer deviceMu.Unlock()
 	
 	var lastError error
-	maxRetries := 3  // Increased retries for better reliability
 	
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := 0; attempt < NormalOperationMaxRetries; attempt++ {
 		if attempt > 0 {
-			fmt.Printf("withDevice: Reinitializing device connection (attempt %d/%d)\n", attempt+1, maxRetries)
-			// Exponential backoff for retries
+			fmt.Printf("withDevice: Reinitializing device connection (attempt %d/%d)\n", attempt+1, NormalOperationMaxRetries)
+			// 指数退避策略
 			backoffDuration := time.Duration(attempt*attempt) * 500 * time.Millisecond
-			if backoffDuration > 2*time.Second {
-				backoffDuration = 2 * time.Second
+			if backoffDuration > time.Duration(MaxBackoffDuration)*time.Millisecond {
+				backoffDuration = time.Duration(MaxBackoffDuration) * time.Millisecond
 			}
 			time.Sleep(backoffDuration)
 			
@@ -135,7 +188,7 @@ func withDevice(fn func(*mtp.Device) error) error {
 			fmt.Printf("withDevice: %v\n", lastError)
 			
 			// Check if initialization error is recoverable
-			if strings.Contains(err.Error(), "not found") && attempt == maxRetries-1 {
+			if strings.Contains(err.Error(), "not found") && attempt == NormalOperationMaxRetries-1 {
 				// Device disconnected, don't retry further
 				break
 			}
@@ -153,7 +206,7 @@ func withDevice(fn func(*mtp.Device) error) error {
 			}()
 			
 			// Configure device with longer timeout for better stability
-			dev.Timeout = 45000  // 45 seconds
+			dev.Timeout = NormalOperationTimeout
 			
 			// Test device connection before executing function
 			var testInfo mtp.DeviceInfo
@@ -366,7 +419,8 @@ func Kalam_ListFiles(storageID uint32, parentID uint32) *C.char {
 	
 	if err != nil {
 		fmt.Printf("Kalam_ListFiles: %v\n", err)
-		return C.CString("[]")
+		// 统一错误处理：返回 nil 表示错误
+		return nil
 	}
 
 	return C.CString(result)
@@ -391,7 +445,7 @@ func Kalam_CreateFolder(storageID uint32, parentID uint32, folderName *C.char) u
 		objInfo.StorageID = storageID
 		objInfo.ParentObject = parentID
 		objInfo.Filename = name
-		objInfo.ObjectFormat = 0x3001
+		objInfo.ObjectFormat = ObjectFormatFolder
 		objInfo.CompressedSize = 0
 
 		_, _, handle, err := dev.SendObjectInfo(storageID, parentID, &objInfo)
@@ -474,11 +528,10 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 	}
 
 	var lastError error
-	maxRetries := 3  // Increased retries for better reliability
 	
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := 0; attempt < DownloadMaxRetries; attempt++ {
 		if attempt > 0 {
-			fmt.Printf("Kalam_DownloadFile: Retry attempt %d/%d\n", attempt+1, maxRetries)
+			fmt.Printf("Kalam_DownloadFile: Retry attempt %d/%d\n", attempt+1, DownloadMaxRetries)
 			// Progressive backoff: 1s, 2s, 4s
 			backoffDuration := time.Duration(1<<uint(attempt-1)) * time.Second
 			if backoffDuration > 4*time.Second {
@@ -497,6 +550,9 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 			lastError = err
 			continue
 		}
+		
+		// Use defer to ensure file is always closed, even if panic occurs
+		defer file.Close()
 		
 		// Track file size for validation
 		var writtenBytes int64
@@ -517,7 +573,7 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 		// Use withDevice for downloads with custom timeout for large files
 		downloadErr := withDevice(func(dev *mtp.Device) error {
 			// Set very long timeout for large file downloads (up to 5 minutes)
-			dev.Timeout = 300000  // 300 seconds = 5 minutes
+			dev.Timeout = LargeFileDownloadTimeout
 			
 			// Validate object exists before download
 			var objInfo mtp.ObjectInfo
@@ -528,7 +584,7 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 			fmt.Printf("Kalam_DownloadFile: Starting download of %s (%d bytes)\n", objInfo.Filename, objInfo.CompressedSize)
 			
 			// For large files, warn about potential timeouts
-			if objInfo.CompressedSize > 100*1024*1024 { // > 100MB
+			if objInfo.CompressedSize > LargeFileThreshold {
 				fmt.Printf("Kalam_DownloadFile: Large file detected (%.1f MB), download may take time\n", float64(objInfo.CompressedSize)/1024/1024)
 			}
 			
@@ -641,11 +697,6 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 
 // -- Cancellation State --
 
-var (
-	cancelMu       sync.Mutex
-	cancelledTasks = make(map[string]bool)
-)
-
 type cancelError struct {
 	taskID string
 }
@@ -715,7 +766,7 @@ func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char, tas
 		objInfo.StorageID = storageID
 		objInfo.ParentObject = parentID
 		objInfo.Filename = fileName
-		objInfo.ObjectFormat = 0x3000 // Generic file format
+		objInfo.ObjectFormat = ObjectFormatGenericFile
 		objInfo.CompressedSize = uint32(fileSize)
 		objInfo.ModificationDate = time.Now()
 

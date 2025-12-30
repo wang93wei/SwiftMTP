@@ -112,6 +112,12 @@ struct SwiftMTPApp: App {
     private func openSettingsWindow() {
         // SwiftUI 会自动处理 Settings scene 的打开
         // 使用标准的 macOS action 打开设置窗口
-        NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        // 注意：由于 SwiftMTPApp 是 struct，无法使用 @objc 方法
+        // 使用字符串选择器作为回退方案
+        let selector = Selector(("showPreferencesWindow:"))
+        let result = NSApp.sendAction(selector, to: nil, from: nil)
+        if !result {
+            print("[SwiftMTPApp] Failed to open settings window")
+        }
     }
 }

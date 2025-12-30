@@ -63,6 +63,19 @@ struct FileItem: Identifiable, Hashable, Comparable {
     
     var formattedDate: String {
         guard let date = modifiedDate else { return "--" }
+        
+        // MARK: - 日期边界值验证
+        
+        // 1. 检查日期是否在合理范围内（1970年1月1日之后）
+        let minimumValidDate = Date(timeIntervalSince1970: 0)
+        guard date >= minimumValidDate else { return "--" }
+        
+        // 2. 检查日期是否在未来（超过1天）
+        let futureThreshold = Date().addingTimeInterval(86400)
+        guard date <= futureThreshold else { return "--" }
+        
+        // MARK: - 格式化日期
+        
         let formatter = DateFormatter()
         
         // 根据当前语言设置 locale
@@ -70,10 +83,9 @@ struct FileItem: Identifiable, Hashable, Comparable {
         if let localeIdentifier = LanguageManager.shared.currentLanguage.localeIdentifier {
             locale = Locale(identifier: localeIdentifier)
         } else {
-            // 系统默认模式：从系统设置获取正确的 locale
-            if let systemUserDefaults = UserDefaults(suiteName: ".GlobalPreferences"),
-               let langs = systemUserDefaults.array(forKey: "AppleLanguages") as? [String],
-               let firstLang = langs.first {
+            // 系统默认模式：使用公开 API 获取系统语言
+            let systemLanguages = Locale.preferredLanguages
+            if let firstLang = systemLanguages.first {
                 locale = Locale(identifier: firstLang)
             } else {
                 locale = Locale.current

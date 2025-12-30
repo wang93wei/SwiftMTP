@@ -138,6 +138,18 @@ struct FileBrowserView: View {
                 .opacity(0.15)
             fileContentView
         }
+        .overlay(
+            Group {
+                if isDropTargeted {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.blue, lineWidth: 2)
+                }
+            }
+        )
+        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+            handleDroppedFiles(providers)
+        }
+        .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
     }
     
     @ViewBuilder
@@ -242,6 +254,17 @@ struct FileBrowserView: View {
                 navigateInto(folder)
                 pendingNavigation = nil
             }
+        }
+        .overlay(
+            Group {
+                if isDropTargeted {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.blue, lineWidth: 2)
+                }
+            }
+        )
+        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+            handleDroppedFiles(providers)
         }
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
@@ -734,30 +757,39 @@ struct FileBrowserView: View {
         let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId ?? 0xFFFFFFFF
         
         var fileURLs: [URL] = []
+        let dispatchGroup = DispatchGroup()
         
         // Extract file URLs from providers
         for provider in providers {
             if provider.canLoadObject(ofClass: URL.self) {
+                dispatchGroup.enter()
                 provider.loadObject(ofClass: URL.self) { url, error in
+                    defer {
+                        dispatchGroup.leave()
+                    }
+                    
+                    if let error = error {
+                        print("Failed to load dropped file: \(error)")
+                        return
+                    }
+                    
                     if let url = url as? URL {
-                        DispatchQueue.main.async {
-                            fileURLs.append(url)
-                            
-                            // Check if all files have been processed
-                            if fileURLs.count == providers.count {
-                                uploadDroppedFiles(fileURLs, parentId: parentId, storageId: storageId)
-                            }
-                        }
+                        fileURLs.append(url)
                     }
                 }
             }
         }
         
-        // Handle case where no files were loaded
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        // Wait for all files to be loaded, then upload
+        dispatchGroup.notify(queue: .main) {
+            print("Loaded \(fileURLs.count) out of \(providers.count) dropped files")
+            
             if fileURLs.isEmpty {
                 print("No valid files were dropped")
+                return
             }
+            
+            self.uploadDroppedFiles(fileURLs, parentId: parentId, storageId: storageId)
         }
         
         return true

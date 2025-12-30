@@ -32,29 +32,66 @@ struct KalamStorage: Codable {
 }
 
 class DeviceManager: ObservableObject {
+    // MARK: - 单例
+    
     static let shared = DeviceManager()
     
+    // MARK: - 常量
+    
+    /// 最小扫描间隔（秒）- 无设备时
+    private static let MinScanInterval: TimeInterval = 3.0
+    
+    /// 设备连接后的扫描间隔（秒）
+    private static let ConnectedDeviceScanInterval: TimeInterval = 5.0
+    
+    /// 最大扫描间隔（秒）- 指数退避上限
+    private static let MaxScanInterval: TimeInterval = 30.0
+    
+    /// 最大连续失败次数
+    private static let MaxFailuresBeforeManualRefresh: Int = 3
+    
+    /// 根目录 ID（MTP 协议标准值）
+    private static let RootDirectoryId: UInt32 = 0xFFFFFFFF
+    
+    // MARK: - 发布属性
+    
+    /// 设备列表
     @Published var devices: [Device] = []
+    
+    /// 当前选中的设备
     @Published var selectedDevice: Device?
+    
+    /// 是否正在扫描
     @Published var isScanning: Bool = false
+    
+    /// 连接错误信息
     @Published var connectionError: String?
+    
+    /// 是否已扫描过至少一次
     @Published var hasScannedOnce: Bool = false
+    
+    /// 是否显示手动刷新按钮
     @Published var showManualRefreshButton: Bool = false
     
+    // MARK: - 私有属性
+    
+    /// 扫描定时器
     private var scanTimer: Timer?
-    // Cache device UUIDs by device index to maintain consistent IDs across scans
+    
+    /// 设备 ID 缓存（按设备索引缓存 UUID，保持跨扫描的一致性）
     private var deviceIdCache: [Int: UUID] = [:]
-    // Track last successful scan to detect disconnections
+    
+    /// 上次成功扫描的设备 ID 集合（用于检测设备断开）
     private var lastDeviceIds: Set<UUID> = []
-    // Exponential backoff properties
+    
+    /// 连续失败次数（用于指数退避）
     private var consecutiveFailures: Int = 0
-    private var currentScanInterval: TimeInterval = 3.0
-    private let minScanInterval: TimeInterval = 3.0
-    private let maxScanInterval: TimeInterval = 30.0
-    private let maxFailuresBeforeManualRefresh: Int = 3
+    
+    /// 当前扫描间隔（秒）
+    private var currentScanInterval: TimeInterval = MinScanInterval
     
     private init() {
-        // Initialize Kalam
+        // 初始化 Kalam 内核
         Kalam_Init()
         startScanning()
     }
@@ -63,30 +100,33 @@ class DeviceManager: ObservableObject {
         stopScanning()
     }
     
-    // MARK: - Public Methods
+    // MARK: - 公共方法
     
+    /// 开始扫描设备
+    /// 使用自适应扫描频率：
+    /// - 无设备时：每 3 秒扫描一次
+    /// - 有设备时：每 5 秒扫描一次（更稳定）
     func startScanning() {
-        // Adaptive scanning frequency:
-        // - Every 3 seconds when no device connected
-        // - Every 5 seconds when device is connected (more stable)
-        scanTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+        scanTimer = Timer.scheduledTimer(withTimeInterval: DeviceManager.MinScanInterval, repeats: true) { [weak self] _ in
             self?.scanDevices()
         }
         scanDevices()
     }
     
+    /// 停止扫描设备
     func stopScanning() {
         scanTimer?.invalidate()
         scanTimer = nil
     }
     
+    /// 扫描设备
+    /// 检测设备连接和断开，使用指数退避策略减少失败时的扫描频率
     func scanDevices() {
-        // Don't block scanning even if device is selected - we need to detect disconnections
-        // But avoid concurrent scans
+        // 避免并发扫描
         guard !isScanning else { return }
         
-        // Stop automatic scanning after max failures
-        if consecutiveFailures >= maxFailuresBeforeManualRefresh {
+        // 达到最大失败次数后停止自动扫描
+        if consecutiveFailures >= DeviceManager.MaxFailuresBeforeManualRefresh {
             print("[DeviceManager] Max failures reached, stopping automatic scanning")
             stopScanning()
             return
@@ -94,7 +134,7 @@ class DeviceManager: ObservableObject {
         
         print("[DeviceManager] Starting scan, current failures: \(consecutiveFailures), interval: \(currentScanInterval)s")
         
-        // Set scanning flag on main thread
+        // 在主线程上设置扫描标志
         DispatchQueue.main.async { [weak self] in
             self?.isScanning = true
         }
@@ -102,7 +142,7 @@ class DeviceManager: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
             
-            // Call Kalam_Scan via Go bridge
+            // 调用 Kalam_Scan 通过 Go 桥接
             guard let jsonPtr = Kalam_Scan() else {
                 print("[DeviceManager] Kalam_Scan returned nil - no devices found")
                 DispatchQueue.main.async {
@@ -110,8 +150,8 @@ class DeviceManager: ObservableObject {
                     self.isScanning = false
                     self.hasScannedOnce = true
                     
-                    // Stop automatic scanning after max failures
-                    if self.consecutiveFailures >= self.maxFailuresBeforeManualRefresh {
+                    // 达到最大失败次数后停止自动扫描
+                    if self.consecutiveFailures >= DeviceManager.MaxFailuresBeforeManualRefresh {
                         print("[DeviceManager] Max failures reached, stopping automatic scanning")
                         self.stopScanning()
                     }
@@ -119,8 +159,12 @@ class DeviceManager: ObservableObject {
                 return
             }
             
+            // 使用 defer 确保内存总是被释放
+            defer {
+                Kalam_FreeString(jsonPtr)
+            }
+            
             let jsonString = String(cString: jsonPtr)
-            Kalam_FreeString(jsonPtr) // Important: Free memory allocated by C/Go
             
             guard let data = jsonString.data(using: .utf8) else {
                 print("[DeviceManager] Failed to convert device JSON string to data")
@@ -129,8 +173,8 @@ class DeviceManager: ObservableObject {
                     self.isScanning = false
                     self.hasScannedOnce = true
                     
-                    // Stop automatic scanning after max failures
-                    if self.consecutiveFailures >= self.maxFailuresBeforeManualRefresh {
+                    // 达到最大失败次数后停止自动扫描
+                    if self.consecutiveFailures >= DeviceManager.MaxFailuresBeforeManualRefresh {
                         print("[DeviceManager] Max failures reached, stopping automatic scanning")
                         self.stopScanning()
                     }
@@ -156,8 +200,8 @@ class DeviceManager: ObservableObject {
                     self.isScanning = false
                     self.hasScannedOnce = true
                     
-                    // Stop automatic scanning after max failures
-                    if self.consecutiveFailures >= self.maxFailuresBeforeManualRefresh {
+                    // 达到最大失败次数后停止自动扫描
+                    if self.consecutiveFailures >= DeviceManager.MaxFailuresBeforeManualRefresh {
                         print("[DeviceManager] Max failures reached, stopping automatic scanning")
                         self.stopScanning()
                     }
@@ -166,95 +210,109 @@ class DeviceManager: ObservableObject {
         }
     }
     
+    /// 选择设备
+    /// - Parameter device: 要选择的设备
     func selectDevice(_ device: Device) {
         selectedDevice = device
         connectionError = nil
     }
     
+    /// 手动刷新设备列表
+    /// 重置失败计数和扫描间隔，重新开始自动扫描
     func manualRefresh() {
-        // Reset failure counter and scan interval
+        // 重置失败计数和扫描间隔
         consecutiveFailures = 0
-        currentScanInterval = minScanInterval
+        currentScanInterval = DeviceManager.MinScanInterval
         showManualRefreshButton = false
         
-        // Restart automatic scanning
+        // 重新开始自动扫描
         startScanning()
         
         print("[DeviceManager] Manual refresh triggered - counters reset, automatic scanning restarted")
     }
     
-    // MARK: - Private Methods
+    // MARK: - 私有方法
     
+    /// 更新设备列表
+    /// - Parameter newDevices: 新的设备列表
     private func updateDevices(_ newDevices: [Device]) {
         let newIds = Set(newDevices.map { $0.id })
         
-        // Check if selected device is still connected
+        // 检查选中的设备是否仍然连接
         if let selected = selectedDevice, !newIds.contains(selected.id) {
-            // Device disconnected
+            // 设备已断开
             handleDeviceDisconnection()
         }
         
-        // Update device list
+        // 更新设备列表
         devices = newDevices
         lastDeviceIds = newIds
         
-        // Reset failure counter and scan interval on successful device detection
+        // 成功检测到设备时重置失败计数和扫描间隔
         if !newDevices.isEmpty {
             consecutiveFailures = 0
-            currentScanInterval = minScanInterval
+            currentScanInterval = DeviceManager.MinScanInterval
             showManualRefreshButton = false
         }
         
-        // Adaptive scanning frequency based on device connection state
-        let previousInterval = scanTimer?.timeInterval ?? 3.0
-        let newInterval: TimeInterval = newDevices.isEmpty ? currentScanInterval : 5.0
+        // 根据设备连接状态自适应扫描频率
+        let previousInterval = scanTimer?.timeInterval ?? DeviceManager.MinScanInterval
+        let newInterval: TimeInterval = newDevices.isEmpty ? currentScanInterval : DeviceManager.ConnectedDeviceScanInterval
         
-        // Update scanning interval if needed
+        // 如果需要，更新扫描间隔
         if abs(previousInterval - newInterval) > 0.5 {
             scanTimer?.invalidate()
             scanTimer = Timer.scheduledTimer(withTimeInterval: newInterval, repeats: true) { [weak self] _ in
                 self?.scanDevices()
             }
-            print("Scanning interval updated to \(newInterval)s (devices: \(newDevices.count))")
+            print("[DeviceManager] Scanning interval updated to \(newInterval)s (devices: \(newDevices.count))")
         }
         
-        // Auto-select if only one device and none selected
+        // 如果只有一个设备且未选择，自动选择
         if selectedDevice == nil && newDevices.count == 1 {
             selectedDevice = newDevices.first
         }
     }
     
+    /// 处理设备断开
+    /// 清除所有设备相关状态，取消正在进行的传输任务
     private func handleDeviceDisconnection() {
         if selectedDevice != nil || !devices.isEmpty {
-            // Clear everything
+            // 取消所有活跃的传输任务
+            FileTransferManager.shared.cancelAllTasks()
+            
+            // 清除所有内容
             devices = []
             selectedDevice = nil
             connectionError = L10n.MainWindow.deviceDisconnected
             
-            // Clear file system cache
+            // 清除文件系统缓存
             FileSystemManager.shared.clearCache()
             
-            // Post notification to reset UI
+            // 发送通知以重置 UI
             NotificationCenter.default.post(name: NSNotification.Name("DeviceDisconnected"), object: nil)
             
-            print("Device disconnected - UI reset")
+            print("[DeviceManager] Device disconnected - UI reset and tasks cancelled")
         }
         
-        // Increment failure counter
+        // 增加失败计数
         consecutiveFailures += 1
         
-        // Exponential backoff: interval = min(3 * 2^failures, maxInterval)
-        let backoffInterval = min(minScanInterval * pow(2.0, Double(consecutiveFailures)), maxScanInterval)
+        // 指数退避：interval = min(3 * 2^failures, maxInterval)
+        let backoffInterval = min(DeviceManager.MinScanInterval * pow(2.0, Double(consecutiveFailures)), DeviceManager.MaxScanInterval)
         currentScanInterval = backoffInterval
         
-        // Show manual refresh button after max failures
-        if consecutiveFailures >= maxFailuresBeforeManualRefresh {
+        // 达到最大失败次数后显示手动刷新按钮
+        if consecutiveFailures >= DeviceManager.MaxFailuresBeforeManualRefresh {
             showManualRefreshButton = true
         }
         
-        print("Scan failed \(consecutiveFailures) times, next scan in \(backoffInterval)s")
+        print("[DeviceManager] Scan failed \(consecutiveFailures) times, next scan in \(backoffInterval)s")
     }
     
+    /// 将 Kalam 设备映射到应用设备模型
+    /// - Parameter kalamDevice: Kalam 设备
+    /// - Returns: 应用设备模型
     private func mapToDevice(_ kalamDevice: KalamDevice) -> Device {
         let storageInfos = kalamDevice.storage.map { storage in
             StorageInfo(
@@ -271,6 +329,7 @@ class DeviceManager: ObservableObject {
             vendorExtension: kalamDevice.mtpSupport.vendorExtension
         )
         
+        // 使用缓存的 UUID 或生成新的
         let deviceId = deviceIdCache[kalamDevice.id] ?? UUID()
         deviceIdCache[kalamDevice.id] = deviceId
         

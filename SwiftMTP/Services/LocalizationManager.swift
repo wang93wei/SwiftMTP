@@ -196,21 +196,37 @@ enum L10n {
 }
 
 extension String {
+    /// 格式化字符串，支持中文文件名
+    /// - Parameter args: 格式化参数
+    /// - Returns: 格式化后的字符串
+    /// - Note: 此方法直接格式化当前字符串，不再尝试查找本地化
     func localized(_ args: CVarArg...) -> String {
-        let formatString = LanguageManager.shared.localizedString(for: self)
+        // 直接格式化当前字符串，不再尝试查找本地化
+        // 避免对已经是本地化字符串的文本进行二次查找
         
-        // 检查格式字符串是否有效
-        if formatString.isEmpty || formatString == self {
-            // 如果格式字符串无效，直接返回 key
-            return self
+        // 使用字符串替换而不是格式化，避免中文文件名乱码
+        var result = self
+        for (index, arg) in args.enumerated() {
+            let placeholder = "%\(index + 1)$@"
+            if let argString = arg as? String {
+                result = result.replacingOccurrences(of: placeholder, with: argString)
+            } else {
+                // 对于非字符串参数（如 Int），使用格式化
+                let formattedPlaceholder = "%\(index + 1)$d"
+                if let argInt = arg as? Int {
+                    result = result.replacingOccurrences(of: formattedPlaceholder, with: String(argInt))
+                } else {
+                    // 其他类型尝试使用原始格式化方法
+                    do {
+                        result = try String(format: self, args)
+                        break // 格式化成功，跳出循环
+                    } catch {
+                        print("[LocalizationManager] Failed to format arg at index \(index): \(arg)")
+                    }
+                }
+            }
         }
         
-        // 尝试格式化，如果失败则返回原始字符串
-        do {
-            return String(format: formatString, arguments: args)
-        } catch {
-            print("[LocalizationManager] Failed to format string '\(self)' with args: \(args), error: \(error)")
-            return formatString
-        }
+        return result
     }
 }

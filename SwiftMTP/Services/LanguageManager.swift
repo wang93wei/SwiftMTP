@@ -77,6 +77,15 @@ class LanguageManager: ObservableObject {
                   let bundle = Bundle(path: path) else {
                 logLanguageChange("Failed to find bundle for locale: \(localeIdentifier), falling back to main bundle")
                 self.bundle = .main
+                
+                // 通知用户语言包加载失败
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(
+                        name: .languageBundleLoadFailed,
+                        object: nil,
+                        userInfo: ["locale": localeIdentifier]
+                    )
+                }
                 return
             }
             
@@ -94,26 +103,16 @@ class LanguageManager: ObservableObject {
             // 系统默认模式：显式检测系统语言并加载对应语言包
             logLanguageChange("System default mode - detecting system language")
             
-            // 优先从系统级别的 UserDefaults 读取语言设置（绕过 Xcode 环境影响）
-            var systemLanguages: [String] = []
-            if let systemUserDefaults = UserDefaults(suiteName: ".GlobalPreferences"),
-               let langs = systemUserDefaults.array(forKey: "AppleLanguages") as? [String] {
-                systemLanguages = langs
-                logLanguageChange("System languages from GlobalPreferences: \(systemLanguages)")
-            }
+            // 使用公开 API 获取系统语言
+            var systemLanguages = Locale.preferredLanguages
+            logLanguageChange("System languages from Locale.preferredLanguages: \(systemLanguages)")
             
-            // 如果没有获取到，尝试从标准 UserDefaults 读取
+            // 如果 Locale.preferredLanguages 为空，尝试从 UserDefaults 读取
             if systemLanguages.isEmpty {
                 if let langs = UserDefaults.standard.array(forKey: "AppleLanguages") as? [String] {
                     systemLanguages = langs
                     logLanguageChange("System languages from UserDefaults.standard: \(systemLanguages)")
                 }
-            }
-            
-            // 如果还是没有，使用 Locale.preferredLanguages 作为最后的回退
-            if systemLanguages.isEmpty {
-                systemLanguages = Locale.preferredLanguages
-                logLanguageChange("System languages from Locale.preferredLanguages: \(systemLanguages)")
             }
             
             logLanguageChange("Preferred languages for matching: \(systemLanguages)")
@@ -184,8 +183,21 @@ class LanguageManager: ObservableObject {
         print("[LanguageManager] \(message)")
         #endif
     }
+    
+    // MARK: - 公共方法
+    
+    /// 清理所有 Combine 订阅
+    /// 在应用退出或重启时调用，防止内存泄漏
+    func cleanupSubscriptions() {
+        cancellables.removeAll()
+        logLanguageChange("Cleaned up all subscriptions")
+    }
 }
 
 extension Notification.Name {
+    /// 语言更改通知
     static let languageDidChange = Notification.Name("languageDidChange")
+    
+    /// 语言包加载失败通知
+    static let languageBundleLoadFailed = Notification.Name("languageBundleLoadFailed")
 }

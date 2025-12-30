@@ -7,21 +7,48 @@
 
 import Foundation
 
+// MARK: - FileSystemManager
+
+/// 文件系统管理器
+/// 负责管理 MTP 设备上的文件系统操作，包括文件列表获取和缓存管理
 class FileSystemManager {
+    // MARK: - 单例
+    
+    /// 共享实例
     static let shared = FileSystemManager()
-
+    
+    // MARK: - 常量
+    
+    /// 缓存过期时间（秒）
+    private static let CacheExpirationInterval: TimeInterval = 30.0
+    
+    /// 根目录 ID（MTP 协议标准值）
+    private static let RootDirectoryId: UInt32 = 0xFFFFFFFF
+    
+    // MARK: - 属性
+    
+    /// 文件缓存（线程安全）
     private var fileCache: [String: CacheEntry] = [:]
-    private let cacheExpirationInterval: TimeInterval = 30.0
-
+    
+    /// 缓存锁
+    private let cacheLock = NSLock()
+    
+    // MARK: - 内部类型
+    
+    /// 缓存条目
     private struct CacheEntry {
+        /// 文件列表
         let items: [FileItem]
+        /// 缓存时间戳
         let timestamp: Date
-
+        
+        /// 判断缓存是否过期
         var isExpired: Bool {
-            Date().timeIntervalSince(timestamp) > 30.0
+            Date().timeIntervalSince(timestamp) > FileSystemManager.CacheExpirationInterval
         }
     }
-
+    
+    /// Kalam 文件结构（用于 JSON 解码）
     private struct KalamFile: Codable {
         let id: UInt32
         let parentId: UInt32
@@ -31,31 +58,48 @@ class FileSystemManager {
         let isFolder: Bool
         let modTime: Int64
     }
-
+    
+    // MARK: - 初始化
+    
     private init() {}
-
-    // MARK: - Public Methods
-
-    func getFileList(for device: Device, parentId: UInt32 = 0xFFFFFFFF, storageId: UInt32 = 0xFFFFFFFF) -> [FileItem] {
+    
+    // MARK: - 公共方法
+    
+    /// 获取指定目录的文件列表
+    /// - Parameters:
+    ///   - device: 目标设备
+    ///   - parentId: 父目录 ID（默认为根目录）
+    ///   - storageId: 存储设备 ID
+    /// - Returns: 文件列表，如果获取失败则返回空数组
+    func getFileList(for device: Device, parentId: UInt32 = RootDirectoryId, storageId: UInt32 = RootDirectoryId) -> [FileItem] {
         let cacheKey = "\(device.id)-\(storageId)-\(parentId)"
-
+        
+        // 检查缓存
+        cacheLock.lock()
         if let cached = fileCache[cacheKey], !cached.isExpired {
+            cacheLock.unlock()
             return cached.items
         }
-
+        cacheLock.unlock()
+        
+        // 调用 Kalam 获取文件列表
         guard let jsonPtr = Kalam_ListFiles(storageId, parentId) else {
-            print("FileSystemManager: Kalam_ListFiles returned null")
+            print("[FileSystemManager] Kalam_ListFiles returned null")
             return []
         }
-
+        
+        // 使用 defer 确保内存总是被释放
+        defer {
+            Kalam_FreeString(jsonPtr)
+        }
+        
         let jsonString = String(cString: jsonPtr)
-        Kalam_FreeString(jsonPtr)
-
+        
         guard let data = jsonString.data(using: .utf8) else {
-            print("FileSystemManager: Failed to convert JSON string to data")
+            print("[FileSystemManager] Failed to convert JSON string to data")
             return []
         }
-
+        
         do {
             let kalamFiles = try JSONDecoder().decode([KalamFile].self, from: data)
             let items = kalamFiles.map { kFile -> FileItem in
@@ -78,46 +122,69 @@ class FileSystemManager {
                     fileType: fileType
                 )
             }
-
+            
+            // 更新缓存
+            cacheLock.lock()
             let entry = CacheEntry(items: items, timestamp: Date())
             fileCache[cacheKey] = entry
+            cacheLock.unlock()
+            
             return items
         } catch {
-            print("FileSystemManager: Failed to decode files JSON: \(error)")
+            print("[FileSystemManager] Failed to decode files JSON: \(error)")
             return []
         }
     }
-
+    
+    /// 获取设备根目录的文件列表
+    /// - Parameter device: 目标设备
+    /// - Returns: 文件列表，如果设备没有存储则返回空数组
     func getRootFiles(for device: Device) -> [FileItem] {
         guard let storage = device.storageInfo.first else {
+            print("[FileSystemManager] No storage found for device \(device.id)")
             return []
         }
-
-        return getFileList(for: device, parentId: 0xFFFFFFFF, storageId: storage.storageId)
+        
+        return getFileList(for: device, parentId: FileSystemManager.RootDirectoryId, storageId: storage.storageId)
     }
-
+    
+    /// 获取指定父目录的子文件列表
+    /// - Parameters:
+    ///   - device: 目标设备
+    ///   - parent: 父文件项
+    /// - Returns: 子文件列表
     func getChildrenFiles(for device: Device, parent: FileItem) -> [FileItem] {
         return getFileList(for: device, parentId: parent.objectId, storageId: parent.storageId)
     }
-
+    
+    /// 清除所有缓存
     func clearCache() {
+        cacheLock.lock()
         fileCache.removeAll()
-        print("FileSystemManager: Cleared all cache")
+        cacheLock.unlock()
+        print("[FileSystemManager] Cleared all cache")
     }
-
+    
+    /// 强制清除所有缓存（与 clearCache 相同，保留以兼容性）
     func forceClearCache() {
-        fileCache.removeAll()
-        print("FileSystemManager: Force cleared all cache")
+        clearCache()
     }
-
+    
+    /// 清除指定设备的缓存
+    /// - Parameter device: 目标设备
     func clearCache(for device: Device) {
+        cacheLock.lock()
         fileCache = fileCache.filter { !$0.key.hasPrefix("\(device.id)-") }
-        print("FileSystemManager: Cleared cache for device \(device.id)")
+        cacheLock.unlock()
+        print("[FileSystemManager] Cleared cache for device \(device.id)")
     }
-
+    
+    // MARK: - 私有方法
+    
+    /// 判断缓存是否过期
+    /// - Parameter timestamp: 缓存时间戳
+    /// - Returns: 是否过期
     private func isExpired(_ timestamp: Date) -> Bool {
-        Date().timeIntervalSince(timestamp) > cacheExpirationInterval
+        Date().timeIntervalSince(timestamp) > FileSystemManager.CacheExpirationInterval
     }
-
-    // MARK: - Private Methods
 }

@@ -84,27 +84,61 @@ class FileTransferManager: ObservableObject {
     }
     
     func uploadFile(to device: Device, sourceURL: URL, parentId: UInt32, storageId: UInt32) {
-        // Validate the file exists and is not a directory
+        // MARK: - 输入验证
+        
+        // 1. 验证文件路径不为空
+        guard !sourceURL.path.isEmpty else {
+            print("[FileTransferManager] Upload failed: Empty source path")
+            return
+        }
+        
+        // 2. 验证文件存在
         guard FileManager.default.fileExists(atPath: sourceURL.path) else {
-            print("Upload failed: File does not exist at \(sourceURL.path)")
+            print("[FileTransferManager] Upload failed: File does not exist at \(sourceURL.path)")
             return
         }
         
-        guard let fileAttributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
-              let fileSize = fileAttributes[.size] as? UInt64 else {
-            print("Upload failed: Could not get file size for \(sourceURL.path)")
-            return
-        }
-        
-        // Check if it's a directory
+        // 3. 验证不是目录
         var isDirectory: ObjCBool = false
         FileManager.default.fileExists(atPath: sourceURL.path, isDirectory: &isDirectory)
         if isDirectory.boolValue {
-            print("Upload failed: Cannot upload directories: \(sourceURL.path)")
+            print("[FileTransferManager] Upload failed: Cannot upload directories: \(sourceURL.path)")
             return
         }
         
-        print("Starting upload: \(sourceURL.lastPathComponent) (\(fileSize) bytes) to parentId: \(parentId), storageId: \(storageId)")
+        // 4. 获取文件大小
+        guard let fileAttributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
+              let fileSize = fileAttributes[.size] as? UInt64 else {
+            print("[FileTransferManager] Upload failed: Could not get file size for \(sourceURL.path)")
+            return
+        }
+        
+        // 5. 验证文件大小限制（最大 10GB）
+        let maxFileSize: UInt64 = 10 * 1024 * 1024 * 1024
+        guard fileSize <= maxFileSize else {
+            print("[FileTransferManager] Upload failed: File too large (\(fileSize) bytes, max: \(maxFileSize) bytes)")
+            return
+        }
+        
+        // 6. 验证路径遍历攻击
+        let pathComponents = sourceURL.pathComponents
+        guard !pathComponents.contains("..") else {
+            print("[FileTransferManager] Upload failed: Invalid path with parent directory references")
+            return
+        }
+        
+        // 7. 验证设备存储空间
+        guard let storage = device.storageInfo.first(where: { $0.storageId == storageId }) else {
+            print("[FileTransferManager] Upload failed: Storage not found (storageId: \(storageId))")
+            return
+        }
+        
+        if fileSize > storage.freeSpace {
+            print("[FileTransferManager] Upload failed: Not enough space on device (required: \(fileSize), available: \(storage.freeSpace))")
+            return
+        }
+        
+        print("[FileTransferManager] Starting upload: \(sourceURL.lastPathComponent) (\(fileSize) bytes) to parentId: \(parentId), storageId: \(storageId)")
         
         let task = TransferTask(
             type: .upload,
@@ -130,6 +164,23 @@ class FileTransferManager: ObservableObject {
         }
         task.updateStatus(.cancelled)
         moveTaskToCompleted(task)
+    }
+    
+    /// 取消所有正在进行的传输任务
+    /// 在设备断开时调用，确保任务状态一致
+    func cancelAllTasks() {
+        let tasksToCancel = activeTasks
+        
+        for task in tasksToCancel {
+            task.isCancelled = true
+            task.id.uuidString.withCString { cString in
+                Kalam_CancelTask(UnsafeMutablePointer(mutating: cString))
+            }
+            task.updateStatus(.cancelled)
+            moveTaskToCompleted(task)
+        }
+        
+        print("[FileTransferManager] Cancelled \(tasksToCancel.count) active tasks")
     }
     
     func clearCompletedTasks() {
