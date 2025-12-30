@@ -23,6 +23,7 @@ Native/ (Go 桥接), Scripts/ (构建脚本), SwiftMTP/ (App/Models/Services/Vie
 ```bash
 # 构建
 xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP -configuration Debug
+scripts/build.sh
 
 # 清理
 xcodebuild clean -project SwiftMTP.xcodeproj -scheme SwiftMTP

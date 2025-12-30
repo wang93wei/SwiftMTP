@@ -97,7 +97,8 @@ struct FileItem: Identifiable, Hashable, Comparable {
         // 使用固定宽度的格式确保对齐
         // 中文：2024年12月26日 14:30
         // 英文：Dec 26, 2024, 2:30 PM
-        if locale.language.languageCode?.identifier == "zh" {
+        // 安全检查：locale.language 可能为 nil
+        if let languageCode = locale.language.languageCode?.identifier, languageCode == "zh" {
             // 中文格式：使用两位数月份确保对齐
             formatter.dateFormat = "yyyy年MM月dd日 HH:mm"
         } else {

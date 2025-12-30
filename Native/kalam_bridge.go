@@ -272,6 +272,7 @@ type DeviceJSON struct {
 	Name         string          `json:"name"`
 	Manufacturer string          `json:"manufacturer"`
 	Model        string          `json:"model"`
+	SerialNumber string          `json:"serialNumber"`
 	Storage      []StorageJSON   `json:"storage"`
 	MTPSupport   MTPSupportJSON  `json:"mtpSupport"`
 }
@@ -342,6 +343,7 @@ func Kalam_Scan() *C.char {
 			Name:         deviceName,
 			Manufacturer: info.Manufacturer,
 			Model:        info.Model,
+			SerialNumber: info.SerialNumber,
 			Storage:      []StorageJSON{},
 			MTPSupport:   mtpSupport,
 		}

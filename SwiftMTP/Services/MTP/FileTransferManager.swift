@@ -120,10 +120,31 @@ class FileTransferManager: ObservableObject {
             return
         }
         
-        // 6. 验证路径遍历攻击
+        // 6. 验证路径遍历攻击（更严格的检查）
+        // 检查路径是否包含相对引用（..）
         let pathComponents = sourceURL.pathComponents
         guard !pathComponents.contains("..") else {
             print("[FileTransferManager] Upload failed: Invalid path with parent directory references")
+            return
+        }
+        
+        // 检查路径是否包含符号链接
+        do {
+            let fileAttributes = try FileManager.default.attributesOfItem(atPath: sourceURL.path)
+            if let fileType = fileAttributes[.type] as? FileAttributeType,
+               fileType == .typeSymbolicLink {
+                print("[FileTransferManager] Upload failed: Symbolic links are not allowed")
+                return
+            }
+        } catch {
+            print("[FileTransferManager] Upload failed: Could not verify file type: \(error)")
+            return
+        }
+        
+        // 标准化路径并确保没有相对引用
+        let standardizedPath = sourceURL.standardizedFileURL.path
+        guard standardizedPath == sourceURL.path else {
+            print("[FileTransferManager] Upload failed: Path contains relative references or symbolic links")
             return
         }
         

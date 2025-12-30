@@ -14,6 +14,7 @@ struct KalamDevice: Codable {
     let name: String
     let manufacturer: String
     let model: String
+    let serialNumber: String
     let storage: [KalamStorage]
     let mtpSupport: KalamMTPSupport
 }
@@ -81,8 +82,11 @@ class DeviceManager: ObservableObject {
     /// 设备 ID 缓存（按设备索引缓存 UUID，保持跨扫描的一致性）
     private var deviceIdCache: [Int: UUID] = [:]
     
-    /// 上次成功扫描的设备 ID 集合（用于检测设备断开）
-    private var lastDeviceIds: Set<UUID> = []
+    /// 设备序列号缓存（按设备索引缓存序列号，用于设备唯一标识）
+    private var deviceSerialCache: [Int: String] = [:]
+    
+    /// 上次成功扫描的设备序列号集合（用于检测设备断开）
+    private var lastDeviceSerials: Set<String> = []
     
     /// 连续失败次数（用于指数退避）
     private var consecutiveFailures: Int = 0
@@ -236,17 +240,17 @@ class DeviceManager: ObservableObject {
     /// 更新设备列表
     /// - Parameter newDevices: 新的设备列表
     private func updateDevices(_ newDevices: [Device]) {
-        let newIds = Set(newDevices.map { $0.id })
+        let newSerials = Set(newDevices.map { $0.serialNumber })
         
-        // 检查选中的设备是否仍然连接
-        if let selected = selectedDevice, !newIds.contains(selected.id) {
+        // 检查选中的设备是否仍然连接（使用序列号而非 UUID）
+        if let selected = selectedDevice, !selected.serialNumber.isEmpty && !newSerials.contains(selected.serialNumber) {
             // 设备已断开
             handleDeviceDisconnection()
         }
         
         // 更新设备列表
         devices = newDevices
-        lastDeviceIds = newIds
+        lastDeviceSerials = newSerials
         
         // 成功检测到设备时重置失败计数和扫描间隔
         if !newDevices.isEmpty {
@@ -333,13 +337,16 @@ class DeviceManager: ObservableObject {
         let deviceId = deviceIdCache[kalamDevice.id] ?? UUID()
         deviceIdCache[kalamDevice.id] = deviceId
         
+        // 缓存序列号用于设备唯一标识
+        deviceSerialCache[kalamDevice.id] = kalamDevice.serialNumber
+        
         return Device(
             id: deviceId,
             deviceIndex: kalamDevice.id,
             name: kalamDevice.name,
             manufacturer: kalamDevice.manufacturer,
             model: kalamDevice.model,
-            serialNumber: "",
+            serialNumber: kalamDevice.serialNumber,
             batteryLevel: nil,
             storageInfo: storageInfos,
             mtpSupportInfo: mtpSupportInfo,
