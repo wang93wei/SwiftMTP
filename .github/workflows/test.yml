@@ -1,0 +1,145 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  swift-tests:
+    name: Swift Tests
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      
+      - name: Install dependencies
+        run: |
+          brew install libusb-1.0 go
+          go version
+      
+      - name: Build Kalam Bridge
+        run: |
+          cd Native
+          go mod download
+          go build -o ../SwiftMTP/libkalam.dylib -buildmode=c-shared kalam_bridge.go
+          cd ..
+      
+      - name: Run Swift Tests
+        run: |
+          xcodebuild test \
+            -project SwiftMTP.xcodeproj \
+            -scheme SwiftMTP \
+            -destination 'platform=macOS' \
+            -enableCodeCoverage YES \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+      
+      - name: Generate Swift Coverage Report
+        if: always()
+        run: |
+          mkdir -p build/coverage
+          xcrun xccov view --report --json --json > build/coverage/swift_coverage.json || true
+          xcrun xccov view --report > build/coverage/swift_coverage.txt || true
+      
+      - name: Upload Swift Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-coverage
+          path: build/coverage/
+          retention-days: 7
+  
+  go-tests:
+    name: Go Tests
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      
+      - name: Install dependencies
+        run: |
+          brew install libusb-1.0
+          go version
+      
+      - name: Run Go Tests
+        working-directory: ./Native
+        run: |
+          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+      
+      - name: Generate Go Coverage Report
+        working-directory: ./Native
+        run: |
+          mkdir -p ../build/coverage
+          go tool cover -html=coverage.out -o ../build/coverage/go_coverage.html
+          go tool cover -func=coverage.out > ../build/coverage/go_coverage.txt
+      
+      - name: Upload Go Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: build/coverage/
+          retention-days: 7
+  
+  coverage-summary:
+    name: Coverage Summary
+    runs-on: macos-latest
+    needs: [swift-tests, go-tests]
+    if: always()
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download Swift Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: swift-coverage
+          path: build/coverage/swift
+      
+      - name: Download Go Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: go-coverage
+          path: build/coverage/go
+      
+      - name: Display Coverage Summary
+        run: |
+          echo "======================================"
+          echo "Test Coverage Summary"
+          echo "======================================"
+          echo ""
+          
+          if [ -f "build/coverage/swift/swift_coverage.txt" ]; then
+            echo "Swift Coverage:"
+            echo "--------------------------------------"
+            head -20 build/coverage/swift/swift_coverage.txt
+            echo ""
+          fi
+          
+          if [ -f "build/coverage/go/go_coverage.txt" ]; then
+            echo "Go Coverage:"
+            echo "--------------------------------------"
+            tail -5 build/coverage/go/go_coverage.txt
+            echo ""
+          fi
+          
+          echo "======================================"
+          echo "Coverage reports available in artifacts"
+          echo "======================================"

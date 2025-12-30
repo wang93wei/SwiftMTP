@@ -107,26 +107,10 @@ class TransferTask: Identifiable, ObservableObject {
     // MARK: - 私有属性
     
     /// 任务是否已取消（内部状态）
-    private var _isCancelled = false
-    
-    /// 取消状态的锁
-    private let cancelLock = NSLock()
+    /// Note: @MainActor ensures thread safety, no lock needed
+    var isCancelled = false
     
     // MARK: - 计算属性
-    
-    /// 任务是否已取消（线程安全）
-    var isCancelled: Bool {
-        get {
-            cancelLock.lock()
-            defer { cancelLock.unlock() }
-            return _isCancelled
-        }
-        set {
-            cancelLock.lock()
-            defer { cancelLock.unlock() }
-            _isCancelled = newValue
-        }
-    }
     
     /// 传输进度（0.0 - 1.0）
     var progress: Double {

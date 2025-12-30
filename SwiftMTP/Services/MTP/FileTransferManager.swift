@@ -179,20 +179,7 @@ class FileTransferManager: ObservableObject {
     }
     
     func cancelTask(_ task: TransferTask) {
-        task.isCancelled = true
-        task.id.uuidString.withCString { cString in
-            Kalam_CancelTask(UnsafeMutablePointer(mutating: cString))
-        }
-        task.updateStatus(.cancelled)
-        moveTaskToCompleted(task)
-    }
-    
-    /// 取消所有正在进行的传输任务
-    /// 在设备断开时调用，确保任务状态一致
-    func cancelAllTasks() {
-        let tasksToCancel = activeTasks
-        
-        for task in tasksToCancel {
+        Task { @MainActor in
             task.isCancelled = true
             task.id.uuidString.withCString { cString in
                 Kalam_CancelTask(UnsafeMutablePointer(mutating: cString))
@@ -200,15 +187,30 @@ class FileTransferManager: ObservableObject {
             task.updateStatus(.cancelled)
             moveTaskToCompleted(task)
         }
+    }
+    
+    /// 取消所有正在进行的传输任务
+    /// 在设备断开时调用，确保任务状态一致
+    func cancelAllTasks() {
+        let tasksToCancel = activeTasks
         
-        print("[FileTransferManager] Cancelled \(tasksToCancel.count) active tasks")
+        Task { @MainActor in
+            for task in tasksToCancel {
+                task.isCancelled = true
+                task.id.uuidString.withCString { cString in
+                    Kalam_CancelTask(UnsafeMutablePointer(mutating: cString))
+                }
+                task.updateStatus(.cancelled)
+                moveTaskToCompleted(task)
+            }
+            
+            print("[FileTransferManager] Cancelled \(tasksToCancel.count) active tasks")
+        }
     }
     
     func clearCompletedTasks() {
-        DispatchQueue.main.async {
-            self.completedTasks.removeAll()
-        }
-    }
+    completedTasks.removeAll()
+}
     
     // MARK: - Private Methods
     
