@@ -551,10 +551,7 @@ func (d *Device) bulkWrite(hdr *usbBulkHeader, r io.Reader, size int64, req *Con
 			cpSize = size
 		}
 
-		_, copyErr := io.CopyN(buf, r, cpSize)
-		if copyErr != nil {
-			return cpSize, copyErr
-		}
+		_, err = io.CopyN(buf, r, cpSize)
 		d.dataPrint(d.sendEP, buf.Bytes())
 		_, err = d.h.BulkTransfer(d.sendEP, buf.Bytes(), d.Timeout)
 		if err != nil {
@@ -563,10 +560,8 @@ func (d *Device) bulkWrite(hdr *usbBulkHeader, r io.Reader, size int64, req *Con
 		size -= cpSize
 		n += cpSize
 
-		if progressCb != nil {
-			if err := progressCb(totalSize - size); err != nil {
-				return n, err
-			}
+		if err = progressCb(totalSize - size); err != nil {
+			return cpSize, err
 		}
 	}
 
@@ -594,10 +589,8 @@ func (d *Device) bulkWrite(hdr *usbBulkHeader, r io.Reader, size int64, req *Con
 			break
 		}
 
-		if progressCb != nil {
-			if err := progressCb(totalSize - size); err != nil {
-				return n, err
-			}
+		if err = progressCb(totalSize - size); err != nil {
+			return size, err
 		}
 	}
 
