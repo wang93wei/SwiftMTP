@@ -26,7 +26,35 @@ sequenceDiagram
         App->>App: 设置 AppleLanguages
         Note over App: 影响菜单栏和文件选择器
     else 无保存设置
-        LM->>Bundle: 使用 Bundle.main (系统默认)
+        Note over LM: 系统默认模式 - 显式检测系统语言
+        LM->>LM: 获取 Locale.preferredLanguages
+        alt Locale.preferredLanguages 为空
+            LM->>UD: 从 UserDefaults 读取 AppleLanguages
+            UD-->>LM: 返回语言列表
+        end
+
+        Note over LM: 匹配支持的语言
+        LM->>LM: 遍历系统语言列表
+        alt 匹配到中文 (zh*)
+            LM->>Bundle: path(forResource: "zh-Hans", ofType: "lproj")
+        else 匹配到英文 (en*)
+            LM->>Bundle: path(forResource: "en", ofType: "lproj")
+        end
+
+        alt 找到匹配的语言包
+            Bundle-->>LM: 返回语言包路径
+            LM->>LM: 加载语言包
+        else 未找到匹配语言
+            LM->>Bundle: 使用 Bundle.main (系统默认)
+        end
+    end
+
+    Note over LM: 语言包验证
+    LM->>Bundle: 验证语言包有效性
+    alt 测试键未找到
+        LM->>LM: 回退到 Bundle.main
+        LM->>NC: post(.languageBundleLoadFailed)
+        Note over NC: 通知用户语言包加载失败
     end
 
     Note over App: 自定义菜单栏
@@ -145,15 +173,29 @@ sequenceDiagram
     DM->>DM: updateDevices() 更新状态
     DM->>DM: isScanning = false (主线程)
 
-    alt 仅有一个设备
-        DM->>DM: auto-select 设备
+    Note over DM: updateDevices() 内部处理
+    DM->>DM: 检查选中设备是否断开（序列号比对）
+    DM->>DM: 更新设备列表和序列号缓存
+    alt 检测到设备
+        DM->>DM: consecutiveFailures = 0
+        DM->>DM: currentScanInterval = 3.0s
+        DM->>DM: showManualRefreshButton = false
     end
 
-    Note over DM: 自适应扫描频率
-    alt 无设备连接
-        DM->>DM: 间隔 currentScanInterval (初始3秒)
-    else 设备已连接
-        DM->>DM: 间隔 5 秒扫描
+    Note over DM: 动态调整扫描间隔
+    DM->>DM: 比较当前间隔和新间隔
+    alt 间隔变化超过 0.5 秒
+        DM->>DM: 停止当前定时器
+        DM->>DM: 创建新定时器（新间隔）
+        alt 无设备连接
+            DM->>DM: 间隔 currentScanInterval (指数退避)
+        else 设备已连接
+            DM->>DM: 间隔 5 秒扫描
+        end
+    end
+
+    alt 仅有一个设备
+        DM->>DM: auto-select 设备
     end
 
     Note over DM,Device: 扫描成功路径
