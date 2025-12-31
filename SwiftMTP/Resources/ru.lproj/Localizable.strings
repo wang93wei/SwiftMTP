@@ -1,0 +1,209 @@
+/* Main Window */
+"deviceList" = "Список устройств";
+"noDeviceSelected" = "Устройство не выбрано";
+"selectDeviceFromList" = "Пожалуйста, выберите устройство Android из списка слева";
+"refresh" = "Обновить";
+"refreshFileList" = "Обновить список файлов";
+"refreshDeviceList" = "Обновить список устройств";
+"transferTasks" = "Задачи передачи";
+"viewTransferTasks" = "Просмотр задач передачи файлов";
+"deviceDisconnected" = "Устройство отключено";
+"ok" = "OK";
+"deviceDisconnectedMessage" = "Устройство Android отключено, пожалуйста, подключите устройство снова.";
+"androidDevice" = "Устройство Android";
+
+/* Device List */
+"devices" = "Устройства";
+"scanningDevices" = "Сканирование устройств...";
+"noDevices" = "Нет устройств";
+"connectDeviceViaUSB" = "Пожалуйста, подключите устройство Android через USB\nи убедитесь, что включен режим передачи файлов";
+
+/* File Browser */
+"deleteFile" = "Удалить файл";
+"cancel" = "Отмена";
+"delete" = "Удалить";
+"confirmDeleteFile" = "Вы уверены, что хотите удалить \"%1$@\"? Это действие нельзя отменить.";
+"operationFailed" = "Операция не удалась";
+"back" = "Назад";
+"goBack" = "Вернуться на предыдущий уровень";
+"newFolder" = "Новая папка";
+"createNewFolder" = "Создать новую папку";
+"folder" = "Папка";
+"create" = "Создать";
+"uploadFiles" = "Загрузить файлы";
+"uploadToCurrentDir" = "Загрузить файлы в текущий каталог";
+"download" = "Скачать";
+"downloadSelectedFiles" = "Скачать выбранные файлы";
+"deleteSelectedFiles" = "Удалить выбранные файлы";
+"folderEmpty" = "Папка пуста";
+"noFilesInFolder" = "В этой папке нет файлов";
+"dragFilesToUpload" = "Или перетащите файлы сюда для загрузки";
+"loadingFileList" = "Загрузка списка файлов...";
+"deleteFailed" = "Удаление не удалось";
+"confirmDeleteFolder" = "Вы уверены, что хотите удалить эту папку? Это действие рекурсивно удалит все содержимое.";
+"moveToTrash" = "Переместить в корзину";
+"uploadSuccess" = "Загрузка успешна";
+"uploadSuccessMessage" = "%1$@ успешно загружен";
+"uploadFailed" = "Загрузка не удалась";
+"uploadFailedMessage" = "Не удалось загрузить %1$@: %2$@";
+"downloadSuccess" = "Скачивание успешно";
+"downloadSuccessMessage" = "%1$@ сохранен в %2$@";
+"downloadFailed" = "Скачивание не удалось";
+"downloadFailedMessage" = "Не удалось скачать %1$@: %2$@";
+"createFolderFailed" = "Создание папки не удалось";
+"createFolderFailedMessage" = "Не удалось создать папку: %1$@";
+"folderNamePlaceholder" = "Имя папки";
+
+/* File Browser Table Headers */
+"name" = "Имя";
+"size" = "Размер";
+"type" = "Тип";
+"modifiedDate" = "Дата изменения";
+"rootDirectory" = "Корневой каталог";
+"downloadFile" = "Скачать";
+"downloadSelected" = "Скачать выбранное";
+"someFilesExist" = "Некоторые файлы уже существуют";
+"filesExistMessage" = "%1$d файлов уже существуют в месте назначения. Хотите заменить их?\n\nСуществующие файлы:\n%2$@";
+"skip" = "Пропустить";
+"skipExisting" = "Пропустить существующие файлы";
+"replaceAll" = "Заменить все";
+"replace" = "Заменить";
+"cancelDownload" = "Отмена";
+"selectDownloadLocation" = "Выбрать место загрузки";
+"selectUploadFiles" = "Выбрать файлы для загрузки";
+"selectUploadFolder" = "Выбрать папку для загрузки";
+"newFolderName" = "Имя новой папки";
+"enterFolderName" = "Введите имя папки";
+"selectDestination" = "Выбрать назначение";
+"cancelUpload" = "Отменить загрузку";
+"uploadFile" = "Загрузить файл";
+"uploadToDevice" = "Загрузить на устройство";
+"deleteConfirmTitle" = "Подтвердить удаление";
+"deleteFolderConfirmMessage" = "Вы уверены, что хотите удалить \"%1$@\"? Это действие рекурсивно удалит все содержимое и его нельзя отменить.";
+"moveToTrashConfirm" = "Переместить в корзину";
+"downloadTo" = "Скачать в: %1$@";
+"status" = "Статус";
+"progress" = "Прогресс";
+"noFilesSelected" = "Файлы не выбраны";
+"selectFilesToOperate" = "Выберите файлы для выполнения этой операции";
+
+/* File Transfer */
+"fileTransfer" = "Передача файлов";
+"done" = "Готово";
+"closeTransferWindow" = "Закрыть окно передачи";
+"noTransferTasks" = "Нет задач передачи";
+"noActiveTransfers" = "Нет активных передач файлов";
+"inProgress" = "В процессе";
+"completed" = "Завершено";
+"clearCompleted" = "Очистить";
+"clearCompletedTasks" = "Очистить завершенные задачи передачи";
+"transferring" = "Передача";
+"completedStatus" = "Завершено";
+"failedStatus" = "Не удалось";
+"cancelledStatus" = "Отменено";
+"pendingStatus" = "Ожидание";
+
+/* Settings */
+"general" = "Общие";
+"transfer" = "Передача";
+"advanced" = "Дополнительно";
+"about" = "О программе";
+"downloadSettings" = "Настройки загрузки";
+"defaultDownloadLocation" = "Место загрузки по умолчанию:";
+"select" = "Выбрать...";
+"path" = "Путь";
+"notifications" = "Уведомления";
+"showNotificationOnTransferComplete" = "Показывать уведомление при завершении передачи";
+"deviceDetection" = "Обнаружение устройства";
+"scanInterval" = "Интервал сканирования:";
+"seconds" = "%1$d секунд";
+"appName" = "SwiftMTP";
+"version" = "Версия %1$@";
+"author" = "Автор: Alan Wang";
+"mtpFileTransferTool" = "Инструмент передачи файлов MTP для Android на macOS";
+"copyright" = "© 2025 SwiftMTP";
+"builtWith" = "Построено на libusb-1.0 + go-mtpx";
+
+/* Additional */
+"createNewFolderDialog" = "Создать новую папку";
+"uploadFilesToCurrentDir" = "Загрузить файлы в текущий каталог: %1$@";
+"confirmDeleteFileWithName" = "Вы уверены, что хотите удалить \"%1$@\"? Это действие нельзя отменить.";
+"operationFailedWithMessage" = "Операция не удалась: %1$@";
+"help" = "Справка";
+"createNewFolderHelp" = "Создать новую папку в текущем каталоге";
+"uploadFilesHelp" = "Загрузить файлы с Mac в текущий каталог";
+"downloadHelp" = "Скачать выбранные файлы на Mac";
+"deleteHelp" = "Удалить выбранные файлы с устройства";
+"loadingFiles" = "Загрузка списка файлов...";
+
+/* Download Panel */
+"selectDownloadLocation" = "Выбрать место загрузки";
+"someFilesAlreadyExist" = "Некоторые файлы уже существуют";
+"filesAlreadyExistMessage" = "%1$d файлов уже существуют в месте назначения. Хотите заменить их?\n\nСуществующие файлы:\n%2$@";
+"cancel" = "Отмена";
+"skipExistingFiles" = "Пропустить существующие файлы";
+"replaceAll" = "Заменить все";
+"chooseDownloadLocation" = "Выбрать место загрузки";
+
+/* Upload Panel */
+"selectUploadFiles" = "Выбрать файлы для загрузки";
+"selectUploadLocation" = "Выбрать место загрузки";
+"uploadingTo" = "Загрузка в: %1$@";
+"uploadToDevice" = "Загрузить на устройство";
+
+/* File Transfer View */
+"fileTransferTitle" = "Передача файлов";
+"done" = "Готово";
+"closeTransferWindow" = "Закрыть окно передачи";
+"noTransferTasks" = "Нет задач передачи";
+"noActiveTransfers" = "В данный момент нет активных передач файлов";
+"inProgress" = "В процессе";
+"completed" = "Завершено";
+"clear" = "Очистить";
+"clearCompletedTasks" = "Очистить завершенные задачи передачи";
+"uploadType" = "Загрузка";
+"downloadType" = "Скачивание";
+"statusPending" = "Ожидание";
+"statusTransferring" = "Передача";
+"statusPaused" = "Приостановлено";
+"statusFailed" = "Не удалось: %1$@";
+"statusCancelled" = "Отменено";
+"estimatedTimeSeconds" = "%1$d сек";
+"estimatedTimeMinutes" = "%1$d мин";
+"estimatedTimeHours" = "%1$@ ч";
+
+/* Language Settings */
+"language" = "Язык";
+"languageSettings" = "Настройки языка";
+"selectLanguage" = "Выберите язык:";
+"languageEnglish" = "English (Английский)";
+"languageChinese" = "中文 (Китайский)";
+"languageJapanese" = "日本語 (Японский)";
+"languageKorean" = "한국어 (Корейский)";
+"languageRussian" = "Русский";
+"languageFrench" = "Français (Французский)";
+"languageGerman" = "Deutsch (Немецкий)";
+"languageChangeConfirm" = "Изменить язык?";
+"languageChangeMessage" = "Вы уверены, что хотите изменить язык интерфейса?";
+"languageChangeImmediate" = "Применить изменения немедленно";
+"languageChangeRestart" = "Перезапустить приложение для применения изменений";
+"apply" = "Применить";
+"restartRequired" = "Требуется перезапуск";
+"restartMessage" = "Изменение языка вступит в силу после перезапуска приложения.";
+"restartNow" = "Перезапустить сейчас";
+"restartLater" = "Позже";
+"systemDefault" = "По умолчанию системы";
+
+// FileTransfer error messages
+"cannotCreateDirectory" = "Не удается создать каталог назначения: %@";
+"cannotReplaceExistingFile" = "Не удается заменить существующий файл: %@";
+"fileAlreadyExistsAtDestination" = "Файл уже существует в месте назначения";
+"deviceDisconnectedReconnect" = "Устройство отключено, пожалуйста, подключите устройство снова";
+"downloadedFileInvalidOrCorrupted" = "Скачанный файл недействителен или поврежден";
+"downloadFailed" = "Скачивание не удалось";
+"deviceDisconnectedCheckUSB" = "Устройство отключено, пожалуйста, проверьте USB-соединение и попробуйте снова";
+"checkConnectionAndStorage" = "Скачивание не удалось, пожалуйста, проверьте подключение устройства и место на диске";
+"cannotReadFileInfo" = "Не удается прочитать информацию о файле";
+"uploadFailed" = "Загрузка не удалась";
+"deleteMultipleFiles" = "Удалить несколько файлов";
+"confirmDeleteMultipleFiles" = "Вы уверены, что хотите удалить эти %d файлов?\n\n%@\n\nЭто действие нельзя отменить.";

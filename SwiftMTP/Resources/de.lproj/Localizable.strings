@@ -1,0 +1,209 @@
+/* Main Window */
+"deviceList" = "Geräteliste";
+"noDeviceSelected" = "Kein Gerät ausgewählt";
+"selectDeviceFromList" = "Bitte wählen Sie ein Android-Gerät aus der Liste links aus";
+"refresh" = "Aktualisieren";
+"refreshFileList" = "Dateiliste aktualisieren";
+"refreshDeviceList" = "Geräteliste aktualisieren";
+"transferTasks" = "Übertragungsaufgaben";
+"viewTransferTasks" = "Dateiübertragungsaufgaben anzeigen";
+"deviceDisconnected" = "Gerät getrennt";
+"ok" = "OK";
+"deviceDisconnectedMessage" = "Das Android-Gerät wurde getrennt. Bitte verbinden Sie das Gerät erneut.";
+"androidDevice" = "Android-Gerät";
+
+/* Device List */
+"devices" = "Geräte";
+"scanningDevices" = "Suche nach Geräten...";
+"noDevices" = "Keine Geräte";
+"connectDeviceViaUSB" = "Bitte verbinden Sie ein Android-Gerät über USB\nund stellen Sie sicher, dass der Dateiübertragungsmodus aktiviert ist";
+
+/* File Browser */
+"deleteFile" = "Datei löschen";
+"cancel" = "Abbrechen";
+"delete" = "Löschen";
+"confirmDeleteFile" = "Sind Sie sicher, dass Sie \"%1$@\" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.";
+"operationFailed" = "Vorgang fehlgeschlagen";
+"back" = "Zurück";
+"goBack" = "Zurück zur vorherigen Ebene";
+"newFolder" = "Neuer Ordner";
+"createNewFolder" = "Neuen Ordner erstellen";
+"folder" = "Ordner";
+"create" = "Erstellen";
+"uploadFiles" = "Dateien hochladen";
+"uploadToCurrentDir" = "Dateien in das aktuelle Verzeichnis hochladen";
+"download" = "Herunterladen";
+"downloadSelectedFiles" = "Ausgewählte Dateien herunterladen";
+"deleteSelectedFiles" = "Ausgewählte Dateien löschen";
+"folderEmpty" = "Ordner ist leer";
+"noFilesInFolder" = "Dieser Ordner enthält keine Dateien";
+"dragFilesToUpload" = "Oder ziehen Sie Dateien hierher zum Hochladen";
+"loadingFileList" = "Dateiliste wird geladen...";
+"deleteFailed" = "Löschen fehlgeschlagen";
+"confirmDeleteFolder" = "Sind Sie sicher, dass Sie diesen Ordner löschen möchten? Dieser Vorgang wird rekursiv alle Inhalte löschen.";
+"moveToTrash" = "In den Papierkorb verschieben";
+"uploadSuccess" = "Hochladen erfolgreich";
+"uploadSuccessMessage" = "%1$@ erfolgreich hochgeladen";
+"uploadFailed" = "Hochladen fehlgeschlagen";
+"uploadFailedMessage" = "Hochladen von %1$@ fehlgeschlagen: %2$@";
+"downloadSuccess" = "Herunterladen erfolgreich";
+"downloadSuccessMessage" = "%1$@ in %2$@ gespeichert";
+"downloadFailed" = "Herunterladen fehlgeschlagen";
+"downloadFailedMessage" = "Herunterladen von %1$@ fehlgeschlagen: %2$@";
+"createFolderFailed" = "Ordnererstellung fehlgeschlagen";
+"createFolderFailedMessage" = "Erstellung des Ordners fehlgeschlagen: %1$@";
+"folderNamePlaceholder" = "Ordnername";
+
+/* File Browser Table Headers */
+"name" = "Name";
+"size" = "Größe";
+"type" = "Typ";
+"modifiedDate" = "Änderungsdatum";
+"rootDirectory" = "Stammverzeichnis";
+"downloadFile" = "Herunterladen";
+"downloadSelected" = "Auswahl herunterladen";
+"someFilesExist" = "Einige Dateien existieren bereits";
+"filesExistMessage" = "%1$d Dateien existieren bereits am Ziel. Möchten Sie sie ersetzen?\n\nVorhandene Dateien:\n%2$@";
+"skip" = "Überspringen";
+"skipExisting" = "Vorhandene Dateien überspringen";
+"replaceAll" = "Alle ersetzen";
+"replace" = "Ersetzen";
+"cancelDownload" = "Abbrechen";
+"selectDownloadLocation" = "Download-Speicherort auswählen";
+"selectUploadFiles" = "Dateien zum Hochladen auswählen";
+"selectUploadFolder" = "Ordner zum Hochladen auswählen";
+"newFolderName" = "Name des neuen Ordners";
+"enterFolderName" = "Ordnernamen eingeben";
+"selectDestination" = "Ziel auswählen";
+"cancelUpload" = "Hochladen abbrechen";
+"uploadFile" = "Datei hochladen";
+"uploadToDevice" = "Auf Gerät hochladen";
+"deleteConfirmTitle" = "Löschen bestätigen";
+"deleteFolderConfirmMessage" = "Sind Sie sicher, dass Sie \"%1$@\" löschen möchten? Dieser Vorgang wird rekursiv alle Inhalte löschen und kann nicht rückgängig gemacht werden.";
+"moveToTrashConfirm" = "In den Papierkorb verschieben";
+"downloadTo" = "Herunterladen nach: %1$@";
+"status" = "Status";
+"progress" = "Fortschritt";
+"noFilesSelected" = "Keine Dateien ausgewählt";
+"selectFilesToOperate" = "Wählen Sie Dateien aus, um diesen Vorgang auszuführen";
+
+/* File Transfer */
+"fileTransfer" = "Dateiübertragung";
+"done" = "Fertig";
+"closeTransferWindow" = "Übertragungsfenster schließen";
+"noTransferTasks" = "Keine Übertragungsaufgaben";
+"noActiveTransfers" = "Keine aktiven Dateiübertragungen";
+"inProgress" = "In Bearbeitung";
+"completed" = "Abgeschlossen";
+"clearCompleted" = "Löschen";
+"clearCompletedTasks" = "Abgeschlossene Übertragungsaufgaben löschen";
+"transferring" = "Übertragung läuft";
+"completedStatus" = "Abgeschlossen";
+"failedStatus" = "Fehlgeschlagen";
+"cancelledStatus" = "Abgebrochen";
+"pendingStatus" = "Ausstehend";
+
+/* Settings */
+"general" = "Allgemein";
+"transfer" = "Übertragung";
+"advanced" = "Erweitert";
+"about" = "Über";
+"downloadSettings" = "Download-Einstellungen";
+"defaultDownloadLocation" = "Standard-Download-Speicherort:";
+"select" = "Auswählen...";
+"path" = "Pfad";
+"notifications" = "Benachrichtigungen";
+"showNotificationOnTransferComplete" = "Benachrichtigung anzeigen, wenn Übertragung abgeschlossen ist";
+"deviceDetection" = "Geräteerkennung";
+"scanInterval" = "Scan-Intervall:";
+"seconds" = "%1$d Sekunden";
+"appName" = "SwiftMTP";
+"version" = "Version %1$@";
+"author" = "Autor: Alan Wang";
+"mtpFileTransferTool" = "macOS Android MTP-Dateiübertragungstool";
+"copyright" = "© 2025 SwiftMTP";
+"builtWith" = "Erstellt mit libusb-1.0 + go-mtpx";
+
+/* Additional */
+"createNewFolderDialog" = "Neuen Ordner erstellen";
+"uploadFilesToCurrentDir" = "Dateien in das aktuelle Verzeichnis hochladen: %1$@";
+"confirmDeleteFileWithName" = "Sind Sie sicher, dass Sie \"%1$@\" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.";
+"operationFailedWithMessage" = "Vorgang fehlgeschlagen: %1$@";
+"help" = "Hilfe";
+"createNewFolderHelp" = "Einen neuen Ordner im aktuellen Verzeichnis erstellen";
+"uploadFilesHelp" = "Dateien von Ihrem Mac in das aktuelle Verzeichnis hochladen";
+"downloadHelp" = "Ausgewählte Dateien auf Ihren Mac herunterladen";
+"deleteHelp" = "Ausgewählte Dateien vom Gerät löschen";
+"loadingFiles" = "Dateiliste wird geladen...";
+
+/* Download Panel */
+"selectDownloadLocation" = "Download-Speicherort auswählen";
+"someFilesAlreadyExist" = "Einige Dateien existieren bereits";
+"filesAlreadyExistMessage" = "%1$d Dateien existieren bereits am Ziel. Möchten Sie sie ersetzen?\n\nVorhandene Dateien:\n%2$@";
+"cancel" = "Abbrechen";
+"skipExistingFiles" = "Vorhandene Dateien überspringen";
+"replaceAll" = "Alle ersetzen";
+"chooseDownloadLocation" = "Download-Speicherort auswählen";
+
+/* Upload Panel */
+"selectUploadFiles" = "Dateien zum Hochladen auswählen";
+"selectUploadLocation" = "Upload-Speicherort auswählen";
+"uploadingTo" = "Hochladen nach: %1$@";
+"uploadToDevice" = "Auf Gerät hochladen";
+
+/* File Transfer View */
+"fileTransferTitle" = "Dateiübertragung";
+"done" = "Fertig";
+"closeTransferWindow" = "Übertragungsfenster schließen";
+"noTransferTasks" = "Keine Übertragungsaufgaben";
+"noActiveTransfers" = "Derzeit keine aktiven Dateiübertragungen";
+"inProgress" = "In Bearbeitung";
+"completed" = "Abgeschlossen";
+"clear" = "Löschen";
+"clearCompletedTasks" = "Abgeschlossene Übertragungsaufgaben löschen";
+"uploadType" = "Hochladen";
+"downloadType" = "Herunterladen";
+"statusPending" = "Ausstehend";
+"statusTransferring" = "Übertragung läuft";
+"statusPaused" = "Pausiert";
+"statusFailed" = "Fehlgeschlagen: %1$@";
+"statusCancelled" = "Abgebrochen";
+"estimatedTimeSeconds" = "%1$d Sek";
+"estimatedTimeMinutes" = "%1$d Min";
+"estimatedTimeHours" = "%1$@ Std";
+
+/* Language Settings */
+"language" = "Sprache";
+"languageSettings" = "Spracheinstellungen";
+"selectLanguage" = "Sprache auswählen:";
+"languageEnglish" = "English (Englisch)";
+"languageChinese" = "中文 (Chinesisch)";
+"languageJapanese" = "日本語 (Japanisch)";
+"languageKorean" = "한국어 (Koreanisch)";
+"languageRussian" = "Русский (Russisch)";
+"languageFrench" = "Français (Französisch)";
+"languageGerman" = "Deutsch";
+"languageChangeConfirm" = "Sprache ändern?";
+"languageChangeMessage" = "Sind Sie sicher, dass Sie die Sprache der Benutzeroberfläche ändern möchten?";
+"languageChangeImmediate" = "Änderungen sofort anwenden";
+"languageChangeRestart" = "Anwendung neu starten, um Änderungen anzuwenden";
+"apply" = "Anwenden";
+"restartRequired" = "Neustart erforderlich";
+"restartMessage" = "Die Sprachänderung wird nach dem Neustart der Anwendung wirksam.";
+"restartNow" = "Jetzt neu starten";
+"restartLater" = "Später";
+"systemDefault" = "Systemstandard";
+
+// FileTransfer error messages
+"cannotCreateDirectory" = "Zielverzeichnis kann nicht erstellt werden: %@";
+"cannotReplaceExistingFile" = "Vorhandene Datei kann nicht ersetzt werden: %@";
+"fileAlreadyExistsAtDestination" = "Datei existiert bereits am Ziel";
+"deviceDisconnectedReconnect" = "Gerät getrennt, bitte verbinden Sie das Gerät erneut";
+"downloadedFileInvalidOrCorrupted" = "Heruntergeladene Datei ist ungültig oder beschädigt";
+"downloadFailed" = "Herunterladen fehlgeschlagen";
+"deviceDisconnectedCheckUSB" = "Gerät getrennt, bitte überprüfen Sie die USB-Verbindung und versuchen Sie es erneut";
+"checkConnectionAndStorage" = "Herunterladen fehlgeschlagen, bitte überprüfen Sie die Geräteverbindung und den Speicherplatz";
+"cannotReadFileInfo" = "Dateiinformationen können nicht gelesen werden";
+"uploadFailed" = "Hochladen fehlgeschlagen";
+"deleteMultipleFiles" = "Mehrere Dateien löschen";
+"confirmDeleteMultipleFiles" = "Sind Sie sicher, dass Sie diese %d Dateien löschen möchten?\n\n%@\n\nDiese Aktion kann nicht rückgängig gemacht werden.";

@@ -180,6 +180,9 @@
 "languageChinese" = "中文 (中国語)";
 "languageJapanese" = "日本語";
 "languageKorean" = "한국어 (韓国語)";
+"languageRussian" = "Русский (ロシア語)";
+"languageFrench" = "Français (フランス語)";
+"languageGerman" = "Deutsch (ドイツ語)";
 "languageChangeConfirm" = "言語を変更しますか？";
 "languageChangeMessage" = "インターフェース言語を変更してもよろしいですか？";
 "languageChangeImmediate" = "変更をすぐに適用";

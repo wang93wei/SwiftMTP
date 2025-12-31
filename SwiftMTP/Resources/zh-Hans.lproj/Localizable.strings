@@ -182,6 +182,9 @@
 "languageChinese" = "中文";
 "languageJapanese" = "日本語 (日语)";
 "languageKorean" = "한국어 (韩语)";
+"languageRussian" = "Русский (俄语)";
+"languageFrench" = "Français (法语)";
+"languageGerman" = "Deutsch (德语)";
 "languageChangeConfirm" = "确定要切换语言吗?";
 "languageChangeMessage" = "确定要更改界面语言吗？";
 "languageChangeImmediate" = "立即应用更改";

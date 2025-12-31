@@ -119,7 +119,7 @@ class LanguageManager: ObservableObject {
             
             // 尝试匹配支持的语言
             var matchedLocale: String? = nil
-            
+
             for languageCode in systemLanguages {
                 // 检查是否匹配中文（包括 zh-Hans-CN, zh-Hans, zh-Hant, zh-CN 等变体）
                 if languageCode.hasPrefix("zh") {
@@ -131,6 +131,36 @@ class LanguageManager: ObservableObject {
                 else if languageCode.hasPrefix("en") {
                     matchedLocale = "en"
                     logLanguageChange("Matched English language: \(languageCode)")
+                    break
+                }
+                // 检查是否匹配日语
+                else if languageCode.hasPrefix("ja") {
+                    matchedLocale = "ja"
+                    logLanguageChange("Matched Japanese language: \(languageCode)")
+                    break
+                }
+                // 检查是否匹配韩语
+                else if languageCode.hasPrefix("ko") {
+                    matchedLocale = "ko"
+                    logLanguageChange("Matched Korean language: \(languageCode)")
+                    break
+                }
+                // 检查是否匹配俄语
+                else if languageCode.hasPrefix("ru") {
+                    matchedLocale = "ru"
+                    logLanguageChange("Matched Russian language: \(languageCode)")
+                    break
+                }
+                // 检查是否匹配法语
+                else if languageCode.hasPrefix("fr") {
+                    matchedLocale = "fr"
+                    logLanguageChange("Matched French language: \(languageCode)")
+                    break
+                }
+                // 检查是否匹配德语
+                else if languageCode.hasPrefix("de") {
+                    matchedLocale = "de"
+                    logLanguageChange("Matched German language: \(languageCode)")
                     break
                 }
             }

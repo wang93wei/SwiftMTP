@@ -548,6 +548,12 @@ struct FileBrowserView: View {
                 languages = ["ja", "ja-JP"]
             case .korean:
                 languages = ["ko", "ko-KR"]
+            case .russian:
+                languages = ["ru", "ru-RU"]
+            case .french:
+                languages = ["fr", "fr-FR"]
+            case .german:
+                languages = ["de", "de-DE"]
             case .system:
                 languages = nil
             }

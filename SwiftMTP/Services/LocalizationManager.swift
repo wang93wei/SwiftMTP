@@ -182,6 +182,9 @@ enum L10n {
         static var languageChinese: String { LanguageManager.shared.localizedString(for: "languageChinese") }
         static var languageJapanese: String { LanguageManager.shared.localizedString(for: "languageJapanese") }
         static var languageKorean: String { LanguageManager.shared.localizedString(for: "languageKorean") }
+        static var languageRussian: String { LanguageManager.shared.localizedString(for: "languageRussian") }
+        static var languageFrench: String { LanguageManager.shared.localizedString(for: "languageFrench") }
+        static var languageGerman: String { LanguageManager.shared.localizedString(for: "languageGerman") }
         static var languageChangeConfirm: String { LanguageManager.shared.localizedString(for: "languageChangeConfirm") }
         static var languageChangeMessage: String { LanguageManager.shared.localizedString(for: "languageChangeMessage") }
         static var languageChangeImmediate: String { LanguageManager.shared.localizedString(for: "languageChangeImmediate") }
