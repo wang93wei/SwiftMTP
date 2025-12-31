@@ -4,7 +4,7 @@
 
 <img src="SwiftMTP/App/Resources/SwiftMTP_Logo.svg" alt="SwiftMTP Logo" width="128">
 
-**macOS 原生 Android MTP 文件传输工具**
+**Native macOS Android MTP File Transfer Tool**
 
 [![Swift Version](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift)](https://swift.org)
 [![Platform](https://img.shields.io/badge/macOS-13.0+-000000?logo=apple)](https://www.apple.com/macos/)
@@ -12,192 +12,245 @@
 
 </div>
 
-## ✨ 功能特性
+---
 
-| 功能 | 描述 |
-|------|------|
-| 🔌 **设备自动检测** | 自动识别连接 Android 设备 |
-| 📁 **文件浏览** | 流畅浏览设备文件系统 |
-| ⬇️ **文件下载** | 支持单个和批量文件下载 |
-| ⬆️ **文件上传** | 支持按钮选择和拖放上传文件 |
-| 💾 **大文件支持** | 支持 >4GB 文件传输 |
-| 📦 **批量操作** | 批量选择和处理文件 |
-| 🎨 **现代化 UI** | 精美的 SwiftUI 界面 |
-| 📊 **存储信息** | 显示设备存储使用情况 |
-| 🌍 **多语言支持** | 支持简体中文、英文、日语、韩语，可跟随系统语言 |
+**🌍 Languages:** [English](README.md) | [简体中文](docs/README.zh-CN.md) | [日本語](docs/README.ja.md) | [한국어](docs/README.ko.md)
 
-## 📸 应用截图
+---
+
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🔌 **Auto Device Detection** | Automatically detect connected Android devices |
+| 📁 **File Browsing** | Smoothly browse device file system |
+| ⬇️ **File Download** | Support single and batch file downloads |
+| ⬆️ **File Upload** | Support button selection and drag-and-drop file uploads |
+| 💾 **Large File Support** | Support >4GB file transfers |
+| 📦 **Batch Operations** | Batch select and process files |
+| 🎨 **Modern UI** | Beautiful SwiftUI interface |
+| 📊 **Storage Info** | Display device storage usage |
+| 🌍 **Multi-language Support** | Support Simplified Chinese, English, Japanese, Korean, follows system language |
+
+## 📸 App Screenshot
 ![SwiftMTP Logo](SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png)
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 环境要求
+### Requirements
 
-| 依赖 | 版本要求 |
-|------|----------|
-| macOS | 13.0+ (Ventura 或更高) |
+| Dependency | Version |
+|------------|---------|
+| macOS | 13.0+ (Ventura or higher) |
 | Xcode | 15.0+ |
-| Homebrew | 最新版本 |
+| Homebrew | Latest version |
 
-### 安装依赖
+### Install Dependencies
 
 ```bash
 brew install libusb-1.0 go
 ```
 
-### 构建运行
+### Build and Run
 
 ```bash
-# 克隆项目
+# Clone the repository
 git clone https://github.com/wang93wei/SwiftMTP.git
 cd SwiftMTP
 
-# 构建 Go 桥接层
+# Build Go bridge layer
 ./Scripts/build_kalam.sh
 
-# 在 Xcode 中打开并运行
+# Open in Xcode and run
 open SwiftMTP.xcodeproj
 ```
 
-> 💡 **提示**: 连接 Android 设备后，在设备上选择 **文件传输 (MTP)** 模式即可使用。
+> 💡 **Tip**: After connecting your Android device, select **File Transfer (MTP)** mode on the device to start using.
 
-### 创建安装包
+### Create Installation Package
 
 ```bash
-# 简化版打包（无需开发者证书）
+# Simplified packaging (no developer certificate required)
 ./Scripts/create_dmg_simple.sh
 
-# 完整版打包（需要开发者证书）
+# Full packaging (requires developer certificate)
 ./Scripts/create_dmg.sh
 ```
 
-DMG 文件将生成在 `build/` 目录中。
+The DMG file will be generated in the `build/` directory.
 
-## 📖 使用指南
+## 📖 User Guide
 
-### 连接设备
+### Connecting a Device
 
-1. 通过 USB 将 Android 设备连接到 Mac
-2. 在设备上选择 **文件传输 (MTP)** 模式
-3. SwiftMTP 会自动检测并显示设备
+1. Connect your Android device to Mac via USB
+2. Select **File Transfer (MTP)** mode on the device
+3. SwiftMTP will automatically detect and display the device
 
-### 文件操作
+### File Operations
 
-| 操作 | 方法 |
-|------|------|
-| 浏览文件 | 双击文件夹进入，面包屑导航返回 |
-| 下载文件 | 右键点击文件 → **下载** |
-| 批量下载 | 多选文件 → 右键 → **下载所选文件** |
-| 上传文件 | 点击工具栏 **上传文件** 按钮或直接拖放文件到窗口 |
-| 拖放上传 | 将文件拖放到文件浏览器窗口即可上传 |
+| Operation | Method |
+|-----------|--------|
+| Browse files | Double-click folders to enter, use breadcrumb navigation to go back |
+| Download file | Right-click file → **Download** |
+| Batch download | Multi-select files → Right-click → **Download Selected Files** |
+| Upload file | Click **Upload File** button in toolbar or drag-drop files to window |
+| Drag-and-drop upload | Drag files to file browser window to upload |
 
-### 语言设置
+### Language Settings
 
-1. 打开 **设置** 窗口（⌘ + ,）
-2. 在 **通用** 标签页中选择语言
-3. 可选语言：
-   - **系统默认** - 跟随 macOS 系统语言
-   - **English** - 英文界面
-   - **中文** - 简体中文界面
-   - **日本語** - 日语界面
-   - **한국어** - 韩语界面
-4. 应用内界面会立即更新语言
-5. **菜单栏和文件选择器**需要重启应用才能生效，系统会提示是否立即重启
+1. Open **Settings** window (⌘ + ,)
+2. Select language in **General** tab
+3. Available languages:
+   - **System Default** - Follow macOS system language
+   - **English** - English interface
+   - **中文** - Simplified Chinese interface
+   - **日本語** - Japanese interface
+   - **한국어** - Korean interface
+4. In-app interface will update language immediately
+5. **Menu bar and file pickers** require app restart to take effect, system will prompt for immediate restart
 
-## 🏗️ 项目架构
+## 🏗️ Project Architecture
 
 ```
 SwiftMTP/
-├── Native/                         # Go 桥接层 (Kalam Kernel)
-│   ├── kalam_bridge.go            # 主要桥接实现 (CGO)
-│   └── vendor/                    # Go 依赖 (go-mtpx, usb)
+├── Native/                         # Go bridge layer (Kalam Kernel)
+│   ├── kalam_bridge.go            # Main bridge implementation (CGO)
+│   ├── kalam_bridge_test.go       # Go unit tests
+│   ├── libkalam.h                 # C header (Swift bridging)
+│   ├── go.mod / go.sum            # Go module dependencies
+│   └── vendor/                    # Go dependencies (go-mtpx, usb)
 ├── Scripts/
-│   ├── build_kalam.sh             # 构建 Go 动态库
-│   ├── create_dmg.sh              # DMG 打包脚本
-│   └── create_dmg_simple.sh       # 简化版打包
-├── SwiftMTP/                      # Swift 应用
-│   ├── App/                       # 应用入口
-│   ├── Models/                    # 数据模型
-│   │   ├── Device.swift           # 设备模型
-│   │   ├── FileItem.swift         # 文件模型
-│   │   ├── TransferTask.swift     # 传输任务模型
-│   │   └── AppLanguage.swift      # 语言模型
-│   ├── Services/                  # 服务层
-│   │   ├── MTP/                   # MTP 服务
-│   │   │   ├── DeviceManager.swift    # 设备管理
-│   │   │   ├── FileSystemManager.swift# 文件系统
-│   │   │   └── FileTransferManager.swift # 传输管理
-│   │   ├── LanguageManager.swift  # 语言管理器
-│   │   └── LocalizationManager.swift # 本地化管理器
-│   ├── Views/                     # SwiftUI 视图
-│   │   ├── MainWindowView.swift   # 主窗口
-│   │   ├── DeviceListView.swift   # 设备列表
-│   │   ├── FileBrowserView.swift  # 文件浏览器
-│   │   ├── FileTransferView.swift # 传输视图
-│   │   ├── SettingsView.swift     # 设置窗口
-│   │   └── Components/            # 可复用组件
-│   └── Resources/                 # 资源文件
-│       ├── Base.lproj/            # 基础语言包（英文）
-│       ├── en.lproj/              # 英文语言包
-│       ├── zh-Hans.lproj/         # 简体中文语言包
-│       ├── ja.lproj/              # 日语语言包
-│       └── ko.lproj/              # 韩语语言包
-└── SwiftMTP.xcodeproj/            # Xcode 项目
+│   ├── build_kalam.sh             # Build Go dynamic library
+│   ├── create_dmg.sh              # DMG packaging script
+│   ├── create_dmg_simple.sh       # Simplified packaging
+│   ├── generate_icons.sh          # Icon generation script
+│   ├── run_tests.sh               # Test running script
+│   └── SwiftMTP/                  # Resource scripts
+│       └── App/Assets.xcassets/   # App icon resources
+├── SwiftMTP/                      # Swift application
+│   ├── App/                       # App entry
+│   │   ├── SwiftMTPApp.swift      # App entry point
+│   │   ├── Info.plist             # App configuration
+│   │   ├── Assets.xcassets/       # Asset bundle (icons)
+│   │   └── Resources/             # App resources
+│   │       └── SwiftMTP_Logo.svg  # App Logo
+│   ├── Models/                    # Data models
+│   │   ├── Device.swift           # Device model
+│   │   ├── FileItem.swift         # File model
+│   │   ├── TransferTask.swift     # Transfer task model
+│   │   └── AppLanguage.swift      # Language model
+│   ├── Services/                  # Service layer
+│   │   ├── MTP/                   # MTP services
+│   │   │   ├── DeviceManager.swift    # Device management
+│   │   │   ├── FileSystemManager.swift# File system
+│   │   │   └── FileTransferManager.swift # Transfer management
+│   │   ├── LanguageManager.swift  # Language manager
+│   │   └── LocalizationManager.swift # Localization manager
+│   ├── Views/                     # SwiftUI views
+│   │   ├── MainWindowView.swift   # Main window
+│   │   ├── DeviceListView.swift   # Device list
+│   │   ├── FileBrowserView.swift  # File browser
+│   │   ├── FileTransferView.swift # Transfer view
+│   │   ├── SettingsView.swift     # Settings window
+│   │   └── Components/            # Reusable components
+│   │       ├── DeviceRowView.swift
+│   │       ├── LiquidGlassView.swift
+│   │       └── TransferTaskRowView.swift
+│   ├── Resources/                 # Resource files
+│   │   ├── Kalam.bundle/          # Go dynamic library bundle
+│   │   │   └── Contents/MacOS/Kalam
+│   │   ├── Base.lproj/            # Base language pack (English)
+│   │   │   ├── InfoPlist.strings
+│   │   │   └── Localizable.strings
+│   │   ├── en.lproj/              # English language pack
+│   │   │   ├── InfoPlist.strings
+│   │   │   └── Localizable.strings
+│   │   ├── zh-Hans.lproj/         # Simplified Chinese language pack
+│   │   │   ├── InfoPlist.strings
+│   │   │   └── Localizable.strings
+│   │   ├── ja.lproj/              # Japanese language pack
+│   │   │   ├── InfoPlist.strings
+│   │   │   └── Localizable.strings
+│   │   └── ko.lproj/              # Korean language pack
+│   │       ├── InfoPlist.strings
+│   │       └── Localizable.strings
+│   ├── libkalam.dylib             # Go dynamic library
+│   ├── libkalam.h                 # C header file
+│   └── SwiftMTP-Bridging-Header.h # Swift-C bridging header
+├── SwiftMTPTests/                 # Swift unit tests
+│   ├── AppLanguageTests.swift
+│   ├── DeviceTests.swift
+│   ├── FileBrowserViewTests.swift
+│   ├── FileItemTests.swift
+│   ├── FileSystemManagerTests.swift
+│   ├── FileTransferManagerTests.swift
+│   ├── LanguageManagerTests.swift
+│   ├── SwiftMTPTests.swift
+│   └── TransferTaskTests.swift
+├── docs/                          # Project documentation
+│   ├── sequence-diagrams.md       # Sequence diagram documentation
+│   ├── TESTING.md                 # Testing documentation
+│   └── WIKI.md                    # Project Wiki
+├── build/                         # Build output directory
+├── .github/workflows/             # GitHub Actions
+│   └── test.yml                   # CI test configuration
+└── SwiftMTP.xcodeproj/            # Xcode project
 ```
 
-### 技术栈
+### Tech Stack
 
-- **语言**: Swift 5.9+, Go 1.22+
-- **UI 框架**: SwiftUI
-- **MTP 库**: go-mtpx (基于 libusb-1.0)
-- **架构模式**: MVVM
-- **桥接方式**: CGO
-- **国际化**: Swift 本地化框架 (NSLocalizedString)
+- **Languages**: Swift 5.9+, Go 1.22+
+- **UI Framework**: SwiftUI
+- **MTP Library**: go-mtpx (based on libusb-1.0)
+- **Architecture Pattern**: MVVM
+- **Bridging Method**: CGO
+- **Internationalization**: Swift localization framework (NSLocalizedString)
 
-## ⚠️ 已知限制
+## ⚠️ Known Limitations
 
-1. 需要禁用沙盒才能访问 USB 设备
-2. 传输速度受 MTP 协议限制
-3. 目前仅支持单个文件上传（不支持文件夹）
+1. Sandbox must be disabled to access USB devices
+2. Transfer speed is limited by MTP protocol
+3. Currently only supports single file upload (folder upload not supported)
 
-## 🔧 故障排除
+## 🔧 Troubleshooting
 
-### 设备未被检测到
+### Device Not Detected
 
 ```
-✓ 确保设备已开启 MTP 模式
-✓ 尝试断开重连 USB 线
-✓ 重启应用
-✓ 检查 USB 线是否支持数据传输
+✓ Ensure device is in MTP mode
+✓ Try unplugging and reconnecting USB cable
+✓ Restart the app
+✓ Check if USB cable supports data transfer
 ```
 
-### 编译错误
+### Build Errors
 
 ```bash
-# 检查 libusb-1.0 安装
+# Check libusb-1.0 installation
 brew list libusb-1.0
 
-# 重新构建 Go 桥接层
+# Rebuild Go bridge layer
 ./Scripts/build_kalam.sh
 
-# 清理并重新构建
+# Clean and rebuild
 xcodebuild clean
 xcodebuild
 ```
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎提交 Issue 和 Pull Request！
+Issues and Pull Requests are welcome!
 
-## 📄 许可证
+## 📄 License
 
-本项目采用 MIT License - 详见 [LICENSE](LICENSE) 文件。
+This project is licensed under MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 <div align="center">
 
-**如果这个项目对你有帮助，欢迎 ⭐ Star 支持！**
+**If this project helps you, please ⭐ Star to support!**
 
 [![Star History Chart](https://api.star-history.com/svg?repos=wang93wei/SwiftMTP&type=Date)](https://star-history.com/#wang93wei/SwiftMTP&Date)
 
