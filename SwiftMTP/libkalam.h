@@ -99,6 +99,7 @@ extern void Kalam_CancelTask(char* taskID);
 extern GoInt32 Kalam_UploadFile(GoUint32 storageID, GoUint32 parentID, char* sourcePath, char* taskID);
 extern GoInt32 Kalam_RefreshStorage(GoUint32 storageID);
 extern GoInt32 Kalam_ResetDeviceCache(void);
+extern void Kalam_CleanupLeakedStrings(void);
 
 #ifdef __cplusplus
 }

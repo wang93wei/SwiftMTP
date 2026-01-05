@@ -20,18 +20,12 @@ class FileSystemManager {
     // MARK: - 常量
     
     /// 缓存过期时间（秒）
-    private static let CacheExpirationInterval: TimeInterval = 30.0
+    private static let CacheExpirationInterval: TimeInterval = 60.0
     
     /// 根目录 ID（MTP 协议标准值）
     private static let RootDirectoryId: UInt32 = 0xFFFFFFFF
     
     // MARK: - 属性
-    
-    /// 文件缓存（线程安全）
-    private var fileCache: [String: CacheEntry] = [:]
-    
-    /// 缓存锁
-    private let cacheLock = NSLock()
     
     // MARK: - 内部类型
     
@@ -48,6 +42,21 @@ class FileSystemManager {
         }
     }
     
+    /// 缓存条目包装类（用于NSCache，因为NSCache要求对象类型必须是类）
+    private class CacheEntryWrapper: NSObject {
+        let entry: CacheEntry
+        init(_ entry: CacheEntry) {
+            self.entry = entry
+        }
+    }
+    
+    /// 文件缓存（使用NSCache实现自动内存管理）
+    private let fileCache = NSCache<NSString, CacheEntryWrapper>()
+    
+    /// 设备ID到缓存键的映射（用于精确清理缓存）
+    private var deviceCacheKeys: [UUID: Set<String>] = [:]
+    private let cacheKeysLock = NSLock()
+    
     /// Kalam 文件结构（用于 JSON 解码）
     private struct KalamFile: Codable {
         let id: UInt32
@@ -61,7 +70,11 @@ class FileSystemManager {
     
     // MARK: - 初始化
     
-    private init() {}
+    private init() {
+        // 配置文件缓存
+        fileCache.countLimit = 1000  // 最多缓存1000个目录
+        fileCache.totalCostLimit = 50 * 1024 * 1024  // 50MB限制
+    }
     
     // MARK: - 公共方法
     
@@ -74,13 +87,10 @@ class FileSystemManager {
     func getFileList(for device: Device, parentId: UInt32 = RootDirectoryId, storageId: UInt32 = RootDirectoryId) -> [FileItem] {
         let cacheKey = "\(device.id)-\(storageId)-\(parentId)"
         
-        // 检查缓存
-        cacheLock.lock()
-        if let cached = fileCache[cacheKey], !cached.isExpired {
-            cacheLock.unlock()
-            return cached.items
+        // 检查缓存（NSCache是线程安全的）
+        if let cachedWrapper = fileCache.object(forKey: NSString(string: cacheKey)), !cachedWrapper.entry.isExpired {
+            return cachedWrapper.entry.items
         }
-        cacheLock.unlock()
         
         // 调用 Kalam 获取文件列表
         guard let jsonPtr = Kalam_ListFiles(storageId, parentId) else {
@@ -123,11 +133,18 @@ class FileSystemManager {
                 )
             }
             
-            // 更新缓存
-            cacheLock.lock()
+            // 更新缓存（NSCache是线程安全的）
             let entry = CacheEntry(items: items, timestamp: Date())
-            fileCache[cacheKey] = entry
-            cacheLock.unlock()
+            let entryWrapper = CacheEntryWrapper(entry)
+            fileCache.setObject(entryWrapper, forKey: NSString(string: cacheKey))
+            
+            // 记录缓存键到设备映射
+            cacheKeysLock.lock()
+            if deviceCacheKeys[device.id] == nil {
+                deviceCacheKeys[device.id] = Set<String>()
+            }
+            deviceCacheKeys[device.id]?.insert(cacheKey)
+            cacheKeysLock.unlock()
             
             return items
         } catch {
@@ -159,9 +176,10 @@ class FileSystemManager {
     
     /// 清除所有缓存
     func clearCache() {
-        cacheLock.lock()
-        fileCache.removeAll()
-        cacheLock.unlock()
+        fileCache.removeAllObjects()
+        cacheKeysLock.lock()
+        deviceCacheKeys.removeAll()
+        cacheKeysLock.unlock()
         print("[FileSystemManager] Cleared all cache")
     }
     
@@ -173,10 +191,23 @@ class FileSystemManager {
     /// 清除指定设备的缓存
     /// - Parameter device: 目标设备
     func clearCache(for device: Device) {
-        cacheLock.lock()
-        fileCache = fileCache.filter { !$0.key.hasPrefix("\(device.id)-") }
-        cacheLock.unlock()
-        print("[FileSystemManager] Cleared cache for device \(device.id)")
+        cacheKeysLock.lock()
+        guard let keys = deviceCacheKeys[device.id] else {
+            cacheKeysLock.unlock()
+            print("[FileSystemManager] No cache found for device \(device.id)")
+            return
+        }
+        
+        // 精确清除该设备的所有缓存
+        for key in keys {
+            fileCache.removeObject(forKey: NSString(string: key))
+        }
+        
+        // 从映射中移除该设备的缓存键
+        deviceCacheKeys.removeValue(forKey: device.id)
+        cacheKeysLock.unlock()
+        
+        print("[FileSystemManager] Cleared \(keys.count) cache entries for device \(device.id)")
     }
     
     // MARK: - 私有方法

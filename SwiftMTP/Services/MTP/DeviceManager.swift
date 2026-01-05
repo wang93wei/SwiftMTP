@@ -79,11 +79,19 @@ class DeviceManager: ObservableObject {
     /// 扫描定时器
     private var scanTimer: Timer?
     
-    /// 设备 ID 缓存（按设备索引缓存 UUID，保持跨扫描的一致性）
-    private var deviceIdCache: [Int: UUID] = [:]
+    /// 设备 ID 缓存（使用NSCache实现自动内存管理）
+    private let deviceIdCache = NSCache<NSNumber, UUIDWrapper>()
     
-    /// 设备序列号缓存（按设备索引缓存序列号，用于设备唯一标识）
-    private var deviceSerialCache: [Int: String] = [:]
+    /// 设备序列号缓存（使用NSCache实现自动内存管理）
+    private let deviceSerialCache = NSCache<NSNumber, NSString>()
+    
+    /// UUID包装类（用于NSCache，因为NSCache要求对象类型必须是类）
+    private class UUIDWrapper: NSObject {
+        let uuid: UUID
+        init(_ uuid: UUID) {
+            self.uuid = uuid
+        }
+    }
     
     /// 上次成功扫描的设备序列号集合（用于检测设备断开）
     private var lastDeviceSerials: Set<String> = []
@@ -97,6 +105,15 @@ class DeviceManager: ObservableObject {
     private init() {
         // 初始化 Kalam 内核
         Kalam_Init()
+        
+        // 配置设备ID缓存
+        deviceIdCache.countLimit = 100  // 最多缓存100个设备
+        deviceIdCache.totalCostLimit = 10 * 1024 * 1024  // 10MB限制
+        
+        // 配置设备序列号缓存
+        deviceSerialCache.countLimit = 100  // 最多缓存100个设备
+        deviceSerialCache.totalCostLimit = 10 * 1024  // 10KB限制
+        
         startScanning()
     }
     
@@ -333,12 +350,14 @@ class DeviceManager: ObservableObject {
             vendorExtension: kalamDevice.mtpSupport.vendorExtension
         )
         
-        // 使用缓存的 UUID 或生成新的
-        let deviceId = deviceIdCache[kalamDevice.id] ?? UUID()
-        deviceIdCache[kalamDevice.id] = deviceId
+        // 使用缓存的 UUID 或生成新的（NSCache是线程安全的）
+        let deviceKey = NSNumber(value: kalamDevice.id)
+        let deviceIdWrapper = deviceIdCache.object(forKey: deviceKey) ?? UUIDWrapper(UUID())
+        deviceIdCache.setObject(deviceIdWrapper, forKey: deviceKey)
+        let deviceId = deviceIdWrapper.uuid
         
-        // 缓存序列号用于设备唯一标识
-        deviceSerialCache[kalamDevice.id] = kalamDevice.serialNumber
+        // 缓存序列号用于设备唯一标识（NSCache是线程安全的）
+        deviceSerialCache.setObject(NSString(string: kalamDevice.serialNumber), forKey: deviceKey)
         
         return Device(
             id: deviceId,

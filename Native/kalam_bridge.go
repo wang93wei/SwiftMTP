@@ -20,68 +20,134 @@ import (
 	"github.com/ganeshrvel/go-mtpx"
 )
 
-// MARK: - 常量定义
+// MARK: - Constants
 
-// 超时设置（毫秒）
+// Timeout settings (milliseconds)
 const (
-	// 快速扫描超时（5秒）
+	// Quick scan timeout (5 seconds)
 	QuickScanTimeout = 5000
-	// 正常操作超时（45秒）
+	// Normal operation timeout (45 seconds)
 	NormalOperationTimeout = 45000
-	// 大文件下载超时（300秒 = 5分钟）
+	// Large file download timeout (300 seconds = 5 minutes)
 	LargeFileDownloadTimeout = 300000
 )
 
-// 重试设置
+// Retry settings
 const (
-	// 快速扫描最大重试次数
+	// Quick scan maximum retries
 	QuickScanMaxRetries = 1
-	// 正常操作最大重试次数
+	// Normal operation maximum retries
 	NormalOperationMaxRetries = 3
-	// 下载最大重试次数
+	// Download maximum retries
 	DownloadMaxRetries = 3
 )
 
-// 退避设置
+// Backoff settings
 const (
-	// 快速扫描退避时间（毫秒）
+	// Quick scan backoff duration (milliseconds)
 	QuickScanBackoffDuration = 200
-	// 退避时间上限（毫秒）
+	// Maximum backoff duration (milliseconds)
 	MaxBackoffDuration = 2000
-	// 最大连续失败次数
+)
+
+// Security settings
+const (
+	// Maximum path length
+	MaxPathLength = 4096
+	// Default download directory
+	DefaultDownloadDir = "/Users/alanwang/Downloads"
+)
+
+// MARK: - Path Security Validation
+
+// validateAndCleanPath validates and cleans the path to prevent path traversal attacks
+func validateAndCleanPath(path string, allowedBaseDir string) (string, error) {
+	// 1. Validate path length
+	if len(path) == 0 {
+		return "", fmt.Errorf("path cannot be empty")
+	}
+	
+	if len(path) > MaxPathLength {
+		return "", fmt.Errorf("path exceeds maximum length of %d", MaxPathLength)
+	}
+	
+	// 2. Check for dangerous characters
+	dangerousChars := []string{"\x00", "\n", "\r", "\t"}
+	for _, char := range dangerousChars {
+		if strings.Contains(path, char) {
+			return "", fmt.Errorf("path contains invalid character")
+		}
+	}
+	
+	// 3. Clean the path
+	cleanPath := filepath.Clean(path)
+	
+	// 4. Resolve to absolute path
+	absPath, err := filepath.Abs(cleanPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+	
+	// 5. Check if path is within allowed directory
+	allowedAbs, err := filepath.Abs(allowedBaseDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to get allowed base dir: %w", err)
+	}
+	
+	relPath, err := filepath.Rel(allowedAbs, absPath)
+	if err != nil {
+		return "", fmt.Errorf("path is not relative to allowed dir: %w", err)
+	}
+	
+	// 6. Check if path contains ".."
+	if strings.Contains(relPath, "..") {
+		return "", fmt.Errorf("path contains parent directory references")
+	}
+	
+	// 7. Check if path starts with ".."
+	if strings.HasPrefix(relPath, "..") {
+		return "", fmt.Errorf("path starts with parent directory reference")
+	}
+	
+	return absPath, nil
+}
+
+// Retry settings
+const (
+	// Maximum consecutive failures
 	MaxConsecutiveFailures = 3
 )
 
-// 文件大小限制
+// File size limits
 const (
-	// 大文件阈值（100MB）
+	// Large file threshold (100MB)
 	LargeFileThreshold = 100 * 1024 * 1024
-	// 最大文件大小（10GB）
+	// Maximum file size (10GB)
 	MaxFileSize = 10 * 1024 * 1024 * 1024
 )
 
-// MTP 对象格式
+// MTP object formats
 const (
-	// 文件夹格式
+	// Folder format
 	ObjectFormatFolder = 0x3001
-	// 通用文件格式
+	// Generic file format
 	ObjectFormatGenericFile = 0x3000
 )
 
-// MARK: - 内部状态
+// MARK: - Internal State
 
 var (
-	// 设备互斥锁
+	// Device mutex
 	deviceMu sync.Mutex
-	// 取消任务互斥锁
-	cancelMu sync.Mutex
-	// 已取消的任务映射
-	cancelledTasks = make(map[string]bool)
+	// Cancelled tasks map (using sync.Map for better concurrent performance)
+	cancelledTasks sync.Map
+	// Allocated C strings tracking (for memory leak detection)
+	allocatedStrings = make(map[*C.char]time.Time)
+	stringMu sync.Mutex
 )
 
 // withDeviceQuick executes a function with a fresh device connection using faster settings for scanning
-// withDeviceQuick 使用快速设置执行设备连接操作
-// 用于设备扫描，使用较短的超时和重试次数
+// Used for device scanning with shorter timeout and retry count
 func withDeviceQuick(fn func(*mtp.Device) error) error {
 	deviceMu.Lock()
 	defer deviceMu.Unlock()
@@ -91,7 +157,7 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 	for attempt := 0; attempt < QuickScanMaxRetries; attempt++ {
 		if attempt > 0 {
 			fmt.Printf("withDeviceQuick: Reinitializing device connection (attempt %d/%d)\n", attempt+1, QuickScanMaxRetries)
-			// 快速扫描使用短退避时间
+			// Quick scan uses short backoff time
 			time.Sleep(time.Duration(QuickScanBackoffDuration) * time.Millisecond)
 		}
 		
@@ -158,8 +224,8 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 	return lastError
 }
 
-// withDevice 使用正常设置执行设备连接操作
-// 用于文件传输等正常操作，使用较长的超时和重试次数
+// withDevice executes a function with a fresh device connection using normal settings
+// Used for file transfers and normal operations with longer timeout and retry count
 func withDevice(fn func(*mtp.Device) error) error {
 	deviceMu.Lock()
 	defer deviceMu.Unlock()
@@ -169,7 +235,7 @@ func withDevice(fn func(*mtp.Device) error) error {
 	for attempt := 0; attempt < NormalOperationMaxRetries; attempt++ {
 		if attempt > 0 {
 			fmt.Printf("withDevice: Reinitializing device connection (attempt %d/%d)\n", attempt+1, NormalOperationMaxRetries)
-			// 指数退避策略
+			// Exponential backoff strategy
 			backoffDuration := time.Duration(attempt*attempt) * 500 * time.Millisecond
 			if backoffDuration > time.Duration(MaxBackoffDuration)*time.Millisecond {
 				backoffDuration = time.Duration(MaxBackoffDuration) * time.Millisecond
@@ -374,7 +440,14 @@ func Kalam_Scan() *C.char {
 		return nil
 	}
 
-	return C.CString(result)
+	cStr := C.CString(result)
+	
+	// Track allocated string
+	stringMu.Lock()
+	allocatedStrings[cStr] = time.Now()
+	stringMu.Unlock()
+	
+	return cStr
 }
 
 //export Kalam_ListFiles
@@ -421,15 +494,31 @@ func Kalam_ListFiles(storageID uint32, parentID uint32) *C.char {
 	
 	if err != nil {
 		fmt.Printf("Kalam_ListFiles: %v\n", err)
-		// 统一错误处理：返回 nil 表示错误
+		// Unified error handling: return nil to indicate error
 		return nil
 	}
 
-	return C.CString(result)
+	cStr := C.CString(result)
+	
+	// Track allocated string
+	stringMu.Lock()
+	allocatedStrings[cStr] = time.Now()
+	stringMu.Unlock()
+	
+	return cStr
 }
 
 //export Kalam_FreeString
 func Kalam_FreeString(str *C.char) {
+    if str == nil {
+        return
+    }
+    
+    // Remove from tracking
+    stringMu.Lock()
+    delete(allocatedStrings, str)
+    stringMu.Unlock()
+    
     C.free(unsafe.Pointer(str))
 }
 
@@ -504,6 +593,13 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 		fmt.Printf("Kalam_DownloadFile: Empty destination path\n")
 		return 0
 	}
+	
+	// Validate and clean the destination path to prevent path traversal attacks
+	validatedPath, err := validateAndCleanPath(destPath, DefaultDownloadDir)
+	if err != nil {
+		fmt.Printf("Kalam_DownloadFile: Invalid destination path %s: %v\n", destPath, err)
+		return 0
+	}
 
 	if isTaskCancelled(taskIDStr) {
 		fmt.Printf("Kalam_DownloadFile: Task %s was cancelled before start\n", taskIDStr)
@@ -511,20 +607,20 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 	}
 
 	// Check if destination directory exists
-	dir := filepath.Dir(destPath)
+	dir := filepath.Dir(validatedPath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0700); err != nil {
 			fmt.Printf("Kalam_DownloadFile: Failed to create directory %s: %v\n", dir, err)
 			return 0
 		}
 	}
 
 	// Check if file already exists
-	if _, err := os.Stat(destPath); err == nil {
-		fmt.Printf("Kalam_DownloadFile: File already exists at %s\n", destPath)
+	if _, err := os.Stat(validatedPath); err == nil {
+		fmt.Printf("Kalam_DownloadFile: File already exists at %s\n", validatedPath)
 		// Remove existing file to ensure clean download
-		if removeErr := os.Remove(destPath); removeErr != nil {
-			fmt.Printf("Kalam_DownloadFile: Failed to remove existing file %s: %v\n", destPath, removeErr)
+		if removeErr := os.Remove(validatedPath); removeErr != nil {
+			fmt.Printf("Kalam_DownloadFile: Failed to remove existing file %s: %v\n", validatedPath, removeErr)
 			return 0
 		}
 	}
@@ -546,9 +642,9 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 			runtime.GC()
 		}
 
-		file, err := os.Create(destPath)
+		file, err := os.Create(validatedPath)
 		if err != nil {
-			fmt.Printf("Kalam_DownloadFile: Failed to create file %s: %v\n", destPath, err)
+			fmt.Printf("Kalam_DownloadFile: Failed to create file %s: %v\n", validatedPath, err)
 			lastError = err
 			continue
 		}
@@ -640,10 +736,10 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 		
 		// Ensure file is closed properly and synced to disk
 		if syncErr := file.Sync(); syncErr != nil {
-			fmt.Printf("Kalam_DownloadFile: Error syncing file %s: %v\n", destPath, syncErr)
+			fmt.Printf("Kalam_DownloadFile: Error syncing file %s: %v\n", validatedPath, syncErr)
 		}
 		if cerr := file.Close(); cerr != nil {
-			fmt.Printf("Kalam_DownloadFile: Error closing file %s: %v\n", destPath, cerr)
+			fmt.Printf("Kalam_DownloadFile: Error closing file %s: %v\n", validatedPath, cerr)
 		}
 		
 		if downloadErr != nil || lastError != nil {
@@ -653,8 +749,8 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 			}
 			
 			// Remove partial file
-			if removeErr := os.Remove(destPath); removeErr != nil {
-				fmt.Printf("Kalam_DownloadFile: Warning - failed to remove partial file %s: %v\n", destPath, removeErr)
+			if removeErr := os.Remove(validatedPath); removeErr != nil {
+				fmt.Printf("Kalam_DownloadFile: Warning - failed to remove partial file %s: %v\n", validatedPath, removeErr)
 			}
 			
 			// Check if error is recoverable
@@ -676,13 +772,13 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 		
 		// Download succeeded, validate the file
 		if downloadCompleted {
-			if stat, err := os.Stat(destPath); err == nil {
+			if stat, err := os.Stat(validatedPath); err == nil {
 				if stat.Size() == 0 {
 					fmt.Printf("Kalam_DownloadFile: Warning - downloaded file is empty\n")
 					lastError = fmt.Errorf("downloaded file is empty")
 					continue
 				}
-				fmt.Printf("Kalam_DownloadFile: Successfully downloaded %d bytes (tracked: %d) to %s\n", stat.Size(), writtenBytes, destPath)
+				fmt.Printf("Kalam_DownloadFile: Successfully downloaded %d bytes (tracked: %d) to %s\n", stat.Size(), writtenBytes, validatedPath)
 				return 1
 			} else {
 				fmt.Printf("Kalam_DownloadFile: Failed to stat downloaded file: %v\n", err)
@@ -708,23 +804,18 @@ func (e *cancelError) Error() string {
 }
 
 func isTaskCancelled(taskID string) bool {
-	cancelMu.Lock()
-	defer cancelMu.Unlock()
-	return cancelledTasks[taskID]
+	_, ok := cancelledTasks.Load(taskID)
+	return ok
 }
 
 func markTaskCancelled(taskID string) {
-	cancelMu.Lock()
-	defer cancelMu.Unlock()
-	cancelledTasks[taskID] = true
+	cancelledTasks.Store(taskID, true)
 }
 
 //export Kalam_CancelTask
 func Kalam_CancelTask(taskID *C.char) {
 	id := C.GoString(taskID)
-	cancelMu.Lock()
-	cancelledTasks[id] = true
-	cancelMu.Unlock()
+	cancelledTasks.Store(id, true)
 	fmt.Printf("Kalam_CancelTask: Task %s marked for cancellation\n", id)
 }
 
@@ -896,6 +987,29 @@ func Kalam_ResetDeviceCache() int32 {
 // Helper function
 func containsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
+// cleanupLeakedStrings cleans up leaked C string memory
+// Call this function periodically to clean up strings that were not properly freed
+func cleanupLeakedStrings() {
+	stringMu.Lock()
+	defer stringMu.Unlock()
+	
+	now := time.Now()
+	const maxAge = 5 * time.Minute // Consider leaked after 5 minutes
+	
+	for str, allocTime := range allocatedStrings {
+		if now.Sub(allocTime) > maxAge {
+			fmt.Printf("Cleaning up leaked string allocated at %v\n", allocTime)
+			C.free(unsafe.Pointer(str))
+			delete(allocatedStrings, str)
+		}
+	}
+}
+
+//export Kalam_CleanupLeakedStrings
+func Kalam_CleanupLeakedStrings() {
+	cleanupLeakedStrings()
 }
 
 func main() {}

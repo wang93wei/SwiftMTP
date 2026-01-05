@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import Darwin
 
 // Global reference to the FileTransferManager for progress callbacks
 private weak var currentTransferManager: FileTransferManager?
@@ -121,30 +122,7 @@ class FileTransferManager: ObservableObject {
         }
         
         // 6. 验证路径遍历攻击（更严格的检查）
-        // 检查路径是否包含相对引用（..）
-        let pathComponents = sourceURL.pathComponents
-        guard !pathComponents.contains("..") else {
-            print("[FileTransferManager] Upload failed: Invalid path with parent directory references")
-            return
-        }
-        
-        // 检查路径是否包含符号链接
-        do {
-            let fileAttributes = try FileManager.default.attributesOfItem(atPath: sourceURL.path)
-            if let fileType = fileAttributes[.type] as? FileAttributeType,
-               fileType == .typeSymbolicLink {
-                print("[FileTransferManager] Upload failed: Symbolic links are not allowed")
-                return
-            }
-        } catch {
-            print("[FileTransferManager] Upload failed: Could not verify file type: \(error)")
-            return
-        }
-        
-        // 标准化路径并确保没有相对引用
-        let standardizedPath = sourceURL.standardizedFileURL.path
-        guard standardizedPath == sourceURL.path else {
-            print("[FileTransferManager] Upload failed: Path contains relative references or symbolic links")
+        guard validatePathSecurity(sourceURL) else {
             return
         }
         
@@ -214,6 +192,81 @@ class FileTransferManager: ObservableObject {
     
     // MARK: - Private Methods
     
+    private func validatePathSecurity(_ url: URL) -> Bool {
+        // 1. 验证路径长度限制（防止缓冲区溢出）
+        let maxPathLength = 4096
+        guard url.path.count <= maxPathLength else {
+            print("[FileTransferManager] Upload failed: Path too long (\(url.path.count) characters, max: \(maxPathLength))")
+            return false
+        }
+        
+        // 2. 解析并标准化路径
+        let standardizedPath = url.standardizedFileURL.path
+        
+        // 3. 检查路径是否包含相对引用（包括 URL 编码）
+        // 只检查父目录引用（..），不检查当前目录引用（.），以允许隐藏文件
+        let pathComponents = standardizedPath.split(separator: "/")
+        let dangerousPatterns = ["..", "%2e%2e", "%2E%2E"]
+        for component in pathComponents {
+            for pattern in dangerousPatterns {
+                if component.lowercased().contains(pattern.lowercased()) {
+                    print("[FileTransferManager] Upload failed: Invalid path with parent directory references or encoded dots")
+                    return false
+                }
+            }
+        }
+        
+        // 4. 检查特殊字符（防止命令注入）
+        let dangerousChars = CharacterSet(charactersIn: "\u{0000}\n\r\t")
+        if standardizedPath.rangeOfCharacter(from: dangerousChars) != nil {
+            print("[FileTransferManager] Upload failed: Path contains invalid control characters")
+            return false
+        }
+        
+        // 5. 检查符号链接
+        do {
+            let fileAttributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            if let fileType = fileAttributes[.type] as? FileAttributeType,
+               fileType == .typeSymbolicLink {
+                print("[FileTransferManager] Upload failed: Symbolic links are not allowed")
+                return false
+            }
+        } catch {
+            print("[FileTransferManager] Upload failed: Could not verify file type: \(error)")
+            return false
+        }
+        
+        // 6. 验证路径是否在允许的目录范围内
+        let allowedDirectories = [
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads").path,
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop").path,
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents").path
+        ]
+        
+        var isInAllowedDirectory = false
+        for allowedDir in allowedDirectories {
+            if standardizedPath.hasPrefix(allowedDir) {
+                isInAllowedDirectory = true
+                break
+            }
+        }
+        
+        if !isInAllowedDirectory {
+            print("[FileTransferManager] Upload failed: Path is not in allowed directories")
+            print("[FileTransferManager] Allowed directories: \(allowedDirectories)")
+            print("[FileTransferManager] Actual path: \(standardizedPath)")
+            return false
+        }
+        
+        // 7. 验证标准化后的路径是否与原始路径一致
+        if standardizedPath != url.path {
+            print("[FileTransferManager] Upload failed: Path contains relative references or symbolic links")
+            return false
+        }
+        
+        return true
+    }
+    
     private func performDownload(task: TransferTask, device: Device, fileItem: FileItem, shouldReplace: Bool) {
         currentDownloadTask = task
         task.updateStatus(.transferring)
@@ -278,8 +331,15 @@ class FileTransferManager: ObservableObject {
         // Perform download with enhanced error handling
         print("Starting download of file \(fileItem.name) (ID: \(fileItem.objectId))")
         let result = task.destinationPath.withCString { cString in
-            task.id.uuidString.withCString { taskCString in
-                Kalam_DownloadFile(fileItem.objectId, UnsafeMutablePointer(mutating: cString), UnsafeMutablePointer(mutating: taskCString))
+            // Create mutable copies of the C strings to avoid unsafe pointer mutation
+            let mutableDest = strdup(cString)
+            defer { free(mutableDest) }
+            
+            return task.id.uuidString.withCString { taskCString in
+                let mutableTask = strdup(taskCString)
+                defer { free(mutableTask) }
+                
+                return Kalam_DownloadFile(fileItem.objectId, mutableDest, mutableTask)
             }
         }
         
@@ -355,8 +415,15 @@ class FileTransferManager: ObservableObject {
         }
 
         let uploadResult = sourceURL.path.withCString { sourceCString in
-            task.id.uuidString.withCString { taskCString in
-                Kalam_UploadFile(storageId, parentId, UnsafeMutablePointer(mutating: sourceCString), UnsafeMutablePointer(mutating: taskCString))
+            // Create mutable copies of the C strings to avoid unsafe pointer mutation
+            let mutableSource = strdup(sourceCString)
+            defer { free(mutableSource) }
+            
+            return task.id.uuidString.withCString { taskCString in
+                let mutableTask = strdup(taskCString)
+                defer { free(mutableTask) }
+                
+                return Kalam_UploadFile(storageId, parentId, mutableSource, mutableTask)
             }
         }
 
