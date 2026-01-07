@@ -329,7 +329,6 @@ extension View {
         }
         .padding()
     }
-    .scrollEdgeEffectStyle(.hard, for: .all)
     .background(
         LinearGradient(
             colors: [
@@ -340,6 +339,6 @@ extension View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-
+        
     )
 }

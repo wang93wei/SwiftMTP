@@ -259,7 +259,6 @@ struct FileBrowserView: View {
             handleDroppedFiles(providers)
         }
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .scrollEdgeEffectStyle(.hard, for: .all)
         .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
     }
     

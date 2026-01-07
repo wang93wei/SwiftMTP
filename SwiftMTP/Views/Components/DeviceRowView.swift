@@ -174,6 +174,5 @@ struct MtpSupportIndicatorView: View {
             )
         ))
     }
-    .scrollEdgeEffectStyle(.hard, for: .all)
     .frame(width: 250)
 }
