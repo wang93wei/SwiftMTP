@@ -39,8 +39,8 @@ class DeviceManager: ObservableObject {
     
     // MARK: - 常量
     
-    /// 最小扫描间隔（秒）- 无设备时
-    private static let MinScanInterval: TimeInterval = 3.0
+    /// 默认扫描间隔（秒）
+    private static let DefaultScanInterval: TimeInterval = 3.0
     
     /// 设备连接后的扫描间隔（秒）
     private static let ConnectedDeviceScanInterval: TimeInterval = 5.0
@@ -76,6 +76,12 @@ class DeviceManager: ObservableObject {
     
     // MARK: - 私有属性
     
+    /// 用户设置的扫描间隔（秒）
+    private var userScanInterval: TimeInterval {
+        let interval = UserDefaults.standard.double(forKey: "scanInterval")
+        return interval > 0 ? interval : DeviceManager.DefaultScanInterval
+    }
+    
     /// 扫描定时器
     private var scanTimer: Timer?
     
@@ -100,7 +106,7 @@ class DeviceManager: ObservableObject {
     private var consecutiveFailures: Int = 0
     
     /// 当前扫描间隔（秒）
-    private var currentScanInterval: TimeInterval = MinScanInterval
+    private var currentScanInterval: TimeInterval = DefaultScanInterval
     
     private init() {
         // 初始化 Kalam 内核
@@ -114,6 +120,9 @@ class DeviceManager: ObservableObject {
         deviceSerialCache.countLimit = 100  // 最多缓存100个设备
         deviceSerialCache.totalCostLimit = 10 * 1024  // 10KB限制
         
+        // 初始化扫描间隔为用户设置的值
+        currentScanInterval = userScanInterval
+        
         startScanning()
     }
     
@@ -123,12 +132,21 @@ class DeviceManager: ObservableObject {
     
     // MARK: - 公共方法
     
+    /// 更新扫描间隔
+    /// 当用户更改设置时调用此方法以应用新的扫描间隔
+    func updateScanInterval() {
+        // 重新启动扫描以应用新的间隔
+        if scanTimer != nil {
+            stopScanning()
+            startScanning()
+        }
+    }
+    
     /// 开始扫描设备
-    /// 使用自适应扫描频率：
-    /// - 无设备时：每 3 秒扫描一次
-    /// - 有设备时：每 5 秒扫描一次（更稳定）
+    /// 使用用户设置的扫描间隔
     func startScanning() {
-        scanTimer = Timer.scheduledTimer(withTimeInterval: DeviceManager.MinScanInterval, repeats: true) { [weak self] _ in
+        let interval = TimeInterval(userScanInterval)
+        scanTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.scanDevices()
         }
         scanDevices()
@@ -153,7 +171,8 @@ class DeviceManager: ObservableObject {
             return
         }
         
-        print("[DeviceManager] Starting scan, current failures: \(consecutiveFailures), interval: \(currentScanInterval)s")
+        let actualInterval = scanTimer?.timeInterval ?? userScanInterval
+        print("[DeviceManager] Starting scan, current failures: \(consecutiveFailures), interval: \(actualInterval)s")
         
         // 在主线程上设置扫描标志
         DispatchQueue.main.async { [weak self] in
@@ -243,7 +262,7 @@ class DeviceManager: ObservableObject {
     func manualRefresh() {
         // 重置失败计数和扫描间隔
         consecutiveFailures = 0
-        currentScanInterval = DeviceManager.MinScanInterval
+        currentScanInterval = userScanInterval
         showManualRefreshButton = false
         
         // 重新开始自动扫描
@@ -269,24 +288,24 @@ class DeviceManager: ObservableObject {
         devices = newDevices
         lastDeviceSerials = newSerials
         
-        // 成功检测到设备时重置失败计数和扫描间隔
+        // 成功检测到设备时重置失败计数
         if !newDevices.isEmpty {
             consecutiveFailures = 0
-            currentScanInterval = DeviceManager.MinScanInterval
+            currentScanInterval = userScanInterval
             showManualRefreshButton = false
         }
         
-        // 根据设备连接状态自适应扫描频率
-        let previousInterval = scanTimer?.timeInterval ?? DeviceManager.MinScanInterval
-        let newInterval: TimeInterval = newDevices.isEmpty ? currentScanInterval : DeviceManager.ConnectedDeviceScanInterval
+        // 检查是否需要更新扫描间隔（用户设置改变时）
+        let previousInterval = scanTimer?.timeInterval ?? userScanInterval
+        let newInterval = userScanInterval
         
-        // 如果需要，更新扫描间隔
+        // 如果扫描间隔与用户设置不一致，更新它
         if abs(previousInterval - newInterval) > 0.5 {
             scanTimer?.invalidate()
             scanTimer = Timer.scheduledTimer(withTimeInterval: newInterval, repeats: true) { [weak self] _ in
                 self?.scanDevices()
             }
-            print("[DeviceManager] Scanning interval updated to \(newInterval)s (devices: \(newDevices.count))")
+            print("[DeviceManager] Scanning interval updated to \(newInterval)s")
         }
         
         // 如果只有一个设备且未选择，自动选择
@@ -320,7 +339,7 @@ class DeviceManager: ObservableObject {
         consecutiveFailures += 1
         
         // 指数退避：interval = min(3 * 2^failures, maxInterval)
-        let backoffInterval = min(DeviceManager.MinScanInterval * pow(2.0, Double(consecutiveFailures)), DeviceManager.MaxScanInterval)
+        let backoffInterval = min(DeviceManager.DefaultScanInterval * pow(2.0, Double(consecutiveFailures)), DeviceManager.MaxScanInterval)
         currentScanInterval = backoffInterval
         
         // 达到最大失败次数后显示手动刷新按钮
