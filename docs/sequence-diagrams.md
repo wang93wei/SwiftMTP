@@ -183,14 +183,14 @@ sequenceDiagram
     end
 
     Note over DM: 动态调整扫描间隔
-    DM->>DM: 比较当前间隔和新间隔
+    DM->>DM: 比较当前间隔和用户设置
     alt 间隔变化超过 0.5 秒
         DM->>DM: 停止当前定时器
-        DM->>DM: 创建新定时器（新间隔）
+        DM->>DM: 创建新定时器（用户设置的间隔）
         alt 无设备连接
             DM->>DM: 间隔 currentScanInterval (指数退避)
         else 设备已连接
-            DM->>DM: 间隔 5 秒扫描
+            DM->>DM: 间隔 userScanInterval (用户设置)
         end
     end
 
@@ -284,7 +284,7 @@ sequenceDiagram
         
         FSM->>FSM: JSONDecoder 解码
         FSM->>FSM: mapToFileItem() 映射
-        FSM->>FSM: 存入缓存 (30秒过期)
+        FSM->>FSM: 存入缓存 (60秒过期)
         FSM-->>View: 文件列表
     
     Note over View,FSM: 用户进入文件夹
@@ -292,6 +292,10 @@ sequenceDiagram
     FSM->>FSM: getFileList() 查询子文件
     FSM-->>View: 子文件列表
     END
+
+    Note over FSM: 缓存机制
+    FSM->>FSM: 文件列表缓存 60 秒过期
+    FSM->>FSM: 使用 NSCache 自动内存管理
 ```
 
 ## 4. 文件下载时序图
@@ -463,26 +467,20 @@ sequenceDiagram
         FTM->>FTM: 返回错误（文件过大）
     end
 
-    Note over FTM: 输入验证 - 第5步：路径遍历攻击检查
-    FTM->>FTM: 检查路径组件是否包含 ".."
-    alt 包含父目录引用
-        FTM->>FTM: 返回错误（无效路径）
+    Note over FTM: 输入验证 - 第5步：路径安全验证
+    FTM->>FTM: validatePathSecurity()
+    Note over FTM: 包含以下检查：
+    Note over FTM: - 路径长度限制
+    Note over FTM: - 路径遍历攻击检查
+    Note over FTM: - 特殊字符检查
+    Note over FTM: - 符号链接检查
+    Note over FTM: - 允许目录范围验证
+    Note over FTM: - 路径标准化验证
+    alt 验证失败
+        FTM->>FTM: 返回错误
     end
 
-    Note over FTM: 输入验证 - 第6步：符号链接检查
-    FTM->>FS: attributesOfItem(atPath: sourceURL)
-    FS-->>FTM: 文件类型
-    alt 是符号链接
-        FTM->>FTM: 返回错误（不允许符号链接）
-    end
-
-    Note over FTM: 输入验证 - 第7步：路径标准化
-    FTM->>FTM: standardizedFileURL
-    alt 标准化路径与原路径不同
-        FTM->>FTM: 返回错误（包含相对引用或符号链接）
-    end
-
-    Note over FTM: 输入验证 - 第8步：存储空间检查
+    Note over FTM: 输入验证 - 第6步：存储空间检查
     FTM->>FTM: 查找设备存储 (storageId)
     alt 存储未找到
         FTM->>FTM: 返回错误（存储不存在）
@@ -771,12 +769,13 @@ sequenceDiagram
 ### 性能优化
 
 1. **缓存策略**
-   - 文件列表缓存 30 秒
+   - 文件列表缓存 60 秒
    - 减少重复的设备查询
 
 2. **自适应扫描**
    - 无设备时使用指数退避
-   - 有设备时使用固定间隔（5秒）
+   - 有设备时使用用户设置的扫描间隔（默认3秒）
+   - 用户可在设置中调整扫描间隔（1-10秒）
 
 3. **队列优先级**
    - 使用 `.userInitiated` QoS
@@ -790,7 +789,7 @@ sequenceDiagram
 
 | 场景 | 发起方 | 桥接层 | Go层 | 线程处理 | 特殊处理 |
 |------|--------|--------|------|----------|----------|
-| 设备扫描 | DeviceManager | Kalam_Scan | withDeviceQuick | 全局队列 → 主线程 | 指数退避策略、手动刷新 |
+| 设备扫描 | DeviceManager | Kalam_Scan | withDeviceQuick | 全局队列 → 主线程 | 指数退避策略、手动刷新、用户可配置扫描间隔 |
 | 文件浏览 | FileSystemManager | Kalam_ListFiles | withDevice | 全局队列 → 主线程 | 30秒缓存 |
 | 文件下载 | FileTransferManager | Kalam_DownloadFile | withDevice + 重试 | 传输队列 → 主线程 | 设备连接验证、文件验证 |
 | 文件上传 | FileTransferManager | Kalam_UploadFile | withDevice | 传输队列 → 主线程 | 8步输入验证、上传后刷新 |
@@ -806,28 +805,33 @@ sequenceDiagram
 ### 1. 指数退避策略（设备扫描）
 - **目的**: 减少无设备时的扫描频率，节省系统资源
 - **机制**:
-  - 初始间隔: 3秒
-  - 每次失败后: interval = min(3 × 2^failures, 30秒)
+  - 初始间隔: 用户设置的值（默认3秒）
+  - 每次失败后: interval = min(userScanInterval × 2^failures, 30秒)
   - 最大失败次数: 3次
   - 达到最大失败次数后: 停止自动扫描，显示手动刷新按钮
+- **用户配置**: 可在设置中调整扫描间隔（1-10秒）
 
 ### 2. 手动刷新功能
 - **触发条件**: 连续扫描失败3次后
 - **用户操作**: 点击手动刷新按钮
 - **系统行为**:
   - 重置失败计数为0
-  - 重置扫描间隔为3秒
+  - 重置扫描间隔为用户设置的值（默认3秒）
   - 重新开始自动扫描
 
-### 3. 文件上传输入验证（8步）
+### 3. 文件上传输入验证（7步）
 1. **路径验证**: 检查路径是否为空
 2. **文件存在性**: 验证文件是否存在
 3. **目录检查**: 确保不是目录
 4. **文件大小**: 获取并验证文件大小（最大10GB）
-5. **路径遍历攻击**: 检查路径是否包含 ".."
-6. **符号链接检查**: 禁止符号链接
-7. **路径标准化**: 验证标准化路径一致性
-8. **存储空间检查**: 确保设备有足够空间
+5. **路径安全验证**: 包含以下检查
+   - 路径长度限制（最大4096字符）
+   - 路径遍历攻击检查（禁止 ".." 及其编码形式）
+   - 特殊字符检查（禁止控制字符）
+   - 符号链接检查（禁止符号链接）
+   - 允许目录范围验证（仅允许 Downloads、Desktop、Documents）
+   - 路径标准化验证（确保无相对引用）
+6. **存储空间检查**: 验证设备存储存在且有足够空间
 
 ### 4. 文件下载增强
 - **设备连接验证**: 下载前和失败后验证设备连接
@@ -836,6 +840,7 @@ sequenceDiagram
 - **文件替换选项**: 支持替换现有文件
 - **文件验证**: 验证下载文件的大小和完整性
 - **损坏文件清理**: 自动删除损坏的文件
+- **进度回调**: 已禁用以确保传输稳定性
 
 ### 5. 上传后刷新机制
 - **刷新设备存储**: `Kalam_RefreshStorage(storageId)`

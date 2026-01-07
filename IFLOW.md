@@ -57,4 +57,4 @@ FileSystemManager.shared: 文件浏览
 FileTransferManager.shared: 文件传输
 
 ## 目标平台与限制
-macOS 13.0+, Android MTP 模式。单设备支持、需禁用沙盒、仅单个文件上传。
+macOS 26.0+, Android MTP 模式。单设备支持、需禁用沙盒、仅单个文件上传。
