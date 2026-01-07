@@ -65,6 +65,8 @@ cd SwiftMTP
 open SwiftMTP.xcodeproj
 ```
 
+> 📝 **Remarque**: Les fichiers de configuration du projet ont été ajoutés au contrôle de version. Après le clonage, ouvrez simplement le projet dans Xcode et commencez à construire sans configuration supplémentaire.
+
 > 💡 **Conseil**: Après avoir connecté votre appareil Android, sélectionnez le mode **Transfert de fichiers (MTP)** sur l'appareil pour commencer à l'utiliser.
 
 ### Création du paquet d'installation
