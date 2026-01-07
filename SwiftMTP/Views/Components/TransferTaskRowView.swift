@@ -25,7 +25,6 @@ struct TransferTaskRowView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            
             Spacer()
             
             // Status text on the right

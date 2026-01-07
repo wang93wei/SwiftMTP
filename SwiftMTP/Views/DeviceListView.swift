@@ -19,13 +19,14 @@ struct DeviceListView: View {
         }
         .id(refreshID)
         .navigationTitle(title)
-        .listStyle(.sidebar)
+        .listStyle(.automatic)
         .scrollContentBackground(.hidden)
         .background(.ultraThickMaterial)
         .overlay(alignment: .top) {
             Divider()
                 .opacity(0.2)
         }
+        
 //        .safeAreaPadding(.top,2)
         .overlay {
             if deviceManager.devices.isEmpty {

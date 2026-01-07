@@ -38,18 +38,19 @@ struct FileTransferView: View {
         HStack {
             Text(L10n.FileTransfer.fileTransferTitle)
                 .font(.headline)
+                .glassEffect()
             
             Spacer()
             
             Button(L10n.FileTransfer.done) {
                 dismiss()
             }
-            .buttonStyle(.borderedProminent)
-            .liquidGlass(style: .thin, cornerRadius: 8)
+//            .buttonStyle(.borderedProminent)
+            .glassEffect(.clear)
             .help(L10n.FileTransfer.closeTransferWindow)
+            
         }
         .padding()
-        .background(.ultraThinMaterial)
     }
     
     private var emptyStateView: some View {

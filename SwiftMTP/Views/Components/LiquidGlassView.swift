@@ -214,22 +214,27 @@ extension View {
                     Text("Ultra Thin")
                         .font(.headline)
                         .liquidGlass(style: .ultraThin)
+                        .glassEffect()
 
                     Text("Thin")
                         .font(.headline)
                         .liquidGlass(style: .thin)
+                        .glassEffect()
 
                     Text("Regular")
                         .font(.headline)
                         .liquidGlass(style: .regular)
+                        .glassEffect()
 
                     Text("Thick")
                         .font(.headline)
                         .liquidGlass(style: .thick)
+                        .glassEffect()
 
                     Text("Ultra Thick")
                         .font(.headline)
                         .liquidGlass(style: .ultraThick)
+                        .glassEffect()
                 }
             }
             .padding()
@@ -334,5 +339,6 @@ extension View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+        
     )
 }

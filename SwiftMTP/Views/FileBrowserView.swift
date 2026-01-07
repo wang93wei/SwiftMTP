@@ -86,6 +86,7 @@ struct FileBrowserView: View {
                             }
                             .help(L10n.FileBrowser.goBack)
                             .disabled(currentPath.isEmpty)
+                            .glassEffect()
                         }
                         
                         ToolbarItem {
@@ -93,6 +94,7 @@ struct FileBrowserView: View {
                                 showingCreateFolderDialog = true
                             }
                             .help(L10n.FileBrowser.createNewFolderHelp)
+                            
                         }
                         
                         ToolbarItem {
@@ -128,6 +130,7 @@ struct FileBrowserView: View {
                     .toolbarLiquidGlass()            .sheet(isPresented: $showingCreateFolderDialog) {
                 createFolderDialog
             }
+        
     }
     
     private var contentView: some View {
