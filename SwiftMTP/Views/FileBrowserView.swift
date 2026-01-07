@@ -324,6 +324,12 @@ struct FileBrowserView: View {
             Button(L10n.FileBrowser.downloadSelectedFiles, systemImage: "arrow.down.circle") {
                 downloadSelectedFiles()
             }
+            
+            Divider()
+            
+            Button(L10n.FileBrowser.deleteSelectedFiles, systemImage: "trash", role: .destructive) {
+                deleteSelectedFiles()
+            }
         }
     }
     
@@ -376,6 +382,7 @@ struct FileBrowserView: View {
             
             DispatchQueue.main.async {
                 self.currentFiles = self.sortFiles(files)
+                self.selectedFiles.removeAll()
                 self.isLoading = false
             }
         }

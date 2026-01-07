@@ -210,22 +210,30 @@ extension String {
         // 使用字符串替换而不是格式化，避免中文文件名乱码
         var result = self
         for (index, arg) in args.enumerated() {
-            let placeholder = "%\(index + 1)$@"
+            // 首先尝试带位置参数的格式（如 %1$@, %1$d）
+            let positionalPlaceholder = "%\(index + 1)$@"
             if let argString = arg as? String {
-                result = result.replacingOccurrences(of: placeholder, with: argString)
+                if result.contains(positionalPlaceholder) {
+                    result = result.replacingOccurrences(of: positionalPlaceholder, with: argString)
+                }
             } else {
                 // 对于非字符串参数（如 Int），使用格式化
-                let formattedPlaceholder = "%\(index + 1)$d"
-                if let argInt = arg as? Int {
-                    result = result.replacingOccurrences(of: formattedPlaceholder, with: String(argInt))
+                let positionalFormattedPlaceholder = "%\(index + 1)$d"
+                if let argInt = arg as? Int, result.contains(positionalFormattedPlaceholder) {
+                    result = result.replacingOccurrences(of: positionalFormattedPlaceholder, with: String(argInt))
+                }
+            }
+            
+            // 如果没有带位置参数的占位符，尝试不带位置参数的格式（如 %@, %d）
+            if !result.contains("%\(index + 1)$@") && !result.contains("%\(index + 1)$d") {
+                if let argString = arg as? String {
+                    result = result.replacingOccurrences(of: "%@", with: argString, options: .literal, range: result.range(of: "%@"))
+                } else if let argInt = arg as? Int {
+                    result = result.replacingOccurrences(of: "%d", with: String(argInt), options: .literal, range: result.range(of: "%d"))
                 } else {
-                    // 其他类型尝试使用原始格式化方法
-                    do {
-                        result = try String(format: self, args)
-                        break // 格式化成功，跳出循环
-                    } catch {
-                        print("[LocalizationManager] Failed to format arg at index \(index): \(arg)")
-                    }
+                    // 其他类型使用原始格式化方法
+                    result = String(format: self, args)
+                    break // 格式化成功，跳出循环
                 }
             }
         }
