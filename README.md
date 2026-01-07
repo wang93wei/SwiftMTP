@@ -14,7 +14,7 @@
 
 ---
 
-**🌍 Languages:** [English](README.md) | [简体中文](docs/README.zh-CN.md) | [日本語](docs/README.ja.md) | [한국어](docs/README.ko.md) | [Русский](docs/README.ru.md) | [Français](docs/README.fr.md) | [Deutsch](docs/README.de.md)
+**🌍 Languages:** [English](README.md) | [Simplified Chinese](docs/README.zh-CN.md) | [Japanese](docs/README.ja.md) | [Korean](docs/README.ko.md) | [Russian](docs/README.ru.md) | [French](docs/README.fr.md) | [German](docs/README.de.md)
 
 ---
 
@@ -106,9 +106,9 @@ The DMG file will be generated in the `build/` directory.
 3. Available languages:
    - **System Default** - Follow macOS system language
    - **English** - English interface
-   - **中文** - Simplified Chinese interface
-   - **日本語** - Japanese interface
-   - **한국어** - Korean interface
+   - **Simplified Chinese** - Simplified Chinese interface
+   - **Japanese** - Japanese interface
+   - **Korean** - Korean interface
 4. In-app interface will update language immediately
 5. **Menu bar and file pickers** require app restart to take effect, system will prompt for immediate restart
 
