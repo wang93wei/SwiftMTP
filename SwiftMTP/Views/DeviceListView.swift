@@ -18,22 +18,14 @@ struct DeviceListView: View {
                 .tag(device)
         }
         .id(refreshID)
-        .navigationTitle(title)
-        .listStyle(.automatic)
-        .scrollContentBackground(.hidden)
-        .background(.ultraThickMaterial)
-        .overlay(alignment: .top) {
-            Divider()
-                .opacity(0.2)
-        }
-        
-//        .safeAreaPadding(.top,2)
+        .listStyle(.sidebar)
+        .safeAreaPadding(.top,5)
         .overlay {
-            if deviceManager.devices.isEmpty {
-                if deviceManager.isScanning && !deviceManager.hasScannedOnce {
-                    ProgressView(L10n.DeviceList.scanningDevices)
-                        .liquidGlass(style: .regular, cornerRadius: 12)
-                } else if deviceManager.showManualRefreshButton {
+            if deviceManager.isScanning && !deviceManager.hasScannedOnce {
+                ProgressView(L10n.DeviceList.scanningDevices)
+
+            } else if deviceManager.devices.isEmpty {
+                if deviceManager.showManualRefreshButton {
                     VStack(spacing: 16) {
                         ContentUnavailableView(
                             L10n.DeviceList.noDevices,
@@ -50,8 +42,7 @@ struct DeviceListView: View {
                             }
                             .font(.system(size: 14, weight: .medium))
                         }
-                        .buttonStyle(.plain)
-                        .liquidGlass(style: .thin, cornerRadius: 10)
+                        .glassEffect()
                         .scaleEffect(deviceManager.isScanning ? 0.95 : 1.0)
                         .animation(.easeInOut(duration: 0.2), value: deviceManager.isScanning)
                         .disabled(deviceManager.isScanning)

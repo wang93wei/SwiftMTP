@@ -351,10 +351,13 @@ struct FileBrowserView: View {
                     .buttonStyle(.borderless)
                 }
             }
+            .scrollEdgeEffectStyle(.hard, for: .all)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            
         }
-        .liquidGlass(style: .thin, cornerRadius: 0, padding: EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+//        .scrollEdgeEffectStyle(.soft, for: .all)
+//        .liquidGlass(style: .thin, cornerRadius: 0, padding: EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
     }
     
     private func loadFiles() {

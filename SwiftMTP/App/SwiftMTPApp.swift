@@ -23,7 +23,7 @@ struct SwiftMTPApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultSize(width: 1200, height: 800)
-        .windowToolbarStyle(.unified)
+        
         .commands {
             // 替换默认的应用菜单
             CommandGroup(replacing: .appInfo) {

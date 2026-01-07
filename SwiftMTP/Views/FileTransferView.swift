@@ -82,6 +82,7 @@ struct FileTransferView: View {
                 }
             }
             .padding()
+            .scrollEdgeEffectStyle(.soft, for: .all)
         }
     }
     
