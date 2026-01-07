@@ -106,4 +106,5 @@ struct TransferTaskRowView: View {
             return task
         }())
     }
+    .scrollEdgeEffectStyle(.hard, for: .all)
 }

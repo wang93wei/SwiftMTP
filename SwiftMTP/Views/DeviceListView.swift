@@ -20,6 +20,7 @@ struct DeviceListView: View {
         .id(refreshID)
         .listStyle(.sidebar)
         .safeAreaPadding(.top,5)
+        .scrollEdgeEffectStyle(.hard, for: .all)
         .overlay {
             if deviceManager.isScanning && !deviceManager.hasScannedOnce {
                 ProgressView(L10n.DeviceList.scanningDevices)
