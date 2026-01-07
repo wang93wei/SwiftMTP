@@ -51,7 +51,7 @@ SwiftMTP 是一款专为 macOS 平台设计的原生 Android MTP 文件传输工
 ### 版本信息
 
 - **当前版本**: 1.0.0
-- **最低系统要求**: macOS 13.0 (Ventura)
+- **最低系统要求**: macOS 26.0
 - **支持的 Android 版本**: Android 4.0+ (MTP 模式)
 
 ### 许可证
@@ -620,7 +620,7 @@ DispatchQueue.main.async
 
 | 项目 | 要求 |
 |------|------|
-| 操作系统 | macOS 13.0 (Ventura) 或更高 |
+| 操作系统 | macOS 26.0 或更高 |
 | 处理器 | Intel (x86_64) 或 Apple Silicon (M1/M2/M3) |
 | 内存 | 最低 4GB RAM |
 | 存储空间 | 100MB 可用空间 |
@@ -629,7 +629,7 @@ DispatchQueue.main.async
 
 | 工具 | 版本要求 |
 |------|----------|
-| Xcode | 15.0 或更高 |
+| Xcode | 26.0 或更高 |
 | Swift | 5.9 或更高 |
 | Go | 1.22 或更高 |
 | Homebrew | 最新版本 |
@@ -1552,7 +1552,7 @@ xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP -configuration Debug
 ```
 
 2. **检查 Xcode 版本**:
-   - 确保使用 Xcode 15.0 或更高版本
+   - 确保使用 Xcode 26.0 或更高版本
 
 3. **检查 Swift 版本**:
    - 确保项目使用 Swift 5.9 或更高版本

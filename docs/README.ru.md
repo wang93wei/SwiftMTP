@@ -7,7 +7,7 @@
 **Нативный инструмент передачи файлов MTP для Android на macOS**
 
 [![Swift Version](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift)](https://swift.org)
-[![Platform](https://img.shields.io/badge/macOS-13.0+-000000?logo=apple)](https://www.apple.com/macos/)
+[![Platform](https://img.shields.io/badge/macOS-26.0+-000000?logo=apple)](https://www.apple.com/macos/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
 
 </div>
@@ -41,8 +41,8 @@
 
 | Зависимость | Версия |
 |-------------|--------|
-| macOS | 13.0+ (Ventura или выше) |
-| Xcode | 15.0+ |
+| macOS | 26.0+ (или выше) |
+| Xcode | 26.0+ |
 | Homebrew | Последняя версия |
 
 ### Установка зависимостей

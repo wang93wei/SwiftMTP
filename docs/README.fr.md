@@ -7,7 +7,7 @@
 **Outil natif de transfert de fichiers MTP Android pour macOS**
 
 [![Swift Version](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift)](https://swift.org)
-[![Platform](https://img.shields.io/badge/macOS-13.0+-000000?logo=apple)](https://www.apple.com/macos/)
+[![Platform](https://img.shields.io/badge/macOS-26.0+-000000?logo=apple)](https://www.apple.com/macos/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
 
 </div>
@@ -41,8 +41,8 @@
 
 | Dépendance | Version |
 |------------|---------|
-| macOS | 13.0+ (Ventura ou supérieur) |
-| Xcode | 15.0+ |
+| macOS | 26.0+ (ou supérieur) |
+| Xcode | 26.0+ |
 | Homebrew | Dernière version |
 
 ### Installation des dépendances

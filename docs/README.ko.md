@@ -7,7 +7,7 @@
 **네이티브 macOS Android MTP 파일 전송 도구**
 
 [![Swift Version](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift)](https://swift.org)
-[![Platform](https://img.shields.io/badge/macOS-13.0+-000000?logo=apple)](https://www.apple.com/macos/)
+[![Platform](https://img.shields.io/badge/macOS-26.0+-000000?logo=apple)](https://www.apple.com/macos/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
 
 </div>
@@ -41,8 +41,8 @@
 
 | 의존성 | 버전 |
 |------------|---------|
-| macOS | 13.0+ (Ventura 이상) |
-| Xcode | 15.0+ |
+| macOS | 26.0+ (이상) |
+| Xcode | 26.0+ |
 | Homebrew | 최신 버전 |
 
 ### 의존성 설치

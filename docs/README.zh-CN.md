@@ -7,7 +7,7 @@
 **macOS 原生 Android MTP 文件传输工具**
 
 [![Swift Version](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift)](https://swift.org)
-[![Platform](https://img.shields.io/badge/macOS-13.0+-000000?logo=apple)](https://www.apple.com/macos/)
+[![Platform](https://img.shields.io/badge/macOS-26.0+-000000?logo=apple)](https://www.apple.com/macos/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
 
 </div>
@@ -41,8 +41,8 @@
 
 | 依赖 | 版本要求 |
 |------|----------|
-| macOS | 13.0+ (Ventura 或更高) |
-| Xcode | 15.0+ |
+| macOS | 26.0+ (或更高) |
+| Xcode | 26.0+ |
 | Homebrew | 最新版本 |
 
 ### 安装依赖

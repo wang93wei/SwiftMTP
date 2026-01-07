@@ -26,8 +26,8 @@ SwiftMTP 是一个用于 Android MTP（媒体传输协议）文件传输的原�
 ## 构建和运行
 
 ### 先决条件
-- macOS 13.0+（Ventura 或更高版本）
-- Xcode 15.0+
+- macOS 26.0+（或更高版本）
+- Xcode 26.0+
 - Homebrew（最新版本）
 - 依赖项：`libusb-1.0`, `go`
 
