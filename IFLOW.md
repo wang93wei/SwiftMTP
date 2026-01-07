@@ -11,7 +11,7 @@
 * Break down complex problems into smaller, manageable parts
 * Consider performance implications
 * Always review code for rightness and correctness.
-* Always use agent to handle plan execution.
+* Use appropriate tools (agents, MCP tools, etc.) based on task requirements.
 
 ### Design for Testability
 * No Direct Instantiation: Prohibit instantiating external dependencies directly inside functions (DB, API clients, etc.) .
