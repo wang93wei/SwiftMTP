@@ -46,7 +46,6 @@ struct DeviceRowView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(.ultraThickMaterial, in: Capsule())
-                    .backgroundExtensionEffect()
                 }
             }
             

@@ -21,6 +21,7 @@ struct MainWindowView: View {
                 .environmentObject(deviceManager)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 300)
                 .navigationSubtitle(L10n.MainWindow.deviceList)
+                .safeAreaPadding(.top,5)
         } detail: {
             if let selectedDevice = deviceManager.selectedDevice {
                 FileBrowserView(device: selectedDevice)

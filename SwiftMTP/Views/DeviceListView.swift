@@ -22,11 +22,11 @@ struct DeviceListView: View {
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(.ultraThickMaterial)
-        .backgroundExtensionEffect()
         .overlay(alignment: .top) {
             Divider()
                 .opacity(0.2)
         }
+//        .safeAreaPadding(.top,2)
         .overlay {
             if deviceManager.devices.isEmpty {
                 if deviceManager.isScanning && !deviceManager.hasScannedOnce {
