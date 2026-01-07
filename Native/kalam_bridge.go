@@ -6,6 +6,7 @@ package main
 import "C"
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -54,9 +55,27 @@ const (
 const (
 	// Maximum path length
 	MaxPathLength = 4096
-	// Default download directory
-	DefaultDownloadDir = "/Users/alanwang/Downloads"
+	// Maximum C string allocation size (1MB)
+	MaxCStringSize = 1024 * 1024
 )
+
+// getDefaultDownloadDir returns the default download directory for the current user
+func getDefaultDownloadDir() string {
+	// Try from environment variable first
+	if dir := os.Getenv("DOWNLOAD_DIR"); dir != "" {
+		return dir
+	}
+	
+	// Get user's home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("getDefaultDownloadDir: Failed to get home directory: %v\n", err)
+		return "/tmp"
+	}
+	
+	// Return Downloads directory
+	return filepath.Join(homeDir, "Downloads")
+}
 
 // MARK: - Path Security Validation
 
@@ -110,6 +129,15 @@ func validateAndCleanPath(path string, allowedBaseDir string) (string, error) {
 	}
 	
 	return absPath, nil
+}
+
+// safeCString safely allocates a C string with size limit
+func safeCString(s string) *C.char {
+	if len(s) > MaxCStringSize {
+		fmt.Printf("safeCString: String too large (%d bytes, max %d)\n", len(s), MaxCStringSize)
+		return nil
+	}
+	return C.CString(s)
 }
 
 // Retry settings
@@ -440,7 +468,11 @@ func Kalam_Scan() *C.char {
 		return nil
 	}
 
-	cStr := C.CString(result)
+	cStr := safeCString(result)
+	if cStr == nil {
+		fmt.Printf("Kalam_Scan: Failed to allocate C string for result\n")
+		return nil
+	}
 	
 	// Track allocated string
 	stringMu.Lock()
@@ -498,7 +530,11 @@ func Kalam_ListFiles(storageID uint32, parentID uint32) *C.char {
 		return nil
 	}
 
-	cStr := C.CString(result)
+	cStr := safeCString(result)
+	if cStr == nil {
+		fmt.Printf("Kalam_ListFiles: Failed to allocate C string for result\n")
+		return nil
+	}
 	
 	// Track allocated string
 	stringMu.Lock()
@@ -524,9 +560,30 @@ func Kalam_FreeString(str *C.char) {
 
 //export Kalam_CreateFolder
 func Kalam_CreateFolder(storageID uint32, parentID uint32, folderName *C.char) uint32 {
+	if folderName == nil {
+		fmt.Printf("Kalam_CreateFolder: folderName is nil\n")
+		return 0
+	}
+	
 	name := C.GoString(folderName)
 	if name == "" {
+		fmt.Printf("Kalam_CreateFolder: folderName is empty\n")
 		return 0
+	}
+	
+	// Validate folder name length
+	if len(name) > 255 {
+		fmt.Printf("Kalam_CreateFolder: folder name too long (%d chars)\n", len(name))
+		return 0
+	}
+	
+	// Check for invalid characters
+	invalidChars := []string{"/", "\\", ":", "*", "?", "\"", "<", ">", "|"}
+	for _, char := range invalidChars {
+		if strings.Contains(name, char) {
+			fmt.Printf("Kalam_CreateFolder: folder name contains invalid character: %s\n", char)
+			return 0
+		}
 	}
 
 	var newHandle uint32
@@ -586,6 +643,15 @@ func Kalam_SetProgressCallback(cb C.uintptr_t) {
 
 //export Kalam_DownloadFile
 func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char) int32 {
+	if destinationPath == nil {
+		fmt.Printf("Kalam_DownloadFile: destinationPath is nil\n")
+		return 0
+	}
+	if taskID == nil {
+		fmt.Printf("Kalam_DownloadFile: taskID is nil\n")
+		return 0
+	}
+	
 	destPath := C.GoString(destinationPath)
 	taskIDStr := C.GoString(taskID)
 	
@@ -595,7 +661,8 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 	}
 	
 	// Validate and clean the destination path to prevent path traversal attacks
-	validatedPath, err := validateAndCleanPath(destPath, DefaultDownloadDir)
+	defaultDir := getDefaultDownloadDir()
+	validatedPath, err := validateAndCleanPath(destPath, defaultDir)
 	if err != nil {
 		fmt.Printf("Kalam_DownloadFile: Invalid destination path %s: %v\n", destPath, err)
 		return 0
@@ -698,6 +765,9 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 				}()
 				
 				// Use a context with timeout for the download operation
+				ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dev.Timeout)*time.Millisecond)
+				defer cancel()
+				
 				downloadChan := make(chan error, 1)
 				
 				go func() {
@@ -719,9 +789,10 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 					} else {
 						downloadCompleted = true
 					}
-				case <-time.After(time.Duration(dev.Timeout) * time.Millisecond):
+				case <-ctx.Done():
 					lastError = fmt.Errorf("download timed out after %d seconds", dev.Timeout/1000)
 					fmt.Printf("Kalam_DownloadFile: Download timeout\n")
+					// Note: goroutine may still be running, but file will be closed
 				}
 			}()
 			
@@ -814,13 +885,32 @@ func markTaskCancelled(taskID string) {
 
 //export Kalam_CancelTask
 func Kalam_CancelTask(taskID *C.char) {
+	if taskID == nil {
+		fmt.Printf("Kalam_CancelTask: taskID is nil\n")
+		return
+	}
+	
 	id := C.GoString(taskID)
+	if id == "" {
+		fmt.Printf("Kalam_CancelTask: taskID is empty\n")
+		return
+	}
+	
 	cancelledTasks.Store(id, true)
 	fmt.Printf("Kalam_CancelTask: Task %s marked for cancellation\n", id)
 }
 
 //export Kalam_UploadFile
 func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char, taskID *C.char) int32 {
+	if sourcePath == nil {
+		fmt.Printf("Kalam_UploadFile: sourcePath is nil\n")
+		return 0
+	}
+	if taskID == nil {
+		fmt.Printf("Kalam_UploadFile: taskID is nil\n")
+		return 0
+	}
+	
 	path := C.GoString(sourcePath)
 	taskIDStr := C.GoString(taskID)
 

@@ -66,9 +66,6 @@ func testMutexLock(t *testing.T) {
 	// Test that mutexes can be locked and unlocked
 	deviceMu.Lock()
 	deviceMu.Unlock()
-
-	cancelMu.Lock()
-	cancelMu.Unlock()
 }
 
 func TestConcurrentMutexAccess(t *testing.T) {
@@ -84,12 +81,13 @@ func TestConcurrentMutexAccess(t *testing.T) {
 		}()
 	}
 
-	// Test concurrent access to cancelMu
+	// Test concurrent access to cancelledTasks (sync.Map)
 	for i := 0; i < 10; i++ {
 		go func() {
-			cancelMu.Lock()
+			taskID := fmt.Sprintf("test-task-%d", i)
+			cancelledTasks.Store(taskID, true)
 			time.Sleep(1 * time.Millisecond)
-			cancelMu.Unlock()
+			cancelledTasks.Delete(taskID)
 			done <- true
 		}()
 	}
@@ -106,22 +104,16 @@ func TestCancelledTasksMap(t *testing.T) {
 	// Test that cancelledTasks map can be used
 	taskID := "test-task-123"
 
-	cancelMu.Lock()
-	cancelledTasks[taskID] = true
-	cancelMu.Unlock()
+	cancelledTasks.Store(taskID, true)
 
-	cancelMu.Lock()
-	_, exists := cancelledTasks[taskID]
-	cancelMu.Unlock()
+	_, exists := cancelledTasks.Load(taskID)
 
 	if !exists {
 		t.Errorf("Task %s should exist in cancelledTasks", taskID)
 	}
 
 	// Clean up
-	cancelMu.Lock()
-	delete(cancelledTasks, taskID)
-	cancelMu.Unlock()
+	cancelledTasks.Delete(taskID)
 }
 
 func TestCancelledTasksConcurrentAccess(t *testing.T) {
@@ -130,10 +122,8 @@ func TestCancelledTasksConcurrentAccess(t *testing.T) {
 	// Test concurrent access to cancelledTasks
 	for i := 0; i < 100; i++ {
 		go func(id int) {
-			taskID := "task-" + string(rune(id))
-			cancelMu.Lock()
-			cancelledTasks[taskID] = true
-			cancelMu.Unlock()
+			taskID := fmt.Sprintf("task-%d", id)
+			cancelledTasks.Store(taskID, true)
 			done <- true
 		}(i)
 	}
@@ -143,10 +133,11 @@ func TestCancelledTasksConcurrentAccess(t *testing.T) {
 		<-done
 	}
 
-	// Clean up
-	cancelMu.Lock()
-	cancelledTasks = make(map[string]bool)
-	cancelMu.Unlock()
+	// Clean up - sync.Map doesn't have a clear method, so we need to iterate
+	cancelledTasks.Range(func(key, value interface{}) bool {
+		cancelledTasks.Delete(key)
+		return true
+	})
 }
 
 // MARK: - JSON Encoding/Decoding Tests
@@ -341,11 +332,9 @@ func TestConcurrentStateAccess(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 			deviceMu.Unlock()
 
-			// Access cancelMu
-			cancelMu.Lock()
+			// Access cancelledTasks (sync.Map)
 			taskID := fmt.Sprintf("task-%d", id)
-			cancelledTasks[taskID] = true
-			cancelMu.Unlock()
+			cancelledTasks.Store(taskID, true)
 
 			done <- true
 		}(i)
@@ -356,10 +345,11 @@ func TestConcurrentStateAccess(t *testing.T) {
 		<-done
 	}
 
-	// Clean up
-	cancelMu.Lock()
-	cancelledTasks = make(map[string]bool)
-	cancelMu.Unlock()
+	// Clean up - sync.Map doesn't have a clear method
+	cancelledTasks.Range(func(key, value interface{}) bool {
+		cancelledTasks.Delete(key)
+		return true
+	})
 }
 
 // MARK: - Edge Cases Tests
@@ -407,21 +397,15 @@ func BenchmarkMutexLock(b *testing.B) {
 
 func BenchmarkCancelledTasksAccess(b *testing.B) {
 	taskID := "benchmark-task"
-	cancelMu.Lock()
-	cancelledTasks[taskID] = true
-	cancelMu.Unlock()
+	cancelledTasks.Store(taskID, true)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cancelMu.Lock()
-		_ = cancelledTasks[taskID]
-		cancelMu.Unlock()
+		_, _ = cancelledTasks.Load(taskID)
 	}
 
 	// Clean up
-	cancelMu.Lock()
-	delete(cancelledTasks, taskID)
-	cancelMu.Unlock()
+	cancelledTasks.Delete(taskID)
 }
 
 func BenchmarkJSONEncoding(b *testing.B) {
