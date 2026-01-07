@@ -24,14 +24,15 @@ struct SwiftMTPApp: App {
         .windowResizability(.contentSize)
         .defaultSize(width: 1200, height: 800)
         
-        .commands {
+                .commands {
             // 替换默认的应用菜单
             CommandGroup(replacing: .appInfo) {
                 Button(L10n.Settings.about) {
-                    openSettingsWindow()
+                    // 显示标准的 macOS About 面板
+                    NSApp.orderFrontStandardAboutPanel()
                 }
             }
-            
+
             // 添加语言菜单
             CommandMenu(L10n.Common.language) {
                 Button(L10n.Common.languageChinese) {
@@ -124,15 +125,4 @@ struct SwiftMTPApp: App {
         #endif
     }
     
-    private func openSettingsWindow() {
-        // SwiftUI 会自动处理 Settings scene 的打开
-        // 使用标准的 macOS action 打开设置窗口
-        // 注意：由于 SwiftMTPApp 是 struct，无法使用 @objc 方法
-        // 使用字符串选择器作为回退方案
-        let selector = Selector(("showPreferencesWindow:"))
-        let result = NSApp.sendAction(selector, to: nil, from: nil)
-        if !result {
-            print("[SwiftMTPApp] Failed to open settings window")
-        }
     }
-}
