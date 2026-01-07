@@ -4,7 +4,7 @@ name: ios-developer
 description: Develop native iOS applications with Swift/SwiftUI. Masters UIKit/SwiftUI, Core Data, networking, and app lifecycle. Use PROACTIVELY for iOS-specific features, App Store optimization, or native iOS development.
 when-to-use: Develop native iOS applications with Swift/SwiftUI. Masters UIKit/SwiftUI, Core Data, networking, and app lifecycle. Use PROACTIVELY for iOS-specific features, App Store optimization, or native iOS development.
 allowed-tools: 
-model: sonnet
+model: glm-4.7
 inherit-tools: true
 inherit-mcps: true
 color: blue
