@@ -9,6 +9,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 import AppKit
 
+
+
 struct FileBrowserView: View {
     let device: Device
     
@@ -18,6 +20,11 @@ struct FileBrowserView: View {
     @State private var isLoading = false
     @State private var pendingNavigation: FileItem?
     @State private var isDropTargeted = false
+    
+    @Namespace private var toolbarNamespace
+    
+    @StateObject private var transferManager = FileTransferManager.shared
+    @State private var showTransferPanel = false
     
     // Check if any selected items are folders
     private var hasSelectedFolders: Bool {
@@ -77,57 +84,39 @@ struct FileBrowserView: View {
                 Text(errorMessage)
             }
             .toolbar {
-                        ToolbarItem(placement: .navigation) {
-                            Button {
-                                navigateUp()
-                            } label: {
-                                Label(L10n.FileBrowser.back, systemImage: "chevron.left")
-                                    .labelStyle(.iconOnly)
-                            }
-                            .help(L10n.FileBrowser.goBack)
-                            .disabled(currentPath.isEmpty)
-                            .glassEffect()
-                        }
-                        
-                        ToolbarItem {
-                            Button(L10n.FileBrowser.newFolder, systemImage: "folder.badge.plus") {
-                                showingCreateFolderDialog = true
-                            }
-                            .help(L10n.FileBrowser.createNewFolderHelp)
-                            
-                        }
-                        
-                        ToolbarItem {
-                            Button(L10n.FileBrowser.uploadFiles, systemImage: "square.and.arrow.up") {
-                                selectFilesToUpload()
-                            }
-                            .help(L10n.FileBrowser.uploadFilesHelp)
-                        }
-                        
-                        ToolbarItem {
-                            Button {
-                                downloadSelectedFiles()
-                            } label: {
-                                Label(L10n.FileBrowser.download, systemImage: "arrow.down.circle")
-                                    .labelStyle(.iconOnly)
-                            }
-                            .help(L10n.FileBrowser.downloadHelp)
-                            .disabled(!hasDownloadableFiles)
-                        }
-                        
-                        ToolbarItem {
-                            Button {
-                                deleteSelectedFiles()
-                            } label: {
-                                Label(L10n.FileBrowser.deleteFile, systemImage: "trash")
-                                    .labelStyle(.iconOnly)
-                            }
-                            .help(L10n.FileBrowser.deleteHelp)
-                            .disabled(selectedFiles.isEmpty)
-                            .tint(selectedFiles.isEmpty ? .secondary : .red)
+                ToolbarItem(placement: .navigation) {
+                    Button {
+                        navigateUp()
+                    } label: {
+                        Label(L10n.FileBrowser.back, systemImage: "chevron.left")
+                            .labelStyle(.iconOnly)
+                    }
+                    .help(L10n.FileBrowser.goBack)
+                    .disabled(currentPath.isEmpty)
+                    .glassEffect()
+                }
+                
+                ToolbarItem {
+                    GlassEffectContainer(spacing: 20) {
+                        HStack(spacing: 4) {
+                            refreshButton
+                            transferTasksButton
+                            Divider()
+                                .frame(height: 20)
+                            newFolderButton
+                            uploadFilesButton
+                            downloadButton
+                            deleteButton
                         }
                     }
-                    .toolbarLiquidGlass()            .sheet(isPresented: $showingCreateFolderDialog) {
+                }
+            }
+            .toolbarLiquidGlass()
+            .sheet(isPresented: $showTransferPanel) {
+                FileTransferView()
+                    .environmentObject(transferManager)
+                    .frame(minWidth: 600, minHeight: 400)
+            }            .sheet(isPresented: $showingCreateFolderDialog) {
                 createFolderDialog
             }
         
@@ -694,6 +683,78 @@ struct FileBrowserView: View {
                 selectedFiles.removeAll()
             }
         }
+    }
+    
+    // MARK: - Toolbar Buttons
+    
+    private var refreshButton: some View {
+        Button {
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshFileList"), object: nil)
+        } label: {
+            Label(L10n.MainWindow.refresh, systemImage: "arrow.clockwise")
+                .labelStyle(.iconOnly)
+        }
+        .help(L10n.MainWindow.refreshFileList)
+        .glassEffect()
+        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
+    }
+    
+    private var transferTasksButton: some View {
+        Button {
+            showTransferPanel.toggle()
+        } label: {
+            Label(L10n.MainWindow.transferTasks, systemImage: "arrow.up.arrow.down.circle")
+                .labelStyle(.iconOnly)
+        }
+        .badge(transferManager.activeTasks.count)
+        .help(L10n.MainWindow.viewTransferTasks)
+        .glassEffect()
+        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
+    }
+    
+    private var newFolderButton: some View {
+        Button(L10n.FileBrowser.newFolder, systemImage: "folder.badge.plus") {
+            showingCreateFolderDialog = true
+        }
+        .help(L10n.FileBrowser.createNewFolderHelp)
+        .glassEffect()
+        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
+    }
+    
+    private var uploadFilesButton: some View {
+        Button(L10n.FileBrowser.uploadFiles, systemImage: "square.and.arrow.up") {
+            selectFilesToUpload()
+        }
+        .help(L10n.FileBrowser.uploadFilesHelp)
+        .glassEffect()
+        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
+    }
+    
+    private var downloadButton: some View {
+        Button {
+            downloadSelectedFiles()
+        } label: {
+            Label(L10n.FileBrowser.download, systemImage: "arrow.down.circle")
+                .labelStyle(.iconOnly)
+        }
+        .help(L10n.FileBrowser.downloadHelp)
+        .disabled(!hasDownloadableFiles)
+        .glassEffect()
+        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
+    }
+    
+    private var deleteButton: some View {
+        Button {
+            deleteSelectedFiles()
+        } label: {
+            Label(L10n.FileBrowser.deleteFile, systemImage: "trash")
+                .labelStyle(.iconOnly)
+        }
+        .help(L10n.FileBrowser.deleteHelp)
+        .disabled(selectedFiles.isEmpty)
+        .tint(selectedFiles.isEmpty ? .secondary : .red)
+        .glassEffect()
+        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
     }
     
     // MARK: - Create Folder Dialog

@@ -9,9 +9,7 @@ import SwiftUI
 
 struct MainWindowView: View {
     @StateObject private var deviceManager = DeviceManager.shared
-    @StateObject private var transferManager = FileTransferManager.shared
     @ObservedObject var languageManager = LanguageManager.shared
-    @State private var showTransferPanel = false
     @State private var showDisconnectionAlert = false
     @State private var refreshID = UUID()
     
@@ -34,37 +32,7 @@ struct MainWindowView: View {
             }
         }
         .id(refreshID)
-        .toolbar {
-            ToolbarItemGroup(placement: .automatic) {
-                Button {
-                    if deviceManager.selectedDevice != nil {
-                        NotificationCenter.default.post(name: NSNotification.Name("RefreshFileList"), object: nil)
-                    } else {
-                        deviceManager.scanDevices()
-                    }
-                } label: {
-                    Label(L10n.MainWindow.refresh, systemImage: "arrow.clockwise")
-                }
-                .disabled(deviceManager.isScanning)
-                .help(deviceManager.selectedDevice != nil ? L10n.MainWindow.refreshFileList : L10n.MainWindow.refreshDeviceList)
-                
-                Divider()
-                
-                Button {
-                    showTransferPanel.toggle()
-                } label: {
-                    Label(L10n.MainWindow.transferTasks, systemImage: "arrow.up.arrow.down.circle")
-                }
-                .badge(transferManager.activeTasks.count)
-                .help(L10n.MainWindow.viewTransferTasks)
-            }
-        }
         .toolbarLiquidGlass()
-        .sheet(isPresented: $showTransferPanel) {
-            FileTransferView()
-                .environmentObject(transferManager)
-                .frame(minWidth: 600, minHeight: 400)
-        }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("DeviceDisconnected"))) { _ in
             showDisconnectionAlert = true
         }
