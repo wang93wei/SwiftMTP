@@ -30,7 +30,7 @@
 | 📦 **Batch Operations** | Batch select and process files |
 | 🎨 **Modern UI** | Beautiful SwiftUI interface |
 | 📊 **Storage Info** | Display device storage usage |
-| 🌍 **Multi-language Support** | Support Simplified Chinese, English, Japanese, Korean, follows system language |
+| 🌍 **Multi-language Support** | Support English, Simplified Chinese, Japanese, Korean, Russian, French, German, follows system language |
 
 ## 📸 App Screenshot
 ![SwiftMTP Logo](SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png)
@@ -109,6 +109,9 @@ The DMG file will be generated in the `build/` directory.
    - **Simplified Chinese** - Simplified Chinese interface
    - **Japanese** - Japanese interface
    - **Korean** - Korean interface
+   - **Russian** - Russian interface
+   - **French** - French interface
+   - **German** - German interface
 4. In-app interface will update language immediately
 5. **Menu bar and file pickers** require app restart to take effect, system will prompt for immediate restart
 
