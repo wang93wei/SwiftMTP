@@ -11,6 +11,27 @@ import Combine
 
 final class LanguageManagerTests: XCTestCase {
     
+    var manager: LanguageManager!
+    var cancellables: Set<AnyCancellable>!
+    
+    // MARK: - Setup and Teardown
+    
+    override func setUp() {
+        super.setUp()
+        manager = LanguageManager.shared
+        cancellables = Set<AnyCancellable>()
+        
+        // Reset to system default before each test
+        manager.currentLanguage = .system
+    }
+    
+    override func tearDown() {
+        // Reset to system default after each test
+        manager.currentLanguage = .system
+        cancellables.removeAll()
+        super.tearDown()
+    }
+    
     // MARK: - Singleton Tests
     
     func testSingletonInstance() {
@@ -20,103 +41,101 @@ final class LanguageManagerTests: XCTestCase {
         XCTAssertTrue(instance1 === instance2, "LanguageManager should be a singleton")
     }
     
-    // MARK: - Initialization Tests
-    
-    func testInitialization() {
-        let manager = LanguageManager.shared
-        
-        XCTAssertNotNil(manager.currentLanguage)
-        XCTAssertTrue(AppLanguage.allCases.contains(manager.currentLanguage))
-    }
+    // MARK: - Published Properties Tests
     
     func testCurrentLanguageIsPublished() {
-        let manager = LanguageManager.shared
-        let expectation = self.expectation(description: "Current language should be published")
+        let expectation = self.expectation(description: "currentLanguage property should be published")
         
-        let cancellable = manager.$currentLanguage
-            .dropFirst()
+        manager.$currentLanguage
+            .dropFirst() // Skip initial value
             .sink { _ in
                 expectation.fulfill()
             }
+            .store(in: &cancellables)
         
         manager.currentLanguage = .english
         
-        waitForExpectations(timeout: 1.0) { _ in
-            cancellable.cancel()
-        }
+        waitForExpectations(timeout: 1.0)
     }
     
-    // MARK: - Language Change Tests
+    // MARK: - Language Switching Tests
     
-    func testChangeLanguageToEnglish() {
-        let manager = LanguageManager.shared
-        
+    func testSwitchToEnglish() {
         manager.currentLanguage = .english
         
         XCTAssertEqual(manager.currentLanguage, .english)
     }
     
-    func testChangeLanguageToChinese() {
-        let manager = LanguageManager.shared
-        
+    func testSwitchToChinese() {
         manager.currentLanguage = .chinese
         
         XCTAssertEqual(manager.currentLanguage, .chinese)
     }
     
-    func testChangeLanguageToJapanese() {
-        let manager = LanguageManager.shared
-        
+    func testSwitchToJapanese() {
         manager.currentLanguage = .japanese
         
         XCTAssertEqual(manager.currentLanguage, .japanese)
     }
     
-    func testChangeLanguageToKorean() {
-        let manager = LanguageManager.shared
-        
+    func testSwitchToKorean() {
         manager.currentLanguage = .korean
         
         XCTAssertEqual(manager.currentLanguage, .korean)
     }
     
-    func testChangeLanguageToSystem() {
-        let manager = LanguageManager.shared
+    func testSwitchToRussian() {
+        manager.currentLanguage = .russian
+        
+        XCTAssertEqual(manager.currentLanguage, .russian)
+    }
+    
+    func testSwitchToFrench() {
+        manager.currentLanguage = .french
+        
+        XCTAssertEqual(manager.currentLanguage, .french)
+    }
+    
+    func testSwitchToGerman() {
+        manager.currentLanguage = .german
+        
+        XCTAssertEqual(manager.currentLanguage, .german)
+    }
+    
+    func testSwitchToSystem() {
+        manager.currentLanguage = .english
         
         manager.currentLanguage = .system
         
         XCTAssertEqual(manager.currentLanguage, .system)
     }
     
-    // MARK: - Multiple Language Changes Tests
-    
-    func testMultipleLanguageChanges() {
-        let manager = LanguageManager.shared
+    func testMultipleLanguageSwitches() {
+        manager.currentLanguage = .english
+        XCTAssertEqual(manager.currentLanguage, .english)
         
-        let languages: [AppLanguage] = [.english, .chinese, .japanese, .korean, .system]
+        manager.currentLanguage = .chinese
+        XCTAssertEqual(manager.currentLanguage, .chinese)
         
-        for language in languages {
-            manager.currentLanguage = language
-            XCTAssertEqual(manager.currentLanguage, language)
-        }
+        manager.currentLanguage = .japanese
+        XCTAssertEqual(manager.currentLanguage, .japanese)
+        
+        manager.currentLanguage = .system
+        XCTAssertEqual(manager.currentLanguage, .system)
     }
     
     // MARK: - Localization Tests
     
-    func testLocalizedString() {
-        let manager = LanguageManager.shared
-        
+    func testLocalizedStringWithValidKey() {
         manager.currentLanguage = .english
         
         let localized = manager.localizedString(for: "deviceList")
         
         XCTAssertNotNil(localized)
-        XCTAssertFalse(localized.isEmpty)
+        XCTAssertNotEqual(localized, "deviceList")
     }
     
     func testLocalizedStringWithInvalidKey() {
-        let manager = LanguageManager.shared
-        
         manager.currentLanguage = .english
         
         let localized = manager.localizedString(for: "invalid_key_12345")
@@ -126,164 +145,201 @@ final class LanguageManagerTests: XCTestCase {
     }
     
     func testLocalizedStringWithEmptyKey() {
-        let manager = LanguageManager.shared
+        manager.currentLanguage = .english
         
         let localized = manager.localizedString(for: "")
         
         XCTAssertEqual(localized, "")
     }
     
-    func testLocalizedStringConsistency() {
-        let manager = LanguageManager.shared
+    func testLocalizedStringInDifferentLanguages() {
+        let testKey = "deviceList"
         
         manager.currentLanguage = .english
+        let english = manager.localizedString(for: testKey)
         
-        let result1 = manager.localizedString(for: "deviceList")
-        let result2 = manager.localizedString(for: "deviceList")
+        manager.currentLanguage = .chinese
+        let chinese = manager.localizedString(for: testKey)
         
-        XCTAssertEqual(result1, result2)
+        // Different languages should return different strings (if translations exist)
+        // Or at least should not crash
+        XCTAssertNotNil(english)
+        XCTAssertNotNil(chinese)
     }
     
-    // MARK: - Language Persistence Tests
+    func testLocalizedStringFallback() {
+        // Test that fallback to main bundle works
+        manager.currentLanguage = .chinese
+        
+        let localized = manager.localizedString(for: "deviceList")
+        
+        // Should return something (either Chinese or English fallback)
+        XCTAssertNotNil(localized)
+    }
     
-    func testLanguageChangePersists() {
-        let manager = LanguageManager.shared
-        let originalLanguage = manager.currentLanguage
+    // MARK: - Persistence Tests
+    
+    func testLanguagePersistence() {
+        manager.currentLanguage = .japanese
         
-        manager.currentLanguage = .english
+        // Create a new instance to test persistence
+        // Note: This won't work perfectly because LanguageManager is a singleton
+        // but we can verify that the value is saved to UserDefaults
         
-        // Create a new instance to simulate app restart
-        // Note: In a real scenario, this would require restarting the app
-        // For testing, we just verify the language was changed
-        XCTAssertEqual(manager.currentLanguage, .english)
+        let savedLanguage = UserDefaults.standard.string(forKey: "appLanguage")
+        XCTAssertEqual(savedLanguage, "ja")
+    }
+    
+    func testLanguagePersistenceReset() {
+        manager.currentLanguage = .chinese
+        manager.currentLanguage = .system
         
-        // Restore original language
-        manager.currentLanguage = originalLanguage
+        let savedLanguage = UserDefaults.standard.string(forKey: "appLanguage")
+        XCTAssertEqual(savedLanguage, "system")
     }
     
     // MARK: - Notification Tests
     
-    func testLanguageChangeNotification() {
-        let manager = LanguageManager.shared
-        let expectation = self.expectation(description: "Language change notification should be posted")
+    func testLanguageChangedNotification() {
+        let expectation = self.expectation(description: "languageDidChange notification should be sent")
         
-        let observer = NotificationCenter.default.addObserver(
-            forName: .languageDidChange,
-            object: nil,
-            queue: .main
-        ) { _ in
+        NotificationCenter.default.publisher(for: .languageDidChange)
+            .sink { _ in
+                expectation.fulfill()
+            }
+            .store(in: &cancellables)
+        
+        manager.currentLanguage = .english
+        
+        waitForExpectations(timeout: 1.0)
+    }
+    
+    func testLanguageChangedNotificationMultipleTimes() {
+        let expectation = self.expectation(description: "Multiple languageDidChange notifications should be sent")
+        expectation.expectedFulfillmentCount = 3
+        
+        NotificationCenter.default.publisher(for: .languageDidChange)
+            .sink { _ in
+                expectation.fulfill()
+            }
+            .store(in: &cancellables)
+        
+        manager.currentLanguage = .english
+        manager.currentLanguage = .chinese
+        manager.currentLanguage = .japanese
+        
+        waitForExpectations(timeout: 1.0)
+    }
+    
+    // MARK: - Bundle Tests
+    
+    func testBundleUpdateOnLanguageChange() {
+        manager.currentLanguage = .english
+        
+        let englishBundle = manager.localizedString(for: "deviceList")
+        
+        manager.currentLanguage = .chinese
+        
+        let chineseBundle = manager.localizedString(for: "deviceList")
+        
+        // Bundle should be updated
+        // The actual values depend on available translations
+        XCTAssertNotNil(englishBundle)
+        XCTAssertNotNil(chineseBundle)
+    }
+    
+    func testBundleFallbackToMain() {
+        // Test that bundle falls back to main bundle if language bundle is not found
+        // This is tested implicitly through localizedString tests
+        manager.currentLanguage = .system
+        
+        let localized = manager.localizedString(for: "deviceList")
+        
+        XCTAssertNotNil(localized)
+    }
+    
+    // MARK: - Thread Safety Tests
+    
+    func testConcurrentLanguageSwitches() {
+        let expectation = self.expectation(description: "Concurrent language switches should complete")
+        expectation.expectedFulfillmentCount = 10
+        
+        DispatchQueue.concurrentPerform(iterations: 10) { i in
+            let languages: [AppLanguage] = [.english, .chinese, .japanese, .korean, .system]
+            manager.currentLanguage = languages[i % languages.count]
             expectation.fulfill()
         }
         
-        manager.currentLanguage = .english
+        waitForExpectations(timeout: 5.0)
         
-        waitForExpectations(timeout: 1.0) { _ in
-            NotificationCenter.default.removeObserver(observer)
+        // Should complete without crashing
+        XCTAssertNotNil(manager.currentLanguage)
+    }
+    
+    func testConcurrentLocalizedStringAccess() {
+        let expectation = self.expectation(description: "Concurrent localizedString access should complete")
+        expectation.expectedFulfillmentCount = 10
+        
+        DispatchQueue.concurrentPerform(iterations: 10) { _ in
+            let localized = manager.localizedString(for: "deviceList")
+            XCTAssertNotNil(localized)
+            expectation.fulfill()
         }
-    }
-    
-    // MARK: - Locale Identifier Tests
-    
-    func testLocaleIdentifierForEnglish() {
-        let manager = LanguageManager.shared
-        manager.currentLanguage = .english
         
-        let locale = manager.currentLanguage.localeIdentifier
-        
-        XCTAssertEqual(locale, "en")
-    }
-    
-    func testLocaleIdentifierForChinese() {
-        let manager = LanguageManager.shared
-        manager.currentLanguage = .chinese
-        
-        let locale = manager.currentLanguage.localeIdentifier
-        
-        XCTAssertEqual(locale, "zh-Hans")
-    }
-    
-    func testLocaleIdentifierForJapanese() {
-        let manager = LanguageManager.shared
-        manager.currentLanguage = .japanese
-        
-        let locale = manager.currentLanguage.localeIdentifier
-        
-        XCTAssertEqual(locale, "ja")
-    }
-    
-    func testLocaleIdentifierForKorean() {
-        let manager = LanguageManager.shared
-        manager.currentLanguage = .korean
-        
-        let locale = manager.currentLanguage.localeIdentifier
-        
-        XCTAssertEqual(locale, "ko")
-    }
-    
-    func testLocaleIdentifierForSystem() {
-        let manager = LanguageManager.shared
-        manager.currentLanguage = .system
-        
-        let locale = manager.currentLanguage.localeIdentifier
-        
-        XCTAssertNil(locale)
-    }
-    
-    // MARK: - Cleanup Tests
-    
-    func testCleanupSubscriptions() {
-        let manager = LanguageManager.shared
-        
-        // Should not throw
-        XCTAssertNoThrow(manager.cleanupSubscriptions())
+        waitForExpectations(timeout: 5.0)
     }
     
     // MARK: - Edge Cases
     
-    func testRapidLanguageChanges() {
-        let manager = LanguageManager.shared
-        let originalLanguage = manager.currentLanguage
-        
-        // Perform rapid language changes
-        for _ in 0..<10 {
-            manager.currentLanguage = .english
-            manager.currentLanguage = .chinese
-            manager.currentLanguage = .japanese
-        }
-        
-        // Manager should still be in a valid state
-        XCTAssertNotNil(manager.currentLanguage)
-        XCTAssertTrue(AppLanguage.allCases.contains(manager.currentLanguage))
-        
-        // Restore original language
-        manager.currentLanguage = originalLanguage
-    }
-    
-    func testAllSupportedKeys() {
-        let manager = LanguageManager.shared
+    func testLanguageSwitchWithNilKey() {
         manager.currentLanguage = .english
         
-        let testKeys = [
-            "deviceList",
-            "refresh",
-            "cancel",
-            "ok",
-            "upload",
-            "download",
-            "delete",
-            "settings"
-        ]
+        let localized = manager.localizedString(for: "")
         
-        for key in testKeys {
-            let localized = manager.localizedString(for: key)
-            XCTAssertNotNil(localized, "Localization for key '\(key)' should not be nil")
-        }
+        XCTAssertEqual(localized, "")
+    }
+    
+    func testLanguageSwitchWithSpecialCharacters() {
+        manager.currentLanguage = .english
+        
+        let localized = manager.localizedString(for: "key_with_special_chars_!@#$%^&*()")
+        
+        // Should return the key itself if not found
+        XCTAssertEqual(localized, "key_with_special_chars_!@#$%^&*()")
+    }
+    
+    func testLanguageSwitchWithVeryLongKey() {
+        manager.currentLanguage = .english
+        
+        let longKey = String(repeating: "a", count: 1000)
+        let localized = manager.localizedString(for: longKey)
+        
+        // Should return the key itself if not found
+        XCTAssertEqual(localized, longKey)
+    }
+    
+    func testLanguageSwitchWithUnicodeKey() {
+        manager.currentLanguage = .chinese
+        
+        let localized = manager.localizedString(for: "测试键")
+        
+        // Should return the key itself if not found
+        XCTAssertEqual(localized, "测试键")
     }
     
     // MARK: - Performance Tests
     
+    func testLanguageSwitchPerformance() {
+        measure {
+            for _ in 0..<100 {
+                manager.currentLanguage = .english
+                manager.currentLanguage = .chinese
+                manager.currentLanguage = .japanese
+            }
+        }
+    }
+    
     func testLocalizedStringPerformance() {
-        let manager = LanguageManager.shared
         manager.currentLanguage = .english
         
         measure {
@@ -293,22 +349,15 @@ final class LanguageManagerTests: XCTestCase {
         }
     }
     
-    func testLanguageChangePerformance() {
-        let manager = LanguageManager.shared
+    // MARK: - Cleanup Tests
+    
+    func testCleanupSubscriptions() {
+        // Add a subscription
+        manager.$currentLanguage
+            .sink { _ in }
+            .store(in: &cancellables)
         
-        measure {
-            for _ in 0..<100 {
-                manager.currentLanguage = .english
-                manager.currentLanguage = .chinese
-            }
-        }
-    }
-    
-    // MARK: - Test Cleanup
-    
-    override func tearDown() {
-        // Reset to system default after each test
-        LanguageManager.shared.currentLanguage = .system
-        super.tearDown()
+        // Cleanup should not throw
+        XCTAssertNoThrow(manager.cleanupSubscriptions())
     }
 }

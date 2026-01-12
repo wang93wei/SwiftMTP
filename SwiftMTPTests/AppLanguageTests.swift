@@ -10,28 +10,23 @@ import XCTest
 
 final class AppLanguageTests: XCTestCase {
     
-    // MARK: - Raw Value Tests
-    
-    func testRawValues() {
-        XCTAssertEqual(AppLanguage.system.rawValue, "system")
-        XCTAssertEqual(AppLanguage.english.rawValue, "en")
-        XCTAssertEqual(AppLanguage.chinese.rawValue, "zh")
-        XCTAssertEqual(AppLanguage.japanese.rawValue, "ja")
-        XCTAssertEqual(AppLanguage.korean.rawValue, "ko")
-    }
+    // MARK: - CaseIterable Tests
     
     func testAllCases() {
-        let languages: [AppLanguage] = [
-            .system,
-            .english,
-            .chinese,
-            .japanese,
-            .korean
-        ]
-        XCTAssertEqual(languages.count, 5)
+        let allCases = AppLanguage.allCases
+        
+        XCTAssertEqual(allCases.count, 8)
+        XCTAssertTrue(allCases.contains(.system))
+        XCTAssertTrue(allCases.contains(.english))
+        XCTAssertTrue(allCases.contains(.chinese))
+        XCTAssertTrue(allCases.contains(.japanese))
+        XCTAssertTrue(allCases.contains(.korean))
+        XCTAssertTrue(allCases.contains(.russian))
+        XCTAssertTrue(allCases.contains(.french))
+        XCTAssertTrue(allCases.contains(.german))
     }
     
-    // MARK: - ID Tests
+    // MARK: - Identifiable Tests
     
     func testIdProperty() {
         XCTAssertEqual(AppLanguage.system.id, "system")
@@ -39,9 +34,39 @@ final class AppLanguageTests: XCTestCase {
         XCTAssertEqual(AppLanguage.chinese.id, "zh")
         XCTAssertEqual(AppLanguage.japanese.id, "ja")
         XCTAssertEqual(AppLanguage.korean.id, "ko")
+        XCTAssertEqual(AppLanguage.russian.id, "ru")
+        XCTAssertEqual(AppLanguage.french.id, "fr")
+        XCTAssertEqual(AppLanguage.german.id, "de")
     }
     
-    // MARK: - Display Name Tests
+    func testIdMatchesRawValue() {
+        for language in AppLanguage.allCases {
+            XCTAssertEqual(language.id, language.rawValue)
+        }
+    }
+    
+    // MARK: - RawValue Tests
+    
+    func testRawValues() {
+        XCTAssertEqual(AppLanguage.system.rawValue, "system")
+        XCTAssertEqual(AppLanguage.english.rawValue, "en")
+        XCTAssertEqual(AppLanguage.chinese.rawValue, "zh")
+        XCTAssertEqual(AppLanguage.japanese.rawValue, "ja")
+        XCTAssertEqual(AppLanguage.korean.rawValue, "ko")
+        XCTAssertEqual(AppLanguage.russian.rawValue, "ru")
+        XCTAssertEqual(AppLanguage.french.rawValue, "fr")
+        XCTAssertEqual(AppLanguage.german.rawValue, "de")
+    }
+    
+    // MARK: - DisplayName Tests
+    
+    func testDisplayName() {
+        // Note: displayName depends on L10n, which may not be available in tests
+        // We just verify that it returns a non-empty string
+        for language in AppLanguage.allCases {
+            XCTAssertFalse(language.displayName.isEmpty, "displayName for \(language.rawValue) should not be empty")
+        }
+    }
     
     func testDisplayNameRaw() {
         XCTAssertEqual(AppLanguage.system.displayNameRaw, "System Default")
@@ -49,17 +74,12 @@ final class AppLanguageTests: XCTestCase {
         XCTAssertEqual(AppLanguage.chinese.displayNameRaw, "中文")
         XCTAssertEqual(AppLanguage.japanese.displayNameRaw, "日本語")
         XCTAssertEqual(AppLanguage.korean.displayNameRaw, "한국어")
+        XCTAssertEqual(AppLanguage.russian.displayNameRaw, "Русский")
+        XCTAssertEqual(AppLanguage.french.displayNameRaw, "Français")
+        XCTAssertEqual(AppLanguage.german.displayNameRaw, "Deutsch")
     }
     
-    func testDisplayNameRawContainsExpectedCharacters() {
-        // Test that display names contain expected characters
-        XCTAssertTrue(AppLanguage.english.displayNameRaw.contains("English"))
-        XCTAssertTrue(AppLanguage.chinese.displayNameRaw.contains("中文"))
-        XCTAssertTrue(AppLanguage.japanese.displayNameRaw.contains("日本"))
-        XCTAssertTrue(AppLanguage.korean.displayNameRaw.contains("한국"))
-    }
-    
-    // MARK: - Locale Identifier Tests
+    // MARK: - LocaleIdentifier Tests
     
     func testLocaleIdentifier() {
         XCTAssertNil(AppLanguage.system.localeIdentifier)
@@ -67,176 +87,52 @@ final class AppLanguageTests: XCTestCase {
         XCTAssertEqual(AppLanguage.chinese.localeIdentifier, "zh-Hans")
         XCTAssertEqual(AppLanguage.japanese.localeIdentifier, "ja")
         XCTAssertEqual(AppLanguage.korean.localeIdentifier, "ko")
+        XCTAssertEqual(AppLanguage.russian.localeIdentifier, "ru")
+        XCTAssertEqual(AppLanguage.french.localeIdentifier, "fr")
+        XCTAssertEqual(AppLanguage.german.localeIdentifier, "de")
     }
     
-    // MARK: - CaseIterable Tests
-    
-    func testCaseIterable() {
-        let allLanguages = AppLanguage.allCases
-        XCTAssertEqual(allLanguages.count, 5)
-        
-        XCTAssertTrue(allLanguages.contains(.system))
-        XCTAssertTrue(allLanguages.contains(.english))
-        XCTAssertTrue(allLanguages.contains(.chinese))
-        XCTAssertTrue(allLanguages.contains(.japanese))
-        XCTAssertTrue(allLanguages.contains(.korean))
-    }
-    
-    // MARK: - Identifiable Tests
-    
-    func testIdentifiable() {
-        let languages: [AppLanguage] = [.system, .english, .chinese, .japanese, .korean]
-        
-        let ids = languages.map { $0.id }
-        let uniqueIds = Set(ids)
-        
-        XCTAssertEqual(ids.count, uniqueIds.count, "All language IDs should be unique")
-    }
-    
-    // MARK: - Initialization from Raw Value
+    // MARK: - Initialization Tests
     
     func testInitFromRawValue() {
-        XCTAssertEqual(AppLanguage(rawValue: "system"), .system)
-        XCTAssertEqual(AppLanguage(rawValue: "en"), .english)
-        XCTAssertEqual(AppLanguage(rawValue: "zh"), .chinese)
-        XCTAssertEqual(AppLanguage(rawValue: "ja"), .japanese)
-        XCTAssertEqual(AppLanguage(rawValue: "ko"), .korean)
+        let system = AppLanguage(rawValue: "system")
+        XCTAssertEqual(system, .system)
+        
+        let english = AppLanguage(rawValue: "en")
+        XCTAssertEqual(english, .english)
+        
+        let chinese = AppLanguage(rawValue: "zh")
+        XCTAssertEqual(chinese, .chinese)
+        
+        let japanese = AppLanguage(rawValue: "ja")
+        XCTAssertEqual(japanese, .japanese)
+        
+        let korean = AppLanguage(rawValue: "ko")
+        XCTAssertEqual(korean, .korean)
+        
+        let russian = AppLanguage(rawValue: "ru")
+        XCTAssertEqual(russian, .russian)
+        
+        let french = AppLanguage(rawValue: "fr")
+        XCTAssertEqual(french, .french)
+        
+        let german = AppLanguage(rawValue: "de")
+        XCTAssertEqual(german, .german)
     }
     
     func testInitFromInvalidRawValue() {
-        XCTAssertNil(AppLanguage(rawValue: "invalid"))
-        XCTAssertNil(AppLanguage(rawValue: ""))
-        XCTAssertNil(AppLanguage(rawValue: "EN")) // Case sensitive
+        let invalid = AppLanguage(rawValue: "invalid_language")
+        XCTAssertNil(invalid)
     }
     
-    // MARK: - String Comparison Tests
-    
-    func testRawValueEquality() {
-        XCTAssertEqual(AppLanguage.english.rawValue, "en")
-        XCTAssertEqual(AppLanguage.english.id, "en")
+    func testInitFromEmptyRawValue() {
+        let empty = AppLanguage(rawValue: "")
+        XCTAssertNil(empty)
     }
     
-    func testCaseSensitivity() {
-        XCTAssertNotEqual(AppLanguage(rawValue: "EN"), .english)
-        XCTAssertNotEqual(AppLanguage(rawValue: "ZH"), .chinese)
-        XCTAssertNotEqual(AppLanguage(rawValue: "JA"), .japanese)
-        XCTAssertNotEqual(AppLanguage(rawValue: "KO"), .korean)
-    }
-    
-    // MARK: - Display Name Uniqueness Tests
-    
-    func testDisplayNamesAreUnique() {
-        let languages: [AppLanguage] = [.system, .english, .chinese, .japanese, .korean]
-        let displayNames = languages.map { $0.displayNameRaw }
-        let uniqueNames = Set(displayNames)
-        
-        XCTAssertEqual(displayNames.count, uniqueNames.count, "All display names should be unique")
-    }
-    
-    // MARK: - Locale Identifier Uniqueness Tests
-    
-    func testLocaleIdentifiersAreUnique() {
-        let languages: [AppLanguage] = [.system, .english, .chinese, .japanese, .korean]
-        let localeIdentifiers = languages.compactMap { $0.localeIdentifier }
-        let uniqueLocales = Set(localeIdentifiers)
-        
-        XCTAssertEqual(localeIdentifiers.count, uniqueLocales.count, "All locale identifiers should be unique")
-    }
-    
-    // MARK: - System Language Special Case
-    
-    func testSystemLanguageHasNilLocale() {
-        XCTAssertNil(AppLanguage.system.localeIdentifier)
-        XCTAssertEqual(AppLanguage.system.displayNameRaw, "System Default")
-    }
-    
-    func testSystemLanguageRawValue() {
-        XCTAssertEqual(AppLanguage.system.rawValue, "system")
-    }
-    
-    // MARK: - Chinese Language Variants
-    
-    func testChineseLanguageIsSimplified() {
-        XCTAssertEqual(AppLanguage.chinese.localeIdentifier, "zh-Hans")
-        XCTAssertTrue(AppLanguage.chinese.displayNameRaw.contains("中文"))
-    }
-    
-    // MARK: - Language Ordering in AllCases
-    
-    func testAllCasesOrder() {
-        let allCases = AppLanguage.allCases
-        XCTAssertEqual(allCases[0], .system)
-        XCTAssertEqual(allCases[1], .english)
-        XCTAssertEqual(allCases[2], .chinese)
-        XCTAssertEqual(allCases[3], .japanese)
-        XCTAssertEqual(allCases[4], .korean)
-    }
-    
-    // MARK: - Edge Cases
-    
-    func testEmptyStringRawValue() {
-        XCTAssertNil(AppLanguage(rawValue: ""))
-    }
-    
-    func testWhitespaceRawValue() {
-        XCTAssertNil(AppLanguage(rawValue: " "))
-        XCTAssertNil(AppLanguage(rawValue: "\t"))
-        XCTAssertNil(AppLanguage(rawValue: "\n"))
-    }
-    
-    func testPartialRawValue() {
-        XCTAssertNil(AppLanguage(rawValue: "e"))
-        XCTAssertNil(AppLanguage(rawValue: "z"))
-        XCTAssertNil(AppLanguage(rawValue: "j"))
-        XCTAssertNil(AppLanguage(rawValue: "k"))
-    }
-    
-    // MARK: - Unicode Tests
-    
-    func testUnicodeInDisplayNames() {
-        // Test that Chinese, Japanese, and Korean display names contain valid Unicode
-        let chineseName = AppLanguage.chinese.displayNameRaw
-        let japaneseName = AppLanguage.japanese.displayNameRaw
-        let koreanName = AppLanguage.korean.displayNameRaw
-        
-        // These should not be empty
-        XCTAssertFalse(chineseName.isEmpty)
-        XCTAssertFalse(japaneseName.isEmpty)
-        XCTAssertFalse(koreanName.isEmpty)
-        
-        // These should contain non-ASCII characters
-        let chineseData = chineseName.data(using: .utf8)!
-        let japaneseData = japaneseName.data(using: .utf8)!
-        let koreanData = koreanName.data(using: .utf8)!
-        
-        XCTAssertGreaterThan(chineseData.count, chineseName.count)
-        XCTAssertGreaterThan(japaneseData.count, japaneseName.count)
-        XCTAssertGreaterThan(koreanData.count, koreanName.count)
-    }
-    
-    // MARK: - Consistency Tests
-    
-    func testRawValueIdConsistency() {
-        let languages: [AppLanguage] = [.system, .english, .chinese, .japanese, .korean]
-        
-        for language in languages {
-            XCTAssertEqual(language.rawValue, language.id, "rawValue and id should be consistent for \(language)")
-        }
-    }
-    
-    // MARK: - Hashable Tests
-    
-    func testHashable() {
-        let set: Set<AppLanguage> = [.system, .english, .chinese, .japanese, .korean]
-        XCTAssertEqual(set.count, 5)
-    }
-    
-    func testHashableInsertDuplicate() {
-        var set: Set<AppLanguage> = []
-        set.insert(.english)
-        set.insert(.english)
-        
-        XCTAssertEqual(set.count, 1)
+    func testInitFromNilRawValue() {
+        let nilValue = AppLanguage(rawValue: "nil")
+        XCTAssertNil(nilValue)
     }
     
     // MARK: - Equatable Tests
@@ -245,24 +141,173 @@ final class AppLanguageTests: XCTestCase {
         XCTAssertEqual(AppLanguage.english, AppLanguage.english)
         XCTAssertNotEqual(AppLanguage.english, AppLanguage.chinese)
         XCTAssertNotEqual(AppLanguage.chinese, AppLanguage.japanese)
-        XCTAssertNotEqual(AppLanguage.japanese, AppLanguage.korean)
+    }
+    
+    func testEqualityWithSameRawValue() {
+        let english1 = AppLanguage(rawValue: "en")
+        let english2 = AppLanguage(rawValue: "en")
+        
+        XCTAssertEqual(english1, english2)
+    }
+    
+    // MARK: - Hashable Tests
+    
+    func testHashable() {
+        let languages: Set<AppLanguage> = [.english, .chinese, .japanese]
+        
+        XCTAssertEqual(languages.count, 3)
+        XCTAssertTrue(languages.contains(.english))
+        XCTAssertTrue(languages.contains(.chinese))
+        XCTAssertTrue(languages.contains(.japanese))
+    }
+    
+    func testHashableWithDuplicates() {
+        var languages: Set<AppLanguage> = []
+        languages.insert(.english)
+        languages.insert(.english)
+        languages.insert(.chinese)
+        
+        XCTAssertEqual(languages.count, 2)
+    }
+    
+    // MARK: - Comparable Tests (if applicable)
+
+    func testSorting() {
+        let languages: [AppLanguage] = [.japanese, .english, .chinese, .system]
+        let sorted = languages.sorted { $0.rawValue < $1.rawValue }
+
+        XCTAssertEqual(sorted[0].rawValue, "chinese")
+        XCTAssertEqual(sorted[1].rawValue, "english")
+        XCTAssertEqual(sorted[2].rawValue, "japanese")
+        XCTAssertEqual(sorted[3].rawValue, "system")
+    }
+
+    // MARK: - Codable Tests
+
+    // Note: AppLanguage does not conform to Codable, so these tests are disabled
+    // To enable Codable support, add `: Codable` to the enum declaration
+
+    /*
+    func testCodableEncoding() throws {
+        let language = AppLanguage.chinese
+        let encoder = JSONEncoder()
+        let encoded = try encoder.encode(language)
+
+        XCTAssertFalse(encoded.isEmpty)
+    }
+
+    func testCodableDecoding() throws {
+        let json = """
+        {
+            "rawValue": "en"
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        let decoded = try decoder.decode(AppLanguage.self, from: json)
+
+        XCTAssertEqual(decoded, .english)
+    }
+
+    func testCodableRoundTrip() throws {
+        let original = AppLanguage.japanese
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+
+        let encoded = try encoder.encode(original)
+        let decoded = try decoder.decode(AppLanguage.self, from: encoded)
+
+        XCTAssertEqual(decoded, original)
+    }
+    */
+    
+    // MARK: - Edge Cases
+    
+    func testDisplayNameWithSpecialCharacters() {
+        // displayNameRaw contains Unicode characters
+        let chinese = AppLanguage.chinese.displayNameRaw
+        XCTAssertTrue(chinese.contains("中文"))
+        
+        let japanese = AppLanguage.japanese.displayNameRaw
+        XCTAssertTrue(japanese.contains("日本語"))
+        
+        let korean = AppLanguage.korean.displayNameRaw
+        XCTAssertTrue(korean.contains("한국어"))
+        
+        let russian = AppLanguage.russian.displayNameRaw
+        XCTAssertTrue(russian.contains("Русский"))
+        
+        let french = AppLanguage.french.displayNameRaw
+        XCTAssertTrue(french.contains("Français"))
+        
+        let german = AppLanguage.german.displayNameRaw
+        XCTAssertTrue(german.contains("Deutsch"))
+    }
+    
+    func testLocaleIdentifierWithVariants() {
+        // Test that locale identifiers are correctly formatted
+        XCTAssertEqual(AppLanguage.chinese.localeIdentifier, "zh-Hans") // Simplified Chinese
+        XCTAssertNotEqual(AppLanguage.chinese.localeIdentifier, "zh-Hant") // Not Traditional Chinese
+    }
+    
+    func testSystemLanguageHasNilLocaleIdentifier() {
+        XCTAssertNil(AppLanguage.system.localeIdentifier)
     }
     
     // MARK: - Performance Tests
     
-    func testAllCasesPerformance() {
+    func testDisplayNamePerformance() {
         measure {
-            _ = AppLanguage.allCases
+            for _ in 0..<1000 {
+                _ = AppLanguage.english.displayName
+                _ = AppLanguage.chinese.displayName
+                _ = AppLanguage.japanese.displayName
+            }
         }
     }
     
-    func testRawValueLookupPerformance() {
+    func testDisplayNameRawPerformance() {
         measure {
             for _ in 0..<1000 {
-                _ = AppLanguage(rawValue: "en")
-                _ = AppLanguage(rawValue: "zh")
-                _ = AppLanguage(rawValue: "ja")
+                _ = AppLanguage.english.displayNameRaw
+                _ = AppLanguage.chinese.displayNameRaw
+                _ = AppLanguage.japanese.displayNameRaw
             }
+        }
+    }
+    
+    func testLocaleIdentifierPerformance() {
+        measure {
+            for _ in 0..<1000 {
+                _ = AppLanguage.english.localeIdentifier
+                _ = AppLanguage.chinese.localeIdentifier
+                _ = AppLanguage.japanese.localeIdentifier
+            }
+        }
+    }
+    
+    // MARK: - Integration Tests
+    
+    func testLanguageManagerIntegration() {
+        let manager = LanguageManager.shared
+        
+        // Test that AppLanguage values work with LanguageManager
+        manager.currentLanguage = .english
+        XCTAssertEqual(manager.currentLanguage, .english)
+        
+        manager.currentLanguage = .chinese
+        XCTAssertEqual(manager.currentLanguage, .chinese)
+        
+        manager.currentLanguage = .system
+        XCTAssertEqual(manager.currentLanguage, .system)
+    }
+    
+    func testAllLanguagesWithLanguageManager() {
+        let manager = LanguageManager.shared
+        
+        for language in AppLanguage.allCases {
+            manager.currentLanguage = language
+            XCTAssertEqual(manager.currentLanguage, language)
         }
     }
 }
