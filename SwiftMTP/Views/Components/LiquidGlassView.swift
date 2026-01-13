@@ -8,55 +8,26 @@
 
 import SwiftUI
 
-enum LiquidGlassStyle {
-    case ultraThin
-    case thin
-    case regular
-    case thick
-    case ultraThick
+// 确保最低支持 macOS 26
+#if !os(macOS)
+#error("Liquid Glass 仅支持 macOS 26+")
+#endif
 
-    var material: Material {
-        switch self {
-        case .ultraThin:
-            return .ultraThinMaterial
-        case .thin:
-            return .thinMaterial
-        case .regular:
-            return .regularMaterial
-        case .thick:
-            return .thickMaterial
-        case .ultraThick:
-            return .ultraThickMaterial
-        }
-    }
-}
-
-struct LiquidGlassView: ViewModifier {
-    let style: LiquidGlassStyle
-    let cornerRadius: CGFloat
-    let padding: EdgeInsets
-
-    init(
-        style: LiquidGlassStyle = .regular,
-        cornerRadius: CGFloat = 12,
-        padding: EdgeInsets = EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)
-    ) {
-        self.style = style
-        self.cornerRadius = cornerRadius
-        self.padding = padding
-    }
-
-    func body(content: Content) -> some View {
-        content
-            .padding(padding)
-            .background(style.material, in: RoundedRectangle(cornerRadius: cornerRadius))
-            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-    }
-}
-
+@available(macOS 26, *)
 struct BackgroundExtensionImage: View {
     let image: Image
-    let extendsToEdges: Bool
+    let extendsToLeading: Bool
+    let extendsToTrailing: Bool
+
+    init(
+        image: Image,
+        extendsToLeading: Bool = true,
+        extendsToTrailing: Bool = true
+    ) {
+        self.image = image
+        self.extendsToLeading = extendsToLeading
+        self.extendsToTrailing = extendsToTrailing
+    }
 
     var body: some View {
         image
@@ -64,34 +35,13 @@ struct BackgroundExtensionImage: View {
             .aspectRatio(contentMode: .fill)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
-            .background(
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            )
+            .glassEffect()
             .backgroundExtensionEffect()
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-struct LiquidGlassContainer<Content: View>: View {
-    let material: Material
-    let content: Content
-
-    init(
-        material: Material = .ultraThinMaterial,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.material = material
-        self.content = content()
-    }
-
-    var body: some View {
-        content
-            .background(material, in: RoundedRectangle(cornerRadius: 12))
-    }
-}
-
+@available(macOS 26, *)
 struct GlassEffectBadge: View {
     let icon: String
     let label: String
@@ -109,7 +59,7 @@ struct GlassEffectBadge: View {
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(.white)
             }
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .glassEffect()
 
             Text(label)
                 .font(.caption2)
@@ -121,6 +71,7 @@ struct GlassEffectBadge: View {
     }
 }
 
+@available(macOS 26, *)
 struct ScrollExtensionContainer<Content: View>: View {
     let extendsToLeading: Bool
     let extendsToTrailing: Bool
@@ -154,39 +105,9 @@ struct ScrollExtensionContainer<Content: View>: View {
     }
 }
 
-struct ToolbarGlassGroup<Content: View>: View {
-    let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
-    var body: some View {
-        HStack(spacing: 4) {
-            content
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.ultraThinMaterial, in: Capsule())
-    }
-}
-
+@available(macOS 26, *)
 extension View {
-    func liquidGlass(
-        style: LiquidGlassStyle = .ultraThin,
-        cornerRadius: CGFloat = 12,
-        padding: EdgeInsets = EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)
-    ) -> some View {
-        self.modifier(LiquidGlassView(style: style, cornerRadius: cornerRadius, padding: padding))
-    }
-
     func toolbarLiquidGlass() -> some View {
-        self
-            .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
-            .toolbarBackground(.ultraThinMaterial, for: .windowToolbar)
-    }
-
-    func globalLiquidGlass() -> some View {
         self
             .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
             .toolbarBackground(.ultraThinMaterial, for: .windowToolbar)
@@ -202,6 +123,7 @@ extension View {
     }
 }
 
+@available(macOS 26, *)
 #Preview {
     ScrollView {
         VStack(spacing: 40) {
@@ -211,30 +133,11 @@ extension View {
                     .bold()
 
                 HStack(spacing: 20) {
-                    Text("Ultra Thin")
-                        .font(.headline)
-                        .liquidGlass(style: .ultraThin)
-                        .glassEffect()
-
-                    Text("Thin")
-                        .font(.headline)
-                        .liquidGlass(style: .thin)
-                        .glassEffect()
-
                     Text("Regular")
                         .font(.headline)
-                        .liquidGlass(style: .regular)
+                        .padding()
                         .glassEffect()
-
-                    Text("Thick")
-                        .font(.headline)
-                        .liquidGlass(style: .thick)
-                        .glassEffect()
-
-                    Text("Ultra Thick")
-                        .font(.headline)
-                        .liquidGlass(style: .ultraThick)
-                        .glassEffect()
+                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
                 }
             }
             .padding()
@@ -246,7 +149,8 @@ extension View {
 
                 BackgroundExtensionImage(
                     image: Image(systemName: "photo"),
-                    extendsToEdges: true
+                    extendsToLeading: true,
+                    extendsToTrailing: true
                 )
                 .frame(height: 200)
                 .overlay(alignment: .bottomLeading) {
@@ -257,7 +161,7 @@ extension View {
                             .foregroundStyle(.white)
 
                         Button("操作按钮") {}
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(.glassProminent)
                     }
                     .padding()
                 }
@@ -312,17 +216,17 @@ extension View {
                     Button(action: {}) {
                         Label("扫描设备", systemImage: "antenna.radiowaves.left.and.right")
                     }
-                    .liquidGlass(style: .thin, cornerRadius: 10)
+                    .buttonStyle(.glass)
 
                     Button(action: {}) {
                         Label("上传文件", systemImage: "arrow.up.circle.fill")
                     }
-                    .liquidGlass(style: .regular, cornerRadius: 10)
+                    .buttonStyle(.glassProminent)
 
                     Button(action: {}) {
                         Label("下载文件", systemImage: "arrow.down.circle.fill")
                     }
-                    .liquidGlass(style: .thick, cornerRadius: 10)
+                    .buttonStyle(.glass)
                 }
             }
             .padding()
@@ -339,6 +243,6 @@ extension View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-        
+
     )
 }

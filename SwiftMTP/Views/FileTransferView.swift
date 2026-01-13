@@ -45,8 +45,7 @@ struct FileTransferView: View {
             Button(L10n.FileTransfer.done) {
                 dismiss()
             }
-//            .buttonStyle(.borderedProminent)
-            .glassEffect(.clear)
+            .buttonStyle(.glass)
             .help(L10n.FileTransfer.closeTransferWindow)
             
         }
