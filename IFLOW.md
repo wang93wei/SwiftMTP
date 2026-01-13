@@ -12,7 +12,7 @@
 * Consider performance implications early and profile critical paths
 * Review code for correctness, robustness, and edge cases
 * Use appropriate tools and skills (MCP tools, skills, etc.) based on task requirements
-* Write tests alongside code to ensure correctness
+* Every time must run `project-exemption` skill to check if the code is compliant with the project exemption rules.
 
 ### Design for Testability
 * No Direct Instantiation: Prohibit instantiating external dependencies directly inside functions (DB, API clients, etc.) .
@@ -38,10 +38,6 @@ Native/ (Go 桥接), Scripts/ (构建脚本), SwiftMTP/ (App/Models/Services/Vie
 
 ## 核心原则
 增量开发 → 编译验证 → 测试通过 → 提交
-
-## 启动流程
-**每次会话开始时必须执行**: `project-exemption` 技能  
-**重要事项**: 必须遵守 `project-exemption` 技能规则
 
 ## 常用命令
 ```bash
