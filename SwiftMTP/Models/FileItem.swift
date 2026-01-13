@@ -20,20 +20,114 @@ struct FileItem: Identifiable, Hashable, Comparable {
     let fileType: String
     var children: [FileItem]?
     
+    // Pre-computed formatted values to avoid MainActor isolation issues
+    let formattedSize: String
+    let formattedDate: String
+    let sortableDate: Date
+    
     init(id: UUID = UUID(), objectId: UInt32, parentId: UInt32, storageId: UInt32,
          name: String, path: String, size: UInt64, modifiedDate: Date?,
          isDirectory: Bool, fileType: String = "", children: [FileItem]? = nil) {
+        // Debug: Print each step to identify the crash point
+        print("[FileItem.init] Starting init for: \(name)")
+        print("[FileItem.init] Parameters - objectId=\(objectId), parentId=\(parentId), storageId=\(storageId), size=\(size), isDirectory=\(isDirectory), fileType=\(fileType)")
+
+        // Validate name
+        let safeName = name.isEmpty ? "Unknown" : name
+        self.name = safeName
+
         self.id = id
         self.objectId = objectId
         self.parentId = parentId
         self.storageId = storageId
-        self.name = name
         self.path = path
         self.size = size
         self.modifiedDate = modifiedDate
         self.isDirectory = isDirectory
         self.fileType = fileType
         self.children = children
+
+        print("[FileItem.init] Basic properties set")
+
+        // Pre-compute sortableDate
+        if let date = modifiedDate {
+            self.sortableDate = date
+            print("[FileItem.init] sortableDate set to modifiedDate: \(date)")
+        } else {
+            self.sortableDate = Date(timeIntervalSince1970: 0)
+            print("[FileItem.init] sortableDate set to epoch (no modifiedDate)")
+        }
+
+        print("[FileItem.init] sortableDate computed: \(sortableDate)")
+
+        // Pre-compute formattedSize using a simple formatter
+        if isDirectory {
+            self.formattedSize = "--"
+            print("[FileItem.init] formattedSize set to '--' (directory)")
+        } else {
+            self.formattedSize = FileItem.formatFileSize(size)
+            print("[FileItem.init] formattedSize computed: \(formattedSize)")
+        }
+
+        // Pre-compute formattedDate - use modifiedDate if available, otherwise use nil
+        if let date = modifiedDate {
+            self.formattedDate = FileItem.formatDate(date)
+            print("[FileItem.init] formattedDate computed from modifiedDate: \(formattedDate)")
+        } else {
+            self.formattedDate = "--"
+            print("[FileItem.init] formattedDate set to '--' (no modifiedDate)")
+        }
+
+        print("[FileItem.init] Init completed for: \(name)")
+    }
+    
+    // MARK: - Private Helper Methods
+    
+    /// Format file size without using localized formatters
+    private static func formatFileSize(_ size: UInt64) -> String {
+        print("[FileItem.formatFileSize] Formatting size: \(size)")
+
+        let units = ["B", "KB", "MB", "GB", "TB"]
+        var size = Double(size)
+        var unitIndex = 0
+
+        while size >= 1024 && unitIndex < units.count - 1 {
+            size /= 1024
+            unitIndex += 1
+        }
+
+        // Build string without using format specifiers
+        let unit = units[unitIndex]
+        let integerPart = Int(size)
+        let decimalPart = Int((size - Double(integerPart)) * 10)
+
+        let result = String(integerPart) + "." + String(decimalPart) + " " + unit
+        print("[FileItem.formatFileSize] Result: \(result)")
+        return result
+    }
+
+    /// Format date with localized support
+    private static func formatDate(_ date: Date) -> String {
+        print("[FileItem.formatDate] Formatting date: \(date)")
+
+        // Date boundary validation - only check minimum date, allow reasonable future dates
+        let minimumValidDate = Date(timeIntervalSince1970: 0)
+        let farFutureThreshold = Date(timeIntervalSince1970: 2147483647) // Year 2038 limit
+
+        guard date >= minimumValidDate && date <= farFutureThreshold else {
+            print("[FileItem.formatDate] Date out of valid range, returning '--'")
+            return "--"
+        }
+
+        // Use DateFormatter with localization support
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        formatter.locale = Locale.current
+
+        let result = formatter.string(from: date)
+        print("[FileItem.formatDate] Result: \(result)")
+        return result
     }
     
     // Hashable conformance
@@ -47,8 +141,9 @@ struct FileItem: Identifiable, Hashable, Comparable {
     }
     
     // Comparable conformance (default sorting by name)
+    // Use simple string comparison instead of localizedStandardCompare to avoid MainActor issues
     static func < (lhs: FileItem, rhs: FileItem) -> Bool {
-        lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+        return lhs.name < rhs.name
     }
     
     var fileExtension: String {
@@ -56,61 +151,5 @@ struct FileItem: Identifiable, Hashable, Comparable {
         return (name as NSString).pathExtension
     }
     
-    var formattedSize: String {
-        guard !isDirectory else { return "--" }
-        return ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
-    }
-    
-    var formattedDate: String {
-        guard let date = modifiedDate else { return "--" }
-        
-        // MARK: - 日期边界值验证
-        
-        // 1. 检查日期是否在合理范围内（1970年1月1日之后）
-        let minimumValidDate = Date(timeIntervalSince1970: 0)
-        guard date >= minimumValidDate else { return "--" }
-        
-        // 2. 检查日期是否在未来（超过1天）
-        let futureThreshold = Date().addingTimeInterval(86400)
-        guard date <= futureThreshold else { return "--" }
-        
-        // MARK: - 格式化日期
-        
-        let formatter = DateFormatter()
-        
-        // 根据当前语言设置 locale
-        var locale: Locale
-        if let localeIdentifier = LanguageManager.shared.currentLanguage.localeIdentifier {
-            locale = Locale(identifier: localeIdentifier)
-        } else {
-            // 系统默认模式：使用公开 API 获取系统语言
-            let systemLanguages = Locale.preferredLanguages
-            if let firstLang = systemLanguages.first {
-                locale = Locale(identifier: firstLang)
-            } else {
-                locale = Locale.current
-            }
-        }
-        
-        formatter.locale = locale
-        
-        // 使用固定宽度的格式确保对齐
-        // 中文：2024年12月26日 14:30
-        // 英文：Dec 26, 2024, 2:30 PM
-        // 安全检查：locale.language 可能为 nil
-        if let languageCode = locale.language.languageCode?.identifier, languageCode == "zh" {
-            // 中文格式：使用两位数月份确保对齐
-            formatter.dateFormat = "yyyy年MM月dd日 HH:mm"
-        } else {
-            // 英文格式：使用固定格式确保对齐
-            formatter.dateFormat = "MMM dd, yyyy, h:mm a"
-        }
-        
-        return formatter.string(from: date)
-    }
-    
-    // Sortable date - returns a very old date for nil values so they sort last
-    var sortableDate: Date {
-        return modifiedDate ?? Date(timeIntervalSince1970: 0)
-    }
+    // Note: formattedSize, formattedDate, and sortableDate are now computed in init()
 }

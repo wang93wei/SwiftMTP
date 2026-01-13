@@ -20,25 +20,8 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     var displayName: String {
-        // 使用本地化字符串，如果不可用则使用硬编码的回退值
-        switch self {
-        case .system:
-            return L10n.Common.systemDefault
-        case .english:
-            return L10n.Common.languageEnglish
-        case .chinese:
-            return L10n.Common.languageChinese
-        case .japanese:
-            return L10n.Common.languageJapanese
-        case .korean:
-            return L10n.Common.languageKorean
-        case .russian:
-            return L10n.Common.languageRussian
-        case .french:
-            return L10n.Common.languageFrench
-        case .german:
-            return L10n.Common.languageGerman
-        }
+        // Use displayNameRaw for non-isolated access
+        return displayNameRaw
     }
 
     // 提供不依赖 L10n 的显示名称，用于初始化时避免循环依赖
