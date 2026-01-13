@@ -39,6 +39,8 @@
 "noFilesInFolder" = "Dieser Ordner enthält keine Dateien";
 "dragFilesToUpload" = "Oder ziehen Sie Dateien hierher zum Hochladen";
 "loadingFileList" = "Dateiliste wird geladen...";
+"sort" = "Sortieren";
+"sortFiles" = "Dateien sortieren";
 "deleteFailed" = "Löschen fehlgeschlagen";
 "confirmDeleteFolder" = "Sind Sie sicher, dass Sie diesen Ordner löschen möchten? Dieser Vorgang wird rekursiv alle Inhalte löschen.";
 "moveToTrash" = "In den Papierkorb verschieben";

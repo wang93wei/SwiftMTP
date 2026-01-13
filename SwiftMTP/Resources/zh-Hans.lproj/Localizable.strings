@@ -209,3 +209,5 @@
 "checkConnectionAndStorage" = "下载失败，请检查设备连接和存储空间";
 "cannotReadFileInfo" = "无法读取文件信息";
 "uploadFailed" = "上传失败";
+"deleteMultipleFiles" = "删除多个文件";
+"confirmDeleteMultipleFiles" = "确定要删除这 %d 个文件吗？\n\n%@\n\n此操作无法撤销。";

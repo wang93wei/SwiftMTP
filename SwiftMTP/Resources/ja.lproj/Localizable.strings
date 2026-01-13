@@ -39,6 +39,8 @@
 "noFilesInFolder" = "このフォルダにはファイルがありません";
 "dragFilesToUpload" = "またはファイルをここにドラッグしてアップロード";
 "loadingFileList" = "ファイルリストを読み込み中...";
+"sort" = "並べ替え";
+"sortFiles" = "ファイルを並べ替え";
 "deleteFailed" = "削除に失敗しました";
 "confirmDeleteFolder" = "このフォルダを削除してもよろしいですか？この操作はすべての内容を再帰的に削除します。";
 "moveToTrash" = "ゴミ箱に移動";

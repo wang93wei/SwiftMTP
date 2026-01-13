@@ -39,6 +39,8 @@
 "noFilesInFolder" = "Ce dossier ne contient aucun fichier";
 "dragFilesToUpload" = "Ou faites glisser des fichiers ici pour les télécharger";
 "loadingFileList" = "Chargement de la liste des fichiers...";
+"sort" = "Trier";
+"sortFiles" = "Trier les fichiers";
 "deleteFailed" = "Suppression échouée";
 "confirmDeleteFolder" = "Êtes-vous sûr de vouloir supprimer ce dossier? Cette action supprimera récursivement tout le contenu.";
 "moveToTrash" = "Déplacer vers la corbeille";
