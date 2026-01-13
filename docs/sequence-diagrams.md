@@ -133,7 +133,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant App as SwiftMTP App
+    participant MainThread as 主线程 (@MainActor)
+    participant BGQueue as 后台队列 (Task.detached)
     participant DM as DeviceManager
+    participant Cache as NSCache (设备ID/序列号)
     participant Bridge as Kalam Bridge
     participant Go as Go桥接层 (Kalam)
     participant MTP as MTP驱动层
@@ -142,18 +145,25 @@ sequenceDiagram
 
     Note over App,DM: 应用启动阶段
     App->>DM: App 启动 (static shared)
+    Note over DM: @MainActor 隔离
     DM->>Bridge: Kalam_Init()
+    DM->>Cache: 配置 deviceIdCache (countLimit, totalCostLimit)
+    DM->>Cache: 配置 deviceSerialCache (countLimit, totalCostLimit)
+    DM->>DM: currentScanInterval = userScanInterval
+    DM->>DM: startScanning()
 
     Note over DM: 定时扫描启动
-    DM->>DM: startScanning()
-    DM->>DM: 启动 Timer (3秒间隔)
+    DM->>DM: 启动 Timer (用户配置间隔，默认3秒)
     DM->>DM: consecutiveFailures = 0
-    DM->>DM: currentScanInterval = 3.0s
+    DM->>DM: currentScanInterval = userScanInterval
     DM->>DM: 立即触发首次 scanDevices()
 
     Note over DM: 扫描设备流程
-    DM->>DM: isScanning = true (主线程)
-    DM->>Bridge: Kalam_Scan() (全局队列)
+    DM->>DM: isScanning = true (@MainActor)
+    DM->>BGQueue: Task.detached(priority: .userInitiated)
+
+    Note over BGQueue,Go: 后台线程执行
+    BGQueue->>Bridge: Kalam_Scan()
 
     Note over Bridge,Go: CGo 跨语言调用
     Bridge->>Go: C.CString(json)
@@ -167,18 +177,32 @@ sequenceDiagram
     Go-->>Bridge: JSON 字符串指针
     Bridge->>Go: Kalam_FreeString() 释放内存
 
-    Note over DM: 处理扫描结果
-    DM->>DM: JSONDecoder 解码
-    DM->>DM: mapToDevice() 映射数据
+    Note over BGQueue: 处理扫描结果
+    BGQueue->>BGQueue: JSONDecoder 解码 [KalamDevice]
+    BGQueue->>MainThread: 切换到 @MainActor
+    MainThread->>DM: mapToDevice() 映射数据
+
+    Note over DM,Cache: 设备映射和缓存
+    loop 每个设备
+        DM->>Cache: 查询 deviceIdCache (deviceKey)
+        alt 缓存命中
+            Cache-->>DM: 返回 UUIDWrapper
+        else 缓存未命中
+            DM->>Cache: 生成新 UUIDWrapper
+            DM->>Cache: 存储到 deviceIdCache
+        end
+        DM->>Cache: 存储序列号到 deviceSerialCache
+    end
+
     DM->>DM: updateDevices() 更新状态
-    DM->>DM: isScanning = false (主线程)
+    DM->>DM: isScanning = false (@MainActor)
 
     Note over DM: updateDevices() 内部处理
     DM->>DM: 检查选中设备是否断开（序列号比对）
-    DM->>DM: 更新设备列表和序列号缓存
+    DM->>DM: lastDeviceSerials vs newSerials
     alt 检测到设备
         DM->>DM: consecutiveFailures = 0
-        DM->>DM: currentScanInterval = 3.0s
+        DM->>DM: currentScanInterval = userScanInterval
         DM->>DM: showManualRefreshButton = false
     end
 
@@ -200,21 +224,24 @@ sequenceDiagram
 
     Note over DM,Device: 扫描成功路径
     loop 定时扫描
-        DM->>Bridge: Kalam_Scan()
+        DM->>BGQueue: Task.detached
+        BGQueue->>Bridge: Kalam_Scan()
         alt 扫描成功
-            Bridge-->>DM: 返回设备列表
+            Bridge-->>BGQueue: 返回设备列表
+            BGQueue->>MainThread: 切换到 @MainActor
             DM->>DM: consecutiveFailures = 0
-            DM->>DM: currentScanInterval = 3.0s
+            DM->>DM: currentScanInterval = userScanInterval
             DM->>DM: showManualRefreshButton = false
         else 扫描失败
-            Bridge-->>DM: 返回 nil/空
+            Bridge-->>BGQueue: 返回 nil/空
+            BGQueue->>MainThread: 切换到 @MainActor
             DM->>DM: handleDeviceDisconnection()
         end
     end
 
     Note over DM,Device: 扫描失败 - 指数退避
     DM->>DM: consecutiveFailures += 1
-    DM->>DM: 计算退避间隔 (3 * 2^failures)
+    DM->>DM: 计算退避间隔 (userScanInterval × 2^failures)
     DM->>DM: currentScanInterval = min(backoff, 30s)
 
     alt consecutiveFailures < 3
@@ -229,22 +256,25 @@ sequenceDiagram
     User->>DM: 点击手动刷新按钮
     DM->>DM: manualRefresh()
     DM->>DM: consecutiveFailures = 0
-    DM->>DM: currentScanInterval = 3.0s
+    DM->>DM: currentScanInterval = userScanInterval
     DM->>DM: showManualRefreshButton = false
     DM->>DM: startScanning()
     Note over DM: 重新开始自动扫描
 
     Note over DM,Device: 设备断开检测
     loop 定时扫描
-        DM->>Bridge: Kalam_Scan()
+        DM->>BGQueue: Task.detached
+        BGQueue->>Bridge: Kalam_Scan()
         alt 设备断开
-            Bridge-->>DM: 返回 nil/空
+            Bridge-->>BGQueue: 返回 nil/空
+            BGQueue->>MainThread: 切换到 @MainActor
             DM->>DM: handleDeviceDisconnection()
-            DM->>DM: 取消所有传输任务
+            DM->>FTM: cancelAllTasks()
             DM->>DM: 清空设备列表
-            DM->>DM: 清除文件系统缓存
-            DM->>DM: 发送 DeviceDisconnected 通知
-            DM->>DM: connectionError = "设备已断开"
+            DM->>DM: 清空设备序列号缓存
+            DM->>FSM: clearCache() (async)
+            DM->>NC: 发送 DeviceDisconnected 通知
+            DM->>DM: connectionError = L10n.MainWindow.deviceDisconnected
         end
     end
 ```
