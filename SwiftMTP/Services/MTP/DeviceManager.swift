@@ -328,18 +328,20 @@ class DeviceManager: ObservableObject, DeviceManaging {
         if selectedDevice != nil || !devices.isEmpty {
             // Cancel all active transfer tasks
             FileTransferManager.shared.cancelAllTasks()
-            
+
             // Clear all content
             devices = []
             selectedDevice = nil
             connectionError = L10n.MainWindow.deviceDisconnected
-            
+
             // Clear file system cache
-            FileSystemManager.shared.clearCache()
-            
+            Task {
+                await FileSystemManager.shared.clearCache()
+            }
+
             // Send notification to reset UI
             NotificationCenter.default.post(name: NSNotification.Name("DeviceDisconnected"), object: nil)
-            
+
             print("[DeviceManager] Device disconnected - UI reset and tasks cancelled")
         }
         

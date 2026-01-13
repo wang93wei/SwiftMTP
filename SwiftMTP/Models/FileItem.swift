@@ -20,7 +20,7 @@ struct FileItem: Identifiable, Hashable, Comparable, Sendable {
     let fileType: String
     var children: [FileItem]?
     
-    init(id: UUID = UUID(), objectId: UInt32, parentId: UInt32, storageId: UInt32,
+    nonisolated init(id: UUID = UUID(), objectId: UInt32, parentId: UInt32, storageId: UInt32,
          name: String, path: String, size: UInt64, modifiedDate: Date?,
          isDirectory: Bool, fileType: String = "", children: [FileItem]? = nil) {
         // Validate name
@@ -37,10 +37,6 @@ struct FileItem: Identifiable, Hashable, Comparable, Sendable {
         self.isDirectory = isDirectory
         self.fileType = fileType
         self.children = children
-        
-        #if DEBUG
-        print("[FileItem.init] Created FileItem: \(name), size: \(size), isDirectory: \(isDirectory)")
-        #endif
     }
     
     // Lazy-computed formatted values for better performance
@@ -72,8 +68,6 @@ struct FileItem: Identifiable, Hashable, Comparable, Sendable {
     
     /// Format file size without using localized formatters
     private static func formatFileSize(_ size: UInt64) -> String {
-        print("[FileItem.formatFileSize] Formatting size: \(size)")
-
         let units = ["B", "KB", "MB", "GB", "TB"]
         var size = Double(size)
         var unitIndex = 0
@@ -88,33 +82,33 @@ struct FileItem: Identifiable, Hashable, Comparable, Sendable {
         let integerPart = Int(size)
         let decimalPart = Int((size - Double(integerPart)) * 10)
 
-        let result = String(integerPart) + "." + String(decimalPart) + " " + unit
-        print("[FileItem.formatFileSize] Result: \(result)")
-        return result
+        return String(integerPart) + "." + String(decimalPart) + " " + unit
     }
 
     /// Format date with localized support
     private static func formatDate(_ date: Date) -> String {
-        print("[FileItem.formatDate] Formatting date: \(date)")
-
         // Date boundary validation - only check minimum date, allow reasonable future dates
         let minimumValidDate = Date(timeIntervalSince1970: 0)
         let farFutureThreshold = Date(timeIntervalSince1970: 2147483647) // Year 2038 limit
 
         guard date >= minimumValidDate && date <= farFutureThreshold else {
-            print("[FileItem.formatDate] Date out of valid range, returning '--'")
             return "--"
         }
 
-        // Use DateFormatter with localization support
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        formatter.locale = Locale.current
+        // Use Calendar to avoid MainActor isolation
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
 
-        let result = formatter.string(from: date)
-        print("[FileItem.formatDate] Result: \(result)")
-        return result
+        guard let year = components.year,
+              let month = components.month,
+              let day = components.day,
+              let hour = components.hour,
+              let minute = components.minute else {
+            return "--"
+        }
+
+        // Format as YYYY-MM-DD HH:MM
+        return String(format: "%04d-%02d-%02d %02d:%02d", year, month, day, hour, minute)
     }
     
     // Hashable conformance

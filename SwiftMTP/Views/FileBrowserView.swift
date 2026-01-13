@@ -70,11 +70,13 @@ struct FileBrowserView: View {
     var body: some View {
         contentView
             .navigationTitle(device.displayName)
-            .onAppear {
-                loadFiles()
+            .task {
+                await loadFiles()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshFileList"))) { _ in
-                loadFiles()
+                Task {
+                    await loadFiles()
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("DeviceDisconnected"))) { _ in
                 // Reset view state when device disconnects
@@ -288,7 +290,9 @@ struct FileBrowserView: View {
                 sortAscending = true
             }
             print("[SortableHeader] After click: sortOption=\(sortOption), sortAscending=\(sortAscending)")
-            loadFiles()
+            Task {
+                await loadFiles()
+            }
         } label: {
             HStack(spacing: 4) {
                 Text(title)
@@ -428,26 +432,22 @@ struct FileBrowserView: View {
 //        .liquidGlass(style: .thin, cornerRadius: 0, padding: EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
     }
     
-    private func loadFiles() {
+    private func loadFiles() async {
         isLoading = true
-        
-        DispatchQueue.global(qos: .userInitiated).async {
-            let files: [FileItem]
-            
-            if currentPath.isEmpty {
-                files = FileSystemManager.shared.getRootFiles(for: device)
-            } else if let parent = currentPath.last {
-                files = FileSystemManager.shared.getChildrenFiles(for: device, parent: parent)
-            } else {
-                files = []
-            }
-            
-            DispatchQueue.main.async {
-                self.currentFiles = self.sortFiles(files)
-                self.selectedFiles.removeAll()
-                self.isLoading = false
-            }
+
+        let files: [FileItem]
+
+        if currentPath.isEmpty {
+            files = await FileSystemManager.shared.getRootFiles(for: device)
+        } else if let parent = currentPath.last {
+            files = await FileSystemManager.shared.getChildrenFiles(for: device, parent: parent)
+        } else {
+            files = []
         }
+
+        currentFiles = sortFiles(files)
+        selectedFiles.removeAll()
+        isLoading = false
     }
     
     private func sortFiles(_ files: [FileItem]) -> [FileItem] {
@@ -489,24 +489,32 @@ struct FileBrowserView: View {
     }
     
     private func navigateInto(_ folder: FileItem) {
-        currentPath.append(folder)
-        loadFiles()
+        Task {
+            currentPath.append(folder)
+            await loadFiles()
+        }
     }
     
     private func navigateUp() {
-        guard !currentPath.isEmpty else { return }
-        currentPath.removeLast()
-        loadFiles()
+        Task {
+            guard !currentPath.isEmpty else { return }
+            currentPath.removeLast()
+            await loadFiles()
+        }
     }
     
     private func navigateToRoot() {
-        currentPath.removeAll()
-        loadFiles()
+        Task {
+            currentPath.removeAll()
+            await loadFiles()
+        }
     }
     
     private func navigateToPath(at index: Int) {
-        currentPath = Array(currentPath.prefix(index + 1))
-        loadFiles()
+        Task {
+            currentPath = Array(currentPath.prefix(index + 1))
+            await loadFiles()
+        }
     }
     
     private func downloadFile(_ file: FileItem) {
@@ -529,10 +537,10 @@ struct FileBrowserView: View {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.prompt = L10n.FileBrowser.chooseDownloadLocation
-        
+
         // 在显示文件选择器之前，确保 AppleLanguages 设置正确
-        ensureAppleLanguages()
-        
+        LanguageManager.ensureAppleLanguages()
+
         panel.begin { response in
             if response == .OK, let directory = panel.url {
                 let filesToDownload = currentFiles.filter { selectedFiles.contains($0.id) && !$0.isDirectory }
@@ -617,51 +625,16 @@ struct FileBrowserView: View {
     }
     
     // MARK: - Helper Methods
-    
-    private func ensureAppleLanguages() {
-        // 确保 AppleLanguages 设置正确，以便文件选择器使用正确的语言
-        let savedLanguage = UserDefaults.standard.string(forKey: "appLanguage")
-        var languages: [String]?
-        
-        if let savedLanguage = savedLanguage, let validLanguage = AppLanguage(rawValue: savedLanguage) {
-            switch validLanguage {
-            case .chinese:
-                languages = ["zh-Hans", "zh-CN", "zh"]
-            case .english:
-                languages = ["en", "en-US"]
-            case .japanese:
-                languages = ["ja", "ja-JP"]
-            case .korean:
-                languages = ["ko", "ko-KR"]
-            case .russian:
-                languages = ["ru", "ru-RU"]
-            case .french:
-                languages = ["fr", "fr-FR"]
-            case .german:
-                languages = ["de", "de-DE"]
-            case .system:
-                languages = nil
-            }
-        } else {
-            languages = nil
-        }
-        
-        if let languages = languages {
-            UserDefaults.standard.set(languages, forKey: "AppleLanguages")
-        } else {
-            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
-        }
-    }
-    
+
     private func selectFilesToUpload() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
-        
+
         // 在显示文件选择器之前，确保 AppleLanguages 设置正确
-        ensureAppleLanguages()
-        
+        LanguageManager.ensureAppleLanguages()
+
         panel.begin { response in
             if response == .OK {
                 // Determine parent ID: use current folder or root (0xFFFFFFFF)
@@ -688,20 +661,18 @@ struct FileBrowserView: View {
     }
     
     private func deleteFile(_ file: FileItem) {
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task {
             let result = Kalam_DeleteObject(file.objectId)
             let success = result > 0
-            
-            DispatchQueue.main.async {
-                if success {
-                    // Clear cache and reload
-                    FileSystemManager.shared.clearCache(for: device)
-                    loadFiles()
-                } else {
-                    // Show error alert
-                    errorMessage = L10n.FileBrowser.operationFailedWithMessage.localized(file.name)
-                    showingErrorAlert = true
-                }
+
+            if success {
+                // Clear cache and reload
+                await FileSystemManager.shared.clearCache(for: device)
+                await loadFiles()
+            } else {
+                // Show error alert
+                errorMessage = L10n.FileBrowser.operationFailedWithMessage.localized(file.name)
+                showingErrorAlert = true
             }
         }
     }
@@ -746,37 +717,35 @@ struct FileBrowserView: View {
     }
     
     private func performBatchDelete(files: [FileItem]) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            var deletedCount = 0
-            var failedFiles: [String] = []
-            
-            for file in files {
-                let result = Kalam_DeleteObject(file.objectId)
-                if result > 0 {
-                    deletedCount += 1
-                } else {
-                    failedFiles.append(file.name)
-                }
-            }
-            
-            DispatchQueue.main.async {
-                // Clear cache and reload
-                FileSystemManager.shared.clearCache(for: device)
-                loadFiles()
+    Task {
+        var deletedCount = 0
+        var failedFiles: [String] = []
 
-                // Show result
-                if failedFiles.isEmpty {
-                    print("Successfully deleted \(deletedCount) files")
-                } else {
-                    errorMessage = "The following files failed to delete:\n\n\(failedFiles.joined(separator: "\n"))"
-                    showingErrorAlert = true
-                }
-
-                // Clear selection after deletion
-                selectedFiles.removeAll()
+        for file in files {
+            let result = Kalam_DeleteObject(file.objectId)
+            if result > 0 {
+                deletedCount += 1
+            } else {
+                failedFiles.append(file.name)
             }
         }
+
+        // Clear cache and reload
+        await FileSystemManager.shared.clearCache(for: device)
+        await loadFiles()
+
+        // Show result
+        if failedFiles.isEmpty {
+            print("Successfully deleted \(deletedCount) files")
+        } else {
+            errorMessage = "The following files failed to delete:\n\n\(failedFiles.joined(separator: "\n"))"
+            showingErrorAlert = true
+        }
+
+        // Clear selection after deletion
+        selectedFiles.removeAll()
     }
+}
     
     // MARK: - Toolbar Buttons
     
@@ -863,7 +832,9 @@ struct FileBrowserView: View {
                             sortAscending = true
                         }
                         print("[SortMenu] After: sortOption=\(sortOption), sortAscending=\(sortAscending)")
-                        loadFiles()
+                        Task {
+                            await loadFiles()
+                        }
                     } label: {
                         HStack {
                             Text(option.displayName)
@@ -914,32 +885,30 @@ struct FileBrowserView: View {
     }
     
     private func createFolder() {
-        let folderName = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !folderName.isEmpty else { return }
-        
-        let parentId = currentPath.last?.objectId ?? 0xFFFFFFFF
-        let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId ?? 0xFFFFFFFF
-        
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result = folderName.withCString { cString in
-                Kalam_CreateFolder(storageId, parentId, UnsafeMutablePointer(mutating: cString))
-            }
-            let success = result > 0
-            
-            DispatchQueue.main.async {
-                if success {
-                    // Clear cache and reload
-                    FileSystemManager.shared.clearCache(for: device)
-                    loadFiles()
-                    showingCreateFolderDialog = false
-                    newFolderName = ""
-                } else {
-                    // Show error alert
-                    print("Failed to create folder: \(folderName)")
-                }
-            }
+    let folderName = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !folderName.isEmpty else { return }
+
+    let parentId = currentPath.last?.objectId ?? 0xFFFFFFFF
+    let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId ?? 0xFFFFFFFF
+
+    Task {
+        let result = folderName.withCString { cString in
+            Kalam_CreateFolder(storageId, parentId, UnsafeMutablePointer(mutating: cString))
+        }
+        let success = result > 0
+
+        if success {
+            // Clear cache and reload
+            await FileSystemManager.shared.clearCache(for: device)
+            await loadFiles()
+            showingCreateFolderDialog = false
+            newFolderName = ""
+        } else {
+            // Show error alert
+            print("Failed to create folder: \(folderName)")
         }
     }
+}
     
     // MARK: - Drag & Drop Support
     

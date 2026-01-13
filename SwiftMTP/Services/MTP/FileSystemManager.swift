@@ -11,7 +11,8 @@ import Foundation
 
 /// 文件系统管理器
 /// 负责管理 MTP 设备上的文件系统操作，包括文件列表获取和缓存管理
-class FileSystemManager {
+/// 使用 Actor 确保线程安全
+actor FileSystemManager {
     // MARK: - 单例
     
     /// 共享实例
@@ -77,10 +78,9 @@ class FileSystemManager {
     
     /// 文件缓存（使用NSCache实现自动内存管理）
     private let fileCache = NSCache<NSString, CacheEntryWrapper>()
-    
+
     /// 设备ID到缓存键的映射（用于精确清理缓存）
     private var deviceCacheKeys: [UUID: Set<String>] = [:]
-    private let cacheKeysLock = NSLock()
     
     /// Kalam 文件结构（用于 JSON 解码）
     private struct KalamFile: Codable {
@@ -205,12 +205,10 @@ class FileSystemManager {
             fileCache.setObject(entryWrapper, forKey: NSString(string: cacheKey))
 
             // 记录缓存键到设备映射
-            cacheKeysLock.lock()
             if deviceCacheKeys[device.id] == nil {
                 deviceCacheKeys[device.id] = Set<String>()
             }
             deviceCacheKeys[device.id]?.insert(cacheKey)
-            cacheKeysLock.unlock()
 
             return items
         } catch {
@@ -243,9 +241,7 @@ class FileSystemManager {
     /// 清除所有缓存
     func clearCache() {
         fileCache.removeAllObjects()
-        cacheKeysLock.lock()
         deviceCacheKeys.removeAll()
-        cacheKeysLock.unlock()
         print("[FileSystemManager] Cleared all cache")
     }
     
@@ -257,22 +253,19 @@ class FileSystemManager {
     /// 清除指定设备的缓存
     /// - Parameter device: 目标设备
     func clearCache(for device: Device) {
-        cacheKeysLock.lock()
         guard let keys = deviceCacheKeys[device.id] else {
-            cacheKeysLock.unlock()
             print("[FileSystemManager] No cache found for device \(device.id)")
             return
         }
-        
+
         // 精确清除该设备的所有缓存
         for key in keys {
             fileCache.removeObject(forKey: NSString(string: key))
         }
-        
+
         // 从映射中移除该设备的缓存键
         deviceCacheKeys.removeValue(forKey: device.id)
-        cacheKeysLock.unlock()
-        
+
         print("[FileSystemManager] Cleared \(keys.count) cache entries for device \(device.id)")
     }
     

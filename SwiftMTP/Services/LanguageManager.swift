@@ -215,12 +215,47 @@ class LanguageManager: ObservableObject {
     }
     
     // MARK: - 公共方法
-    
+
     /// 清理所有 Combine 订阅
     /// 在应用退出或重启时调用，防止内存泄漏
     func cleanupSubscriptions() {
         cancellables.removeAll()
         logLanguageChange("Cleaned up all subscriptions")
+    }
+
+    /// 确保 AppleLanguages 设置正确，以便文件选择器使用正确的语言
+    static func ensureAppleLanguages() {
+        let savedLanguage = UserDefaults.standard.string(forKey: "appLanguage")
+        var languages: [String]?
+
+        if let savedLanguage = savedLanguage, let validLanguage = AppLanguage(rawValue: savedLanguage) {
+            switch validLanguage {
+            case .chinese:
+                languages = ["zh-Hans", "zh-CN", "zh"]
+            case .english:
+                languages = ["en", "en-US"]
+            case .japanese:
+                languages = ["ja", "ja-JP"]
+            case .korean:
+                languages = ["ko", "ko-KR"]
+            case .russian:
+                languages = ["ru", "ru-RU"]
+            case .french:
+                languages = ["fr", "fr-FR"]
+            case .german:
+                languages = ["de", "de-DE"]
+            case .system:
+                languages = nil
+            }
+        } else {
+            languages = nil
+        }
+
+        if let languages = languages {
+            UserDefaults.standard.set(languages, forKey: "AppleLanguages")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        }
     }
 }
 

@@ -587,8 +587,8 @@ class FileTransferManager: ObservableObject {
             }
 
             debugLog("performUpload:   Clearing FileSystemManager caches...")
-            FileSystemManager.shared.clearCache(for: device)
-            FileSystemManager.shared.forceClearCache()
+            await FileSystemManager.shared.clearCache(for: device)
+            await FileSystemManager.shared.forceClearCache()
             debugLog("performUpload:   Caches cleared")
 
             debugLog("performUpload:   Scheduling file list refresh notification...")
