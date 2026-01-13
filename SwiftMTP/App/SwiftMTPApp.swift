@@ -13,6 +13,7 @@ struct SwiftMTPApp: App {
     
     init() {
         setupLanguage()
+        setupCleanupHandler()
     }
     
     var body: some Scene {
@@ -75,6 +76,29 @@ struct SwiftMTPApp: App {
         
         // 设置 AppleLanguages 以确保文件选择器使用正确的语言
         setAppleLanguages()
+    }
+    
+    private func setupCleanupHandler() {
+        #if DEBUG
+        print("[SwiftMTPApp] Setting up cleanup handler")
+        #endif
+        
+        // 监听应用退出通知
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            #if DEBUG
+            print("[SwiftMTPApp] Application will terminate, cleaning up resources")
+            #endif
+            
+            // 清理设备连接池
+            Kalam_CleanupDevicePool()
+            
+            // 清理泄漏的字符串
+            Kalam_CleanupLeakedStrings()
+        }
     }
     
     private func setAppleLanguages() {

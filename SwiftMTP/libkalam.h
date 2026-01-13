@@ -100,6 +100,7 @@ extern GoInt32 Kalam_UploadFile(GoUint32 storageID, GoUint32 parentID, char* sou
 extern GoInt32 Kalam_RefreshStorage(GoUint32 storageID);
 extern GoInt32 Kalam_ResetDeviceCache(void);
 extern void Kalam_CleanupLeakedStrings(void);
+extern void Kalam_CleanupDevicePool(void);
 
 #ifdef __cplusplus
 }

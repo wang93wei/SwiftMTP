@@ -174,43 +174,213 @@ var (
 	stringMu sync.Mutex
 )
 
-// withDeviceQuick executes a function with a fresh device connection using faster settings for scanning
-// Used for device scanning with shorter timeout and retry count
+// Device connection pool to avoid frequent initialization/disposal
+// This prevents TLS key exhaustion in libusb
+type devicePoolEntry struct {
+	device     *mtp.Device
+	lastUsed   time.Time
+	inUse      bool
+}
+
+var (
+	devicePool      []*devicePoolEntry
+	devicePoolMu    sync.RWMutex
+	maxPoolSize     = 3  // Maximum number of cached connections
+	poolEntryTTL    = 2 * time.Minute  // Time to live for cached connections
+	poolCleanupTick = 1 * time.Minute  // Cleanup interval
+)
+
+// Initialize device pool cleanup routine
+func init() {
+	go func() {
+		ticker := time.NewTicker(poolCleanupTick)
+		defer ticker.Stop()
+		
+		for range ticker.C {
+			cleanupDevicePool()
+		}
+	}()
+}
+
+// cleanupDevicePool removes stale entries from the device pool
+func cleanupDevicePool() {
+	devicePoolMu.Lock()
+	defer devicePoolMu.Unlock()
+	
+	now := time.Now()
+	var activePool []*devicePoolEntry
+	
+	for _, entry := range devicePool {
+		// Remove entries that are not in use and have expired
+		if entry.inUse {
+			activePool = append(activePool, entry)
+		} else if now.Sub(entry.lastUsed) < poolEntryTTL {
+			activePool = append(activePool, entry)
+		} else {
+			// Dispose expired device
+			fmt.Printf("cleanupDevicePool: Disposing expired device connection\n")
+			mtpx.Dispose(entry.device)
+		}
+	}
+	
+	devicePool = activePool
+}
+
+// getDeviceFromPool tries to get a device from the pool, returns nil if none available or device is closed
+func getDeviceFromPool() *devicePoolEntry {
+	devicePoolMu.Lock()
+	defer devicePoolMu.Unlock()
+	
+	// Iterate backwards to safely remove elements
+	for i := len(devicePool) - 1; i >= 0; i-- {
+		entry := devicePool[i]
+		if !entry.inUse {
+			// Test if device is still open by trying to get device info
+			var testInfo mtp.DeviceInfo
+			err := entry.device.GetDeviceInfo(&testInfo)
+			
+			if err != nil {
+				// Device is closed or invalid, remove from pool
+				// Only log in debug mode to avoid log spam
+				// fmt.Printf("getDeviceFromPool: Device in pool is closed/invalid, removing: %v\n", err)
+				mtpx.Dispose(entry.device)
+				// Remove from pool by slicing - safe when iterating backwards
+				devicePool = append(devicePool[:i], devicePool[i+1:]...)
+				continue
+			}
+			
+			entry.inUse = true
+			entry.lastUsed = time.Now()
+			return entry
+		}
+	}
+	
+	return nil
+}
+
+// returnDeviceToPool returns a device to the pool or disposes it if pool is full
+func returnDeviceToPool(entry *devicePoolEntry) {
+	if entry == nil || entry.device == nil {
+		return
+	}
+	
+	devicePoolMu.Lock()
+	defer devicePoolMu.Unlock()
+	
+	entry.inUse = false
+	entry.lastUsed = time.Now()
+	
+	// If pool is full, dispose the oldest entry not in use
+	if len(devicePool) >= maxPoolSize {
+		var oldestIndex = -1
+		var oldestTime time.Time
+		
+		for i, e := range devicePool {
+			if !e.inUse && (oldestIndex == -1 || e.lastUsed.Before(oldestTime)) {
+				oldestIndex = i
+				oldestTime = e.lastUsed
+			}
+		}
+		
+		if oldestIndex >= 0 {
+			mtpx.Dispose(devicePool[oldestIndex].device)
+			devicePool = append(devicePool[:oldestIndex], devicePool[oldestIndex+1:]...)
+		}
+	}
+	
+	devicePool = append(devicePool, entry)
+}
+
+// removeClosedDeviceFromPool removes a specific device entry from the pool
+func removeClosedDeviceFromPool(entry *devicePoolEntry) {
+	if entry == nil || entry.device == nil {
+		return
+	}
+	
+	devicePoolMu.Lock()
+	defer devicePoolMu.Unlock()
+	
+	// Find and remove the entry
+	for i, e := range devicePool {
+		if e == entry {
+			fmt.Printf("removeClosedDeviceFromPool: Removing closed device from pool\n")
+			mtpx.Dispose(e.device)
+			devicePool = append(devicePool[:i], devicePool[i+1:]...)
+			return
+		}
+	}
+}
+
+// createNewDevice creates a new device connection and adds it to the pool
+func createNewDevice() (*devicePoolEntry, error) {
+	dev, err := mtpx.Initialize(mtpx.Init{
+		DebugMode: false,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize device: %w", err)
+	}
+	
+	entry := &devicePoolEntry{
+		device:   dev,
+		lastUsed: time.Now(),
+		inUse:    true,
+	}
+	
+	return entry, nil
+}
+
+// withDeviceQuick executes a function with a device connection using faster settings for scanning
+// Uses connection pool to avoid frequent initialization/disposal
 func withDeviceQuick(fn func(*mtp.Device) error) error {
 	deviceMu.Lock()
 	defer deviceMu.Unlock()
 	
 	var lastError error
+	var err error
 	
 	for attempt := 0; attempt < QuickScanMaxRetries; attempt++ {
 		if attempt > 0 {
-			fmt.Printf("withDeviceQuick: Reinitializing device connection (attempt %d/%d)\n", attempt+1, QuickScanMaxRetries)
+			fmt.Printf("withDeviceQuick: Retrying operation (attempt %d/%d)\n", attempt+1, QuickScanMaxRetries)
 			// Quick scan uses short backoff time
 			time.Sleep(time.Duration(QuickScanBackoffDuration) * time.Millisecond)
 		}
 		
-		dev, err := mtpx.Initialize(mtpx.Init{
-			DebugMode: false,
-		})
-		if err != nil {
-			lastError = fmt.Errorf("failed to initialize device: %w", err)
-			fmt.Printf("withDeviceQuick: %v\n", lastError)
-			continue
+		// Try to get device from pool first
+		poolEntry := getDeviceFromPool()
+		var dev *mtp.Device
+		var deviceFromPool bool
+		
+		if poolEntry != nil {
+			dev = poolEntry.device
+			deviceFromPool = true
+			fmt.Printf("withDeviceQuick: Using pooled device connection\n")
+		} else {
+			// Create new device if pool is empty
+			newEntry, createErr := createNewDevice()
+			if createErr != nil {
+				lastError = fmt.Errorf("failed to initialize device: %w", createErr)
+				fmt.Printf("withDeviceQuick: %v\n", lastError)
+				continue
+			}
+			poolEntry = newEntry
+			dev = poolEntry.device
+			deviceFromPool = false
+			fmt.Printf("withDeviceQuick: Created new device connection\n")
 		}
 		
-		// Ensure device is properly disposed with panic recovery
+		// Ensure device is properly handled with panic recovery
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
 					fmt.Printf("withDeviceQuick: Panic during device operation: %v\n", r)
 				}
-				mtpx.Dispose(dev)
+				// Return device to pool instead of disposing
+				returnDeviceToPool(poolEntry)
 			}()
 			
 			// Configure device with shorter timeout for quick scans
 			dev.Timeout = QuickScanTimeout
 			
-			// Skip additional connection test for quick scans to save time
 			// Execute the function with panic recovery
 			func() {
 				defer func() {
@@ -233,8 +403,20 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 			return nil
 		}
 		
-		// For quick scans, be less aggressive about retries
+		// Check if error is due to device being closed
 		errorStr := strings.ToLower(lastError.Error())
+		isDeviceClosed := strings.Contains(errorStr, "device is not open") ||
+		                  strings.Contains(errorStr, "device closed")
+		
+		if isDeviceClosed && deviceFromPool {
+			// Device from pool was closed, remove it and retry with new connection
+			fmt.Printf("withDeviceQuick: Pooled device was closed, will retry with new connection\n")
+			// Remove the closed device from pool
+			removeClosedDeviceFromPool(poolEntry)
+			continue
+		}
+		
+		// For quick scans, be less aggressive about retries
 		isRecoverable := strings.Contains(errorStr, "timeout") ||
 		                 strings.Contains(errorStr, "busy") ||
 		                 strings.Contains(errorStr, "LIBUSB_ERROR_TIMEOUT")
@@ -252,17 +434,18 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 	return lastError
 }
 
-// withDevice executes a function with a fresh device connection using normal settings
-// Used for file transfers and normal operations with longer timeout and retry count
+// withDevice executes a function with a device connection using normal settings
+// Uses connection pool to avoid frequent initialization/disposal
 func withDevice(fn func(*mtp.Device) error) error {
 	deviceMu.Lock()
 	defer deviceMu.Unlock()
 	
 	var lastError error
+	var err error
 	
 	for attempt := 0; attempt < NormalOperationMaxRetries; attempt++ {
 		if attempt > 0 {
-			fmt.Printf("withDevice: Reinitializing device connection (attempt %d/%d)\n", attempt+1, NormalOperationMaxRetries)
+			fmt.Printf("withDevice: Retrying operation (attempt %d/%d)\n", attempt+1, NormalOperationMaxRetries)
 			// Exponential backoff strategy
 			backoffDuration := time.Duration(attempt*attempt) * 500 * time.Millisecond
 			if backoffDuration > time.Duration(MaxBackoffDuration)*time.Millisecond {
@@ -274,29 +457,43 @@ func withDevice(fn func(*mtp.Device) error) error {
 			runtime.GC()
 		}
 		
-		dev, err := mtpx.Initialize(mtpx.Init{
-			DebugMode: false,
-		})
-		if err != nil {
-			lastError = fmt.Errorf("failed to initialize device: %w", err)
-			fmt.Printf("withDevice: %v\n", lastError)
-			
-			// Check if initialization error is recoverable
-			if strings.Contains(err.Error(), "not found") && attempt == NormalOperationMaxRetries-1 {
-				// Device disconnected, don't retry further
-				break
+		// Try to get device from pool first
+		poolEntry := getDeviceFromPool()
+		var dev *mtp.Device
+		var deviceFromPool bool
+		
+		if poolEntry != nil {
+			dev = poolEntry.device
+			deviceFromPool = true
+			fmt.Printf("withDevice: Using pooled device connection\n")
+		} else {
+			// Create new device if pool is empty
+			newEntry, createErr := createNewDevice()
+			if createErr != nil {
+				lastError = fmt.Errorf("failed to initialize device: %w", createErr)
+				fmt.Printf("withDevice: %v\n", lastError)
+				
+				// Check if initialization error is recoverable
+				if strings.Contains(createErr.Error(), "not found") && attempt == NormalOperationMaxRetries-1 {
+					// Device disconnected, don't retry further
+					break
+				}
+				continue
 			}
-			continue
+			poolEntry = newEntry
+			dev = poolEntry.device
+			deviceFromPool = false
+			fmt.Printf("withDevice: Created new device connection\n")
 		}
 		
-		// Ensure device is properly disposed with panic recovery
+		// Ensure device is properly handled with panic recovery
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
 					fmt.Printf("withDevice: Panic during device operation: %v\n", r)
 				}
-				// Always try to dispose the device
-				mtpx.Dispose(dev)
+				// Return device to pool instead of disposing
+				returnDeviceToPool(poolEntry)
 			}()
 			
 			// Configure device with longer timeout for better stability
@@ -332,8 +529,20 @@ func withDevice(fn func(*mtp.Device) error) error {
 			return nil
 		}
 		
-		// Check if error is recoverable
+		// Check if error is due to device being closed
 		errorStr := strings.ToLower(lastError.Error())
+		isDeviceClosed := strings.Contains(errorStr, "device is not open") ||
+		                  strings.Contains(errorStr, "device closed")
+		
+		if isDeviceClosed && deviceFromPool {
+			// Device from pool was closed, remove it and retry with new connection
+			fmt.Printf("withDevice: Pooled device was closed, will retry with new connection\n")
+			// Remove the closed device from pool
+			removeClosedDeviceFromPool(poolEntry)
+			continue
+		}
+		
+		// Check if error is recoverable
 		isRecoverable := strings.Contains(errorStr, "timeout") ||
 		                 strings.Contains(errorStr, "device") ||
 		                 strings.Contains(errorStr, "connection") ||
@@ -1100,6 +1309,24 @@ func cleanupLeakedStrings() {
 //export Kalam_CleanupLeakedStrings
 func Kalam_CleanupLeakedStrings() {
 	cleanupLeakedStrings()
+}
+
+//export Kalam_CleanupDevicePool
+func Kalam_CleanupDevicePool() {
+	fmt.Printf("Kalam_CleanupDevicePool: Cleaning up all device connections\n")
+	
+	devicePoolMu.Lock()
+	defer devicePoolMu.Unlock()
+	
+	for _, entry := range devicePool {
+		if entry.device != nil {
+			fmt.Printf("Kalam_CleanupDevicePool: Disposing device connection\n")
+			mtpx.Dispose(entry.device)
+		}
+	}
+	
+	devicePool = nil
+	fmt.Printf("Kalam_CleanupDevicePool: Device pool cleanup completed\n")
 }
 
 func main() {}
