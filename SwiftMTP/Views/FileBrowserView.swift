@@ -42,13 +42,30 @@ struct FileBrowserView: View {
     @State private var errorMessage = ""
     
     // Sorting state
-    @State private var sortOrder: [KeyPathComparator<FileItem>] = [
-        .init(\.name, order: .forward)
-    ]
+    @State private var sortOption: SortOption = .name
+    @State private var sortAscending: Bool = true
     
     // Create folder state
     @State private var showingCreateFolderDialog = false
     @State private var newFolderName = ""
+    
+    // MARK: - Sort Option
+    
+    enum SortOption: String, CaseIterable {
+        case name
+        case size
+        case type
+        case modifiedDate
+        
+        var displayName: String {
+            switch self {
+            case .name: return L10n.FileBrowser.name
+            case .size: return L10n.FileBrowser.size
+            case .type: return L10n.FileBrowser.type
+            case .modifiedDate: return L10n.FileBrowser.modifiedDate
+            }
+        }
+    }
     
     var body: some View {
         contentView
@@ -101,6 +118,7 @@ struct FileBrowserView: View {
                         HStack(spacing: 4) {
                             refreshButton
                             transferTasksButton
+                            sortMenu
                             Divider()
                                 .frame(height: 20)
                             newFolderButton
@@ -207,36 +225,33 @@ struct FileBrowserView: View {
     
     @ViewBuilder
     private var fileTableView: some View {
-        Table(currentFiles, selection: $selectedFiles, sortOrder: $sortOrder) {
-            TableColumn(L10n.FileBrowser.name, value: \.name) { file in
+        Table(currentFiles, selection: $selectedFiles) {
+            TableColumn(L10n.FileBrowser.name) { file in
                 nameCell(for: file)
             }
             .width(min: 200, ideal: 400)
-            
-            TableColumn(L10n.FileBrowser.size, value: \.size) { file in
+
+            TableColumn(L10n.FileBrowser.size) { file in
                 sizeCell(for: file)
             }
             .width(100)
-            
-            TableColumn(L10n.FileBrowser.type, value: \.fileType) { file in
+
+            TableColumn(L10n.FileBrowser.type) { file in
                 typeCell(for: file)
             }
             .width(120)
-            
-            TableColumn(L10n.FileBrowser.modifiedDate, value: \.sortableDate) { file in
+
+            TableColumn(L10n.FileBrowser.modifiedDate) { file in
                 dateCell(for: file)
             }
             .width(180)
-        }
-        .onChange(of: sortOrder) { oldValue, newValue in
-            applySorting()
         }
         .contextMenu(forSelectionType: FileItem.ID.self) { items in
             fileContextMenu(for: items)
         }
         .overlay(
             TableDoubleClickModifier(
-                onDoubleClick: handleDoubleClick
+                onDoubleClick: handleDoubleClickWithItem
             )
             .frame(width: 0, height: 0)
         )
@@ -260,6 +275,34 @@ struct FileBrowserView: View {
         }
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
+    }
+
+    /// 可排序的列标题
+    private func sortableHeader(title: String, option: SortOption) -> some View {
+        Button {
+            print("[SortableHeader] Clicked on \(title)")
+            if sortOption == option {
+                sortAscending.toggle()
+            } else {
+                sortOption = option
+                sortAscending = true
+            }
+            print("[SortableHeader] After click: sortOption=\(sortOption), sortAscending=\(sortAscending)")
+            loadFiles()
+        } label: {
+            HStack(spacing: 4) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.primary)
+
+                if sortOption == option {
+                    Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
     
     private func nameCell(for file: FileItem) -> some View {
@@ -300,6 +343,25 @@ struct FileBrowserView: View {
             }
         } else {
             print("No selected file found")
+        }
+    }
+
+    private func handleDoubleClickWithItem(_ item: FileItem?) {
+        // Use the provided item if available, otherwise use selectedFiles
+        let targetItem = item ?? (selectedFiles.first.flatMap { selectedId in
+            currentFiles.first { $0.id == selectedId }
+        })
+
+        guard let targetItem = targetItem else {
+            print("handleDoubleClickWithItem: No item found")
+            return
+        }
+
+        print("handleDoubleClickWithItem: Double clicked on \(targetItem.name), isDirectory: \(targetItem.isDirectory)")
+
+        if targetItem.isDirectory {
+            print("handleDoubleClickWithItem: Setting pendingNavigation to: \(targetItem.name)")
+            pendingNavigation = targetItem
         }
     }
     
@@ -389,20 +451,41 @@ struct FileBrowserView: View {
     }
     
     private func sortFiles(_ files: [FileItem]) -> [FileItem] {
+        print("[SortFiles] Sorting \(files.count) files, option: \(sortOption), ascending: \(sortAscending)")
+
         // First separate folders and files
         let folders = files.filter { $0.isDirectory }
         let regularFiles = files.filter { !$0.isDirectory }
-        
-        // Sort each group using the sort order
-        let sortedFolders = folders.sorted(using: sortOrder)
-        let sortedFiles = regularFiles.sorted(using: sortOrder)
-        
+
+        print("[SortFiles] Folders: \(folders.count), Files: \(regularFiles.count)")
+
+        // Sort each group based on current sort option
+        let sortedFolders: [FileItem]
+        let sortedFiles: [FileItem]
+
+        switch sortOption {
+        case .name:
+            print("[SortFiles] Sorting by name")
+            sortedFolders = folders.sorted { $0.name.localizedStandardCompare($1.name) == (sortAscending ? .orderedAscending : .orderedDescending) }
+            sortedFiles = regularFiles.sorted { $0.name.localizedStandardCompare($1.name) == (sortAscending ? .orderedAscending : .orderedDescending) }
+        case .size:
+            print("[SortFiles] Sorting by size")
+            sortedFolders = folders.sorted { sortAscending ? $0.size < $1.size : $0.size > $1.size }
+            sortedFiles = regularFiles.sorted { sortAscending ? $0.size < $1.size : $0.size > $1.size }
+        case .type:
+            print("[SortFiles] Sorting by type")
+            sortedFolders = folders.sorted { $0.fileType.localizedStandardCompare($1.fileType) == (sortAscending ? .orderedAscending : .orderedDescending) }
+            sortedFiles = regularFiles.sorted { $0.fileType.localizedStandardCompare($1.fileType) == (sortAscending ? .orderedAscending : .orderedDescending) }
+        case .modifiedDate:
+            print("[SortFiles] Sorting by modified date")
+            sortedFolders = folders.sorted { sortAscending ? $0.sortableDate < $1.sortableDate : $0.sortableDate > $1.sortableDate }
+            sortedFiles = regularFiles.sorted { sortAscending ? $0.sortableDate < $1.sortableDate : $0.sortableDate > $1.sortableDate }
+        }
+
         // Folders always come first
-        return sortedFolders + sortedFiles
-    }
-    
-    private func applySorting() {
-        currentFiles = sortFiles(currentFiles)
+        let result = sortedFolders + sortedFiles
+        print("[SortFiles] Sorted result: \(result.count) items")
+        return result
     }
     
     private func navigateInto(_ folder: FileItem) {
@@ -766,7 +849,41 @@ struct FileBrowserView: View {
         .glassEffect()
         .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
     }
-    
+
+    private var sortMenu: some View {
+        Menu {
+            Section {
+                ForEach(SortOption.allCases, id: \.self) { option in
+                    Button {
+                        print("[SortMenu] Before: sortOption=\(sortOption), sortAscending=\(sortAscending)")
+                        if sortOption == option {
+                            sortAscending.toggle()
+                        } else {
+                            sortOption = option
+                            sortAscending = true
+                        }
+                        print("[SortMenu] After: sortOption=\(sortOption), sortAscending=\(sortAscending)")
+                        loadFiles()
+                    } label: {
+                        HStack {
+                            Text(option.displayName)
+                            Spacer()
+                            if sortOption == option {
+                                Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
+                            }
+                        }
+                    }
+                }
+            }
+        } label: {
+            Label(L10n.FileBrowser.sort, systemImage: "arrow.up.arrow.down")
+                .labelStyle(.iconOnly)
+        }
+        .help(L10n.FileBrowser.sortFiles)
+        .glassEffect()
+        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
+    }
+
     // MARK: - Create Folder Dialog
     
     private var createFolderDialog: some View {
@@ -896,44 +1013,44 @@ struct FileBrowserView: View {
 // MARK: - Table Double Click Support
 
 struct TableDoubleClickModifier: NSViewRepresentable {
-    let onDoubleClick: () -> Void
-    
+    let onDoubleClick: (FileItem?) -> Void
+
     func makeNSView(context: Context) -> DoubleClickHelperView {
         let view = DoubleClickHelperView()
         view.onDoubleClick = onDoubleClick
         return view
     }
-    
+
     func updateNSView(_ nsView: DoubleClickHelperView, context: Context) {
         nsView.onDoubleClick = onDoubleClick
     }
-    
+
     class DoubleClickHelperView: NSView {
-        var onDoubleClick: (() -> Void)?
+        var onDoubleClick: ((FileItem?) -> Void)?
         private weak var tableView: NSTableView?
         private var retryCount = 0
         private let maxRetries = 30
-        
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             print("DoubleClickHelperView: viewDidMoveToWindow called")
             setupDoubleClick()
         }
-        
+
         private func setupDoubleClick() {
-            guard tableView == nil else { 
+            guard tableView == nil else {
                 print("DoubleClickHelperView: tableView already set")
-                return 
+                return
             }
-            
+
             guard retryCount < maxRetries else {
                 print("DoubleClickHelperView: Max retries reached, giving up")
                 return
             }
-            
+
             retryCount += 1
             print("DoubleClickHelperView: searching for NSTableView (attempt \(retryCount))...")
-            
+
             // Search in the entire window's view hierarchy
             if let window = self.window {
                 if let table = findTableView(in: window.contentView) {
@@ -944,35 +1061,47 @@ struct TableDoubleClickModifier: NSViewRepresentable {
                     return
                 }
             }
-            
+
             print("DoubleClickHelperView: NSTableView not found, retrying...")
             // If not found, try again after a short delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
                 self?.setupDoubleClick()
             }
         }
-        
+
         private func findTableView(in view: NSView?) -> NSTableView? {
             guard let view = view else { return nil }
-            
+
             // Check if this view is a table view
             if let tableView = view as? NSTableView {
                 return tableView
             }
-            
+
             // Recursively search subviews
             for subview in view.subviews {
                 if let found = findTableView(in: subview) {
                     return found
                 }
             }
-            
+
             return nil
         }
-        
+
         @objc private func handleDoubleClick() {
             print("DoubleClickHelperView: handleDoubleClick called!")
-            onDoubleClick?()
+
+            guard let tableView = tableView else {
+                print("DoubleClickHelperView: tableView is nil!")
+                onDoubleClick?(nil)
+                return
+            }
+
+            let clickedRow = tableView.clickedRow
+            print("DoubleClickHelperView: clickedRow = \(clickedRow)")
+
+            // Just return nil and let the caller handle it via selectedFiles
+            // This is a simpler approach that works with SwiftUI Table
+            onDoubleClick?(nil)
         }
     }
 }
