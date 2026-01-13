@@ -9,9 +9,9 @@
 
 ### Best Practices
 * Break down complex problems into smaller, manageable parts
-* Consider performance implications
+* Consider performance implications.
 * Always review code for rightness and correctness.
-* Use appropriate tools (agents, MCP tools, etc.) based on task requirements.
+* Use appropriate tools and skills (agents, MCP tools, skills, etc.) based on task requirements.
 
 ### Design for Testability
 * No Direct Instantiation: Prohibit instantiating external dependencies directly inside functions (DB, API clients, etc.) .
@@ -26,7 +26,7 @@
 * Refactoring Circuit Breaker: If achieving the ideal structure requires a massive, high-risk rewrite (e.g., changing core assumptions), STOP and explain the scope and complexity first. 
 
 ## 技术架构
-- **语言**: Swift 5.9+, Go 1.22+
+- **语言**: Swift 6+, Go 1.22+
 - **UI**: SwiftUI
 - **架构**: MVVM, Combine
 - **依赖**: libmtp, go-mtpx, libusb-1.0
