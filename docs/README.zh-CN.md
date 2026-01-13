@@ -205,7 +205,7 @@ SwiftMTP/
 
 ### 技术栈
 
-- **语言**: Swift 5.9+, Go 1.22+
+- **语言**: Swift 6+, Go 1.22+
 - **UI 框架**: SwiftUI
 - **MTP 库**: go-mtpx (基于 libusb-1.0)
 - **架构模式**: MVVM

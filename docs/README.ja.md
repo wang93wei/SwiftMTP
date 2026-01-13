@@ -205,7 +205,7 @@ SwiftMTP/
 
 ### 技術スタック
 
-- **言語**: Swift 5.9+, Go 1.22+
+- **言語**: Swift 6+, Go 1.22+
 - **UI フレームワーク**: SwiftUI
 - **MTP ライブラリ**: go-mtpx (libusb-1.0 ベース)
 - **アーキテクチャパターン**: MVVM

@@ -205,7 +205,7 @@ SwiftMTP/
 
 ### 기술 스택
 
-- **언어**: Swift 5.9+, Go 1.22+
+- **언어**: Swift 6+, Go 1.22+
 - **UI 프레임워크**: SwiftUI
 - **MTP 라이브러리**: go-mtpx (libusb-1.0 기반)
 - **아키텍처 패턴**: MVVM

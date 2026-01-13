@@ -214,7 +214,7 @@ SwiftMTP/
 
 ### Technologiestack
 
-- **Sprachen**: Swift 5.9+, Go 1.22+
+- **Sprachen**: Swift 6+, Go 1.22+
 - **UI-Framework**: SwiftUI
 - **MTP-Bibliothek**: go-mtpx (basierend auf libusb-1.0)
 - **Architektur-Muster**: MVVM
