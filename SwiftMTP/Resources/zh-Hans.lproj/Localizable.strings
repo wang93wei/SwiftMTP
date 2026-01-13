@@ -39,6 +39,8 @@
 "noFilesInFolder" = "此文件夹中没有文件";
 "dragFilesToUpload" = "或将文件拖拽到此处以上传";
 "loadingFileList" = "加载文件列表...";
+"sort" = "排序";
+"sortFiles" = "排序文件";
 "deleteFailed" = "删除失败";
 "confirmDeleteFolder" = "确定要删除此文件夹吗？此操作将递归删除所有内容。";
 "moveToTrash" = "移至废纸篓";

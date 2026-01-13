@@ -39,6 +39,8 @@
 "noFilesInFolder" = "This folder has no files";
 "dragFilesToUpload" = "Or drag files here to upload";
 "loadingFileList" = "Loading file list...";
+"sort" = "Sort";
+"sortFiles" = "Sort Files";
 "deleteFailed" = "Delete Failed";
 "confirmDeleteFolder" = "Are you sure you want to delete this folder? This action will recursively delete all contents.";
 "moveToTrash" = "Move to Trash";

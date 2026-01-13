@@ -114,6 +114,8 @@ enum L10n {
         static var uploadingTo: String { LanguageManager.shared.localizedString(for: "uploadingTo") }
         static var deleteMultipleFiles: String { LanguageManager.shared.localizedString(for: "deleteMultipleFiles") }
         static var confirmDeleteMultipleFiles: String { LanguageManager.shared.localizedString(for: "confirmDeleteMultipleFiles") }
+        static var sort: String { LanguageManager.shared.localizedString(for: "sort") }
+        static var sortFiles: String { LanguageManager.shared.localizedString(for: "sortFiles") }
     }
 
     enum FileTransfer {
