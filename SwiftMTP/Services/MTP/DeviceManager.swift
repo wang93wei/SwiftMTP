@@ -32,26 +32,27 @@ struct KalamStorage: Codable {
     let maxCapacity: UInt64
 }
 
-class DeviceManager: ObservableObject {
-    // MARK: - 单例
+@MainActor
+class DeviceManager: ObservableObject, DeviceManaging {
+    // MARK: - Singleton
     
     static let shared = DeviceManager()
     
-    // MARK: - 常量
+    // MARK: - Constants
     
-    /// 默认扫描间隔（秒）
+    /// Default scan interval in seconds
     private static let DefaultScanInterval: TimeInterval = 3.0
     
-    /// 设备连接后的扫描间隔（秒）
+    /// Scan interval when device is connected (seconds)
     private static let ConnectedDeviceScanInterval: TimeInterval = 5.0
     
-    /// 最大扫描间隔（秒）- 指数退避上限
+    /// Maximum scan interval for exponential backoff (seconds)
     private static let MaxScanInterval: TimeInterval = 30.0
     
-    /// 最大连续失败次数
+    /// Maximum consecutive failures before stopping automatic scan
     private static let MaxFailuresBeforeManualRefresh: Int = 3
     
-    /// 根目录 ID（MTP 协议标准值）
+    /// Root directory ID (MTP protocol standard value)
     private static let RootDirectoryId: UInt32 = 0xFFFFFFFF
     
     // MARK: - 发布属性
@@ -76,22 +77,22 @@ class DeviceManager: ObservableObject {
     
     // MARK: - 私有属性
     
-    /// 用户设置的扫描间隔（秒）
+    /// User configured scan interval in seconds
     private var userScanInterval: TimeInterval {
-        let interval = UserDefaults.standard.double(forKey: "scanInterval")
-        return interval > 0 ? interval : DeviceManager.DefaultScanInterval
+        let interval = UserDefaults.standard.double(forKey: AppConfiguration.scanIntervalKey)
+        return interval > 0 ? interval : AppConfiguration.defaultScanInterval
     }
     
-    /// 扫描定时器
+    /// Scan timer
     private var scanTimer: Timer?
     
-    /// 设备 ID 缓存（使用NSCache实现自动内存管理）
+    /// Device ID cache (using NSCache for automatic memory management)
     private let deviceIdCache = NSCache<NSNumber, UUIDWrapper>()
     
-    /// 设备序列号缓存（使用NSCache实现自动内存管理）
+    /// Device serial cache (using NSCache for automatic memory management)
     private let deviceSerialCache = NSCache<NSNumber, NSString>()
     
-    /// UUID包装类（用于NSCache，因为NSCache要求对象类型必须是类）
+    /// UUID wrapper class (for NSCache, as NSCache requires object types to be classes)
     private class UUIDWrapper: NSObject {
         let uuid: UUID
         init(_ uuid: UUID) {
@@ -99,35 +100,36 @@ class DeviceManager: ObservableObject {
         }
     }
     
-    /// 上次成功扫描的设备序列号集合（用于检测设备断开）
+    /// Last successful scan device serial set (for detecting device disconnection)
     private var lastDeviceSerials: Set<String> = []
     
-    /// 连续失败次数（用于指数退避）
+    /// Consecutive failure count (for exponential backoff)
     private var consecutiveFailures: Int = 0
     
-    /// 当前扫描间隔（秒）
-    private var currentScanInterval: TimeInterval = DefaultScanInterval
+    /// Current scan interval in seconds
+    private var currentScanInterval: TimeInterval = AppConfiguration.defaultScanInterval
     
     private init() {
-        // 初始化 Kalam 内核
+        // Initialize Kalam kernel
         Kalam_Init()
         
-        // 配置设备ID缓存
-        deviceIdCache.countLimit = 100  // 最多缓存100个设备
-        deviceIdCache.totalCostLimit = 10 * 1024 * 1024  // 10MB限制
+        // Configure device ID cache
+        deviceIdCache.countLimit = AppConfiguration.deviceCacheCountLimit
+        deviceIdCache.totalCostLimit = AppConfiguration.deviceCacheTotalCostLimit
         
-        // 配置设备序列号缓存
-        deviceSerialCache.countLimit = 100  // 最多缓存100个设备
-        deviceSerialCache.totalCostLimit = 10 * 1024  // 10KB限制
+        // Configure device serial cache
+        deviceSerialCache.countLimit = AppConfiguration.deviceCacheCountLimit
+        deviceSerialCache.totalCostLimit = AppConfiguration.deviceSerialCacheTotalCostLimit
         
-        // 初始化扫描间隔为用户设置的值
+        // Initialize scan interval to user configured value
         currentScanInterval = userScanInterval
         
         startScanning()
     }
     
     deinit {
-        stopScanning()
+        // Timer cleanup will be handled by automatic deallocation
+        // No manual cleanup needed as Timer will be released with the instance
     }
     
     // MARK: - 公共方法
@@ -142,12 +144,14 @@ class DeviceManager: ObservableObject {
         }
     }
     
-    /// 开始扫描设备
-    /// 使用用户设置的扫描间隔
+    /// Start scanning for devices
+    /// Uses user configured scan interval
     func startScanning() {
         let interval = TimeInterval(userScanInterval)
         scanTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            self?.scanDevices()
+            Task { @MainActor in
+                self?.scanDevices()
+            }
         }
         scanDevices()
     }
@@ -158,14 +162,14 @@ class DeviceManager: ObservableObject {
         scanTimer = nil
     }
     
-    /// 扫描设备
-    /// 检测设备连接和断开，使用指数退避策略减少失败时的扫描频率
+    /// Scan for devices
+    /// Detects device connection and disconnection, uses exponential backoff strategy to reduce scan frequency on failures
     func scanDevices() {
-        // 避免并发扫描
+        // Avoid concurrent scanning
         guard !isScanning else { return }
         
-        // 达到最大失败次数后停止自动扫描
-        if consecutiveFailures >= DeviceManager.MaxFailuresBeforeManualRefresh {
+        // Stop automatic scanning after reaching max consecutive failures
+        if consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
             print("[DeviceManager] Max failures reached, stopping automatic scanning")
             stopScanning()
             return
@@ -174,24 +178,22 @@ class DeviceManager: ObservableObject {
         let actualInterval = scanTimer?.timeInterval ?? userScanInterval
         print("[DeviceManager] Starting scan, current failures: \(consecutiveFailures), interval: \(actualInterval)s")
         
-        // 在主线程上设置扫描标志
-        DispatchQueue.main.async { [weak self] in
-            self?.isScanning = true
-        }
+        // Set scanning flag on main thread
+        isScanning = true
         
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
             
-            // 调用 Kalam_Scan 通过 Go 桥接
+            // Call Kalam_Scan through Go bridge
             guard let jsonPtr = Kalam_Scan() else {
                 print("[DeviceManager] Kalam_Scan returned nil - no devices found")
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.handleDeviceDisconnection()
                     self.isScanning = false
                     self.hasScannedOnce = true
                     
-                    // 达到最大失败次数后停止自动扫描
-                    if self.consecutiveFailures >= DeviceManager.MaxFailuresBeforeManualRefresh {
+                    // Stop automatic scanning after reaching max consecutive failures
+                    if self.consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
                         print("[DeviceManager] Max failures reached, stopping automatic scanning")
                         self.stopScanning()
                     }
@@ -199,7 +201,7 @@ class DeviceManager: ObservableObject {
                 return
             }
             
-            // 使用 defer 确保内存总是被释放
+            // Use defer to ensure memory is always freed
             defer {
                 Kalam_FreeString(jsonPtr)
             }
@@ -208,13 +210,13 @@ class DeviceManager: ObservableObject {
             
             guard let data = jsonString.data(using: .utf8) else {
                 print("[DeviceManager] Failed to convert device JSON string to data")
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.handleDeviceDisconnection()
                     self.isScanning = false
                     self.hasScannedOnce = true
                     
-                    // 达到最大失败次数后停止自动扫描
-                    if self.consecutiveFailures >= DeviceManager.MaxFailuresBeforeManualRefresh {
+                    // Stop automatic scanning after reaching max consecutive failures
+                    if self.consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
                         print("[DeviceManager] Max failures reached, stopping automatic scanning")
                         self.stopScanning()
                     }
@@ -224,24 +226,28 @@ class DeviceManager: ObservableObject {
             
             do {
                 let kalamDevices = try JSONDecoder().decode([KalamDevice].self, from: data)
-                let newDevices = kalamDevices.map { self.mapToDevice($0) }
+                
+                // Map devices on MainActor since mapToDevice is MainActor isolated
+                let newDevices = await MainActor.run {
+                    return kalamDevices.map { self.mapToDevice($0) }
+                }
                 
                 print("[DeviceManager] Successfully found \(newDevices.count) device(s)")
                 
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.updateDevices(newDevices)
                     self.isScanning = false
                     self.hasScannedOnce = true
                 }
             } catch {
                 print("[DeviceManager] Failed to decode devices JSON: \(error)")
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.handleDeviceDisconnection()
                     self.isScanning = false
                     self.hasScannedOnce = true
                     
-                    // 达到最大失败次数后停止自动扫描
-                    if self.consecutiveFailures >= DeviceManager.MaxFailuresBeforeManualRefresh {
+                    // Stop automatic scanning after reaching max consecutive failures
+                    if self.consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
                         print("[DeviceManager] Max failures reached, stopping automatic scanning")
                         self.stopScanning()
                     }
@@ -257,15 +263,15 @@ class DeviceManager: ObservableObject {
         connectionError = nil
     }
     
-    /// 手动刷新设备列表
-    /// 重置失败计数和扫描间隔，重新开始自动扫描
+    /// Manually refresh device list
+    /// Resets failure count and scan interval, restarts automatic scanning
     func manualRefresh() {
-        // 重置失败计数和扫描间隔
+        // Reset failure count and scan interval
         consecutiveFailures = 0
         currentScanInterval = userScanInterval
         showManualRefreshButton = false
         
-        // 重新开始自动扫描
+        // Restart automatic scanning
         startScanning()
         
         print("[DeviceManager] Manual refresh triggered - counters reset, automatic scanning restarted")
@@ -273,86 +279,88 @@ class DeviceManager: ObservableObject {
     
     // MARK: - 私有方法
     
-    /// 更新设备列表
-    /// - Parameter newDevices: 新的设备列表
+    /// Update device list
+    /// - Parameter newDevices: New device list
     private func updateDevices(_ newDevices: [Device]) {
         let newSerials = Set(newDevices.map { $0.serialNumber })
         
-        // 检查选中的设备是否仍然连接（使用序列号而非 UUID）
+        // Check if selected device is still connected (using serial number instead of UUID)
         if let selected = selectedDevice, !selected.serialNumber.isEmpty && !newSerials.contains(selected.serialNumber) {
-            // 设备已断开
+            // Device disconnected
             handleDeviceDisconnection()
         }
         
-        // 更新设备列表
+        // Update device list
         devices = newDevices
         lastDeviceSerials = newSerials
         
-        // 成功检测到设备时重置失败计数
+        // Reset failure count when devices are successfully detected
         if !newDevices.isEmpty {
             consecutiveFailures = 0
             currentScanInterval = userScanInterval
             showManualRefreshButton = false
         }
         
-        // 检查是否需要更新扫描间隔（用户设置改变时）
+        // Check if scan interval needs to be updated (when user settings change)
         let previousInterval = scanTimer?.timeInterval ?? userScanInterval
         let newInterval = userScanInterval
         
-        // 如果扫描间隔与用户设置不一致，更新它
+        // Update scan interval if it differs from user settings
         if abs(previousInterval - newInterval) > 0.5 {
             scanTimer?.invalidate()
             scanTimer = Timer.scheduledTimer(withTimeInterval: newInterval, repeats: true) { [weak self] _ in
-                self?.scanDevices()
+                Task { @MainActor in
+                    self?.scanDevices()
+                }
             }
             print("[DeviceManager] Scanning interval updated to \(newInterval)s")
         }
         
-        // 如果只有一个设备且未选择，自动选择
+        // Auto-select if only one device and none selected
         if selectedDevice == nil && newDevices.count == 1 {
             selectedDevice = newDevices.first
         }
     }
     
-    /// 处理设备断开
-    /// 清除所有设备相关状态，取消正在进行的传输任务
+    /// Handle device disconnection
+    /// Clears all device-related state, cancels active transfer tasks
     private func handleDeviceDisconnection() {
         if selectedDevice != nil || !devices.isEmpty {
-            // 取消所有活跃的传输任务
+            // Cancel all active transfer tasks
             FileTransferManager.shared.cancelAllTasks()
             
-            // 清除所有内容
+            // Clear all content
             devices = []
             selectedDevice = nil
             connectionError = L10n.MainWindow.deviceDisconnected
             
-            // 清除文件系统缓存
+            // Clear file system cache
             FileSystemManager.shared.clearCache()
             
-            // 发送通知以重置 UI
+            // Send notification to reset UI
             NotificationCenter.default.post(name: NSNotification.Name("DeviceDisconnected"), object: nil)
             
             print("[DeviceManager] Device disconnected - UI reset and tasks cancelled")
         }
         
-        // 增加失败计数
+        // Increment failure count
         consecutiveFailures += 1
         
-        // 指数退避：interval = min(3 * 2^failures, maxInterval)
-        let backoffInterval = min(DeviceManager.DefaultScanInterval * pow(2.0, Double(consecutiveFailures)), DeviceManager.MaxScanInterval)
+        // Exponential backoff: interval = min(3 * 2^failures, maxInterval)
+        let backoffInterval = min(AppConfiguration.defaultScanInterval * pow(2.0, Double(consecutiveFailures)), AppConfiguration.maxScanInterval)
         currentScanInterval = backoffInterval
         
-        // 达到最大失败次数后显示手动刷新按钮
-        if consecutiveFailures >= DeviceManager.MaxFailuresBeforeManualRefresh {
+        // Show manual refresh button after reaching max consecutive failures
+        if consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
             showManualRefreshButton = true
         }
         
         print("[DeviceManager] Scan failed \(consecutiveFailures) times, next scan in \(backoffInterval)s")
     }
     
-    /// 将 Kalam 设备映射到应用设备模型
-    /// - Parameter kalamDevice: Kalam 设备
-    /// - Returns: 应用设备模型
+    /// Map Kalam device to application device model
+    /// - Parameter kalamDevice: Kalam device
+    /// - Returns: Application device model
     private func mapToDevice(_ kalamDevice: KalamDevice) -> Device {
         let storageInfos = kalamDevice.storage.map { storage in
             StorageInfo(
@@ -369,13 +377,13 @@ class DeviceManager: ObservableObject {
             vendorExtension: kalamDevice.mtpSupport.vendorExtension
         )
         
-        // 使用缓存的 UUID 或生成新的（NSCache是线程安全的）
+        // Use cached UUID or generate new one (NSCache is thread-safe)
         let deviceKey = NSNumber(value: kalamDevice.id)
         let deviceIdWrapper = deviceIdCache.object(forKey: deviceKey) ?? UUIDWrapper(UUID())
         deviceIdCache.setObject(deviceIdWrapper, forKey: deviceKey)
         let deviceId = deviceIdWrapper.uuid
         
-        // 缓存序列号用于设备唯一标识（NSCache是线程安全的）
+        // Cache serial number for device unique identification (NSCache is thread-safe)
         deviceSerialCache.setObject(NSString(string: kalamDevice.serialNumber), forKey: deviceKey)
         
         return Device(
