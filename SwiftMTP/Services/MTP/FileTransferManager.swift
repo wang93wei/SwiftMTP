@@ -9,6 +9,13 @@ import Foundation
 import Combine
 import Darwin
 
+// Debug logging helper - only outputs in Debug mode
+private func debugLog(_ message: String) {
+    #if DEBUG
+    print(message)
+    #endif
+}
+
 // Global reference to the FileTransferManager for progress callbacks
 private weak var currentTransferManager: FileTransferManager?
 
@@ -90,13 +97,13 @@ class FileTransferManager: ObservableObject {
         
         // 1. 验证文件路径不为空
         guard !sourceURL.path.isEmpty else {
-            print("[FileTransferManager] Upload failed: Empty source path")
+            debugLog("[FileTransferManager] Upload failed: Empty source path")
             return
         }
         
         // 2. 验证文件存在
         guard FileManager.default.fileExists(atPath: sourceURL.path) else {
-            print("[FileTransferManager] Upload failed: File does not exist at \(sourceURL.path)")
+            debugLog("[FileTransferManager] Upload failed: File does not exist at \(sourceURL.path)")
             return
         }
         
@@ -104,21 +111,21 @@ class FileTransferManager: ObservableObject {
         var isDirectory: ObjCBool = false
         FileManager.default.fileExists(atPath: sourceURL.path, isDirectory: &isDirectory)
         if isDirectory.boolValue {
-            print("[FileTransferManager] Upload failed: Cannot upload directories: \(sourceURL.path)")
+            debugLog("[FileTransferManager] Upload failed: Cannot upload directories: \(sourceURL.path)")
             return
         }
         
         // 4. 获取文件大小
         guard let fileAttributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
               let fileSize = fileAttributes[.size] as? UInt64 else {
-            print("[FileTransferManager] Upload failed: Could not get file size for \(sourceURL.path)")
+            debugLog("[FileTransferManager] Upload failed: Could not get file size for \(sourceURL.path)")
             return
         }
         
         // 5. 验证文件大小限制（最大 10GB）
         let maxFileSize: UInt64 = 10 * 1024 * 1024 * 1024
         guard fileSize <= maxFileSize else {
-            print("[FileTransferManager] Upload failed: File too large (\(fileSize) bytes, max: \(maxFileSize) bytes)")
+            debugLog("[FileTransferManager] Upload failed: File too large (\(fileSize) bytes, max: \(maxFileSize) bytes)")
             return
         }
         
@@ -129,16 +136,16 @@ class FileTransferManager: ObservableObject {
         
         // 7. 验证设备存储空间
         guard let storage = device.storageInfo.first(where: { $0.storageId == storageId }) else {
-            print("[FileTransferManager] Upload failed: Storage not found (storageId: \(storageId))")
+            debugLog("[FileTransferManager] Upload failed: Storage not found (storageId: \(storageId))")
             return
         }
         
         if fileSize > storage.freeSpace {
-            print("[FileTransferManager] Upload failed: Not enough space on device (required: \(fileSize), available: \(storage.freeSpace))")
+            debugLog("[FileTransferManager] Upload failed: Not enough space on device (required: \(fileSize), available: \(storage.freeSpace))")
             return
         }
         
-        print("[FileTransferManager] Starting upload: \(sourceURL.lastPathComponent) (\(fileSize) bytes) to parentId: \(parentId), storageId: \(storageId)")
+        debugLog("[FileTransferManager] Starting upload: \(sourceURL.lastPathComponent) (\(fileSize) bytes) to parentId: \(parentId), storageId: \(storageId)")
         
         let task = TransferTask(
             type: .upload,
@@ -183,7 +190,7 @@ class FileTransferManager: ObservableObject {
                 moveTaskToCompleted(task)
             }
             
-            print("[FileTransferManager] Cancelled \(tasksToCancel.count) active tasks")
+            debugLog("[FileTransferManager] Cancelled \(tasksToCancel.count) active tasks")
         }
     }
     
@@ -194,77 +201,104 @@ class FileTransferManager: ObservableObject {
     // MARK: - Private Methods
     
     private func validatePathSecurity(_ url: URL) -> Bool {
+        debugLog("validatePathSecurity: Starting path security validation")
+        debugLog("validatePathSecurity: Original path: \(url.path)")
+
         // 1. 验证路径长度限制（防止缓冲区溢出）
         let maxPathLength = 4096
-        guard url.path.count <= maxPathLength else {
-            print("[FileTransferManager] Upload failed: Path too long (\(url.path.count) characters, max: \(maxPathLength))")
+        let pathLength = url.path.count
+        debugLog("validatePathSecurity: Step 1 - Checking path length: \(pathLength) characters (max: \(maxPathLength))")
+        guard pathLength <= maxPathLength else {
+            debugLog("[FileTransferManager] Upload failed: Path too long (\(pathLength) characters, max: \(maxPathLength))")
             return false
         }
-        
+        debugLog("validatePathSecurity: Step 1 - Path length OK")
+
         // 2. 解析并标准化路径
         let standardizedPath = url.standardizedFileURL.path
-        
+        debugLog("validatePathSecurity: Step 2 - Standardized path: \(standardizedPath)")
+
         // 3. 检查路径是否包含相对引用（包括 URL 编码）
         // 只检查父目录引用（..），不检查当前目录引用（.），以允许隐藏文件
         let pathComponents = standardizedPath.split(separator: "/")
         let dangerousPatterns = ["..", "%2e%2e", "%2E%2E"]
+        debugLog("validatePathSecurity: Step 3 - Checking for dangerous patterns...")
+        debugLog("validatePathSecurity:   Path components: \(pathComponents.count)")
         for component in pathComponents {
             for pattern in dangerousPatterns {
                 if component.lowercased().contains(pattern.lowercased()) {
-                    print("[FileTransferManager] Upload failed: Invalid path with parent directory references or encoded dots")
+                    debugLog("[FileTransferManager] Upload failed: Invalid path with parent directory references or encoded dots")
+                    debugLog("validatePathSecurity:   Found dangerous pattern '\(pattern)' in component '\(component)'")
                     return false
                 }
             }
         }
-        
+        debugLog("validatePathSecurity: Step 3 - No dangerous patterns found")
+
         // 4. 检查特殊字符（防止命令注入）
         let dangerousChars = CharacterSet(charactersIn: "\u{0000}\n\r\t")
+        debugLog("validatePathSecurity: Step 4 - Checking for control characters...")
         if standardizedPath.rangeOfCharacter(from: dangerousChars) != nil {
-            print("[FileTransferManager] Upload failed: Path contains invalid control characters")
+            debugLog("[FileTransferManager] Upload failed: Path contains invalid control characters")
             return false
         }
-        
+        debugLog("validatePathSecurity: Step 4 - No control characters found")
+
         // 5. 检查符号链接
+        debugLog("validatePathSecurity: Step 5 - Checking for symbolic links...")
         do {
             let fileAttributes = try FileManager.default.attributesOfItem(atPath: url.path)
             if let fileType = fileAttributes[.type] as? FileAttributeType,
                fileType == .typeSymbolicLink {
-                print("[FileTransferManager] Upload failed: Symbolic links are not allowed")
+                debugLog("[FileTransferManager] Upload failed: Symbolic links are not allowed")
                 return false
             }
+            debugLog("validatePathSecurity: Step 5 - Not a symbolic link, file type: \(fileAttributes[.type] ?? "unknown")")
         } catch {
-            print("[FileTransferManager] Upload failed: Could not verify file type: \(error)")
+            debugLog("[FileTransferManager] Upload failed: Could not verify file type: \(error)")
             return false
         }
-        
+
         // 6. 验证路径是否在允许的目录范围内
         let allowedDirectories = [
             FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads").path,
             FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop").path,
             FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents").path
         ]
-        
+        debugLog("validatePathSecurity: Step 6 - Checking allowed directories...")
+        debugLog("validatePathSecurity:   Allowed directories:")
+        for dir in allowedDirectories {
+            debugLog("validatePathSecurity:     - \(dir)")
+        }
+
         var isInAllowedDirectory = false
         for allowedDir in allowedDirectories {
             if standardizedPath.hasPrefix(allowedDir) {
                 isInAllowedDirectory = true
+                debugLog("validatePathSecurity:   Path matches allowed directory: \(allowedDir)")
                 break
             }
         }
-        
+
         if !isInAllowedDirectory {
-            print("[FileTransferManager] Upload failed: Path is not in allowed directories")
-            print("[FileTransferManager] Allowed directories: \(allowedDirectories)")
-            print("[FileTransferManager] Actual path: \(standardizedPath)")
+            debugLog("[FileTransferManager] Upload failed: Path is not in allowed directories")
+            debugLog("[FileTransferManager] Allowed directories: \(allowedDirectories)")
+            debugLog("[FileTransferManager] Actual path: \(standardizedPath)")
             return false
         }
-        
+        debugLog("validatePathSecurity: Step 6 - Path is in allowed directory")
+
         // 7. 验证标准化后的路径是否与原始路径一致
+        debugLog("validatePathSecurity: Step 7 - Comparing original and standardized paths...")
         if standardizedPath != url.path {
-            print("[FileTransferManager] Upload failed: Path contains relative references or symbolic links")
+            debugLog("[FileTransferManager] Upload failed: Path contains relative references or symbolic links")
+            debugLog("validatePathSecurity:   Original: \(url.path)")
+            debugLog("validatePathSecurity:   Standardized: \(standardizedPath)")
             return false
         }
-        
+        debugLog("validatePathSecurity: Step 7 - Paths match")
+
+        debugLog("validatePathSecurity: All security checks passed ✓")
         return true
     }
     
@@ -310,7 +344,7 @@ class FileTransferManager: ObservableObject {
         }
         
         // Add device connection validation before download
-        print("Validating device connection before download...")
+        debugLog("Validating device connection before download...")
         guard let testResult = Kalam_Scan() else {
             DispatchQueue.main.async {
                 task.updateStatus(.failed(L10n.FileTransfer.deviceDisconnectedReconnect))
@@ -330,7 +364,7 @@ class FileTransferManager: ObservableObject {
         }
         
         // Perform download with enhanced error handling
-        print("Starting download of file \(fileItem.name) (ID: \(fileItem.objectId))")
+        debugLog("Starting download of file \(fileItem.name) (ID: \(fileItem.objectId))")
         let result = task.destinationPath.withCString { cString in
             // Create mutable copies of the C strings to avoid unsafe pointer mutation
             let mutableDest = strdup(cString)
@@ -354,14 +388,14 @@ class FileTransferManager: ObservableObject {
                fileSize > 0 {
                 task.updateProgress(transferred: fileSize, speed: 0)
                 task.updateStatus(.completed)
-                print("Download completed successfully: \(fileItem.name)")
+                debugLog("Download completed successfully: \(fileItem.name)")
             } else {
                 // Check if file exists but is empty or corrupted
                 if FileManager.default.fileExists(atPath: task.destinationPath) {
                     do {
                         try FileManager.default.removeItem(atPath: task.destinationPath)
                     } catch {
-                        print("Failed to remove corrupted file: \(error)")
+                        debugLog("Failed to remove corrupted file: \(error)")
                     }
                 }
                 task.updateStatus(.failed(L10n.FileTransfer.downloadedFileInvalidOrCorrupted))
@@ -391,82 +425,182 @@ class FileTransferManager: ObservableObject {
     }
     
     private func performUpload(task: TransferTask, device: Device, sourceURL: URL, parentId: UInt32, storageId: UInt32) {
-        print("performUpload: Starting upload for \(task.fileName)")
-        print("  Source: \(sourceURL.path)")
-        print("  ParentID: \(parentId), StorageID: \(storageId)")
+        debugLog("========================================")
+        debugLog("performUpload: Starting upload process")
+        debugLog("========================================")
+        debugLog("performUpload: Basic info:")
+        debugLog("  Task ID: \(task.id.uuidString)")
+        debugLog("  File name: \(task.fileName)")
+        debugLog("  Source URL: \(sourceURL)")
+        debugLog("  Source path: \(sourceURL.path)")
+        debugLog("  ParentID: \(parentId)")
+        debugLog("  StorageID: \(storageId)")
+        debugLog("  Device: \(device.name)")
+        debugLog("  Task status: \(task.status)")
 
-        task.updateStatus(.transferring)
+        // Update status on main thread
+        Task { @MainActor in
+            task.updateStatus(.transferring)
+        }
 
+        debugLog("performUpload: Step 0 - Validating file...")
         guard let fileAttributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
               let fileSize = fileAttributes[.size] as? UInt64 else {
-            task.updateStatus(.failed(L10n.FileTransfer.cannotReadFileInfo))
-            print("performUpload: Failed to get file attributes for \(task.fileName)")
+            Task { @MainActor in
+                task.updateStatus(.failed(L10n.FileTransfer.cannotReadFileInfo))
+            }
+            debugLog("performUpload: ERROR - Failed to get file attributes for \(task.fileName)")
+            debugLog("performUpload: Path: \(sourceURL.path)")
             moveTaskToCompleted(task)
             return
         }
+
+        debugLog("performUpload: File attributes validated successfully")
+        debugLog("performUpload:   File size: \(fileSize) bytes (\(fileSize / 1024) KB, \(fileSize / 1024 / 1024) MB)")
+        debugLog("performUpload:   Creation date: \(fileAttributes[.creationDate] ?? "N/A")")
+        debugLog("performUpload:   Modification date: \(fileAttributes[.modificationDate] ?? "N/A")")
+        debugLog("performUpload:   Type: \(fileAttributes[.type] ?? "N/A")")
 
         if fileSize > 100 * 1024 * 1024 {
-            print("performUpload: Large file detected (\(fileSize / 1024 / 1024)MB), upload may take time")
+            debugLog("performUpload: WARNING - Large file detected (\(fileSize / 1024 / 1024)MB), upload may take time")
         }
 
+        debugLog("performUpload: Step 0.5 - Checking task status...")
         if task.isCancelled {
-            task.updateStatus(.cancelled)
-            moveTaskToCompleted(task)
-            return
-        }
-
-        let uploadResult = sourceURL.path.withCString { sourceCString in
-            // Create mutable copies of the C strings to avoid unsafe pointer mutation
-            let mutableSource = strdup(sourceCString)
-            defer { free(mutableSource) }
-            
-            return task.id.uuidString.withCString { taskCString in
-                let mutableTask = strdup(taskCString)
-                defer { free(mutableTask) }
-                
-                return Kalam_UploadFile(storageId, parentId, mutableSource, mutableTask)
+            Task { @MainActor in
+                task.updateStatus(.cancelled)
             }
-        }
-
-        if task.isCancelled {
-            task.updateStatus(.cancelled)
+            debugLog("performUpload: Task already cancelled, aborting upload")
             moveTaskToCompleted(task)
             return
         }
+        debugLog("performUpload: Task status OK, proceeding with upload")
 
-        if uploadResult > 0 {
-            task.updateProgress(transferred: fileSize, speed: 0)
-            task.updateStatus(.completed)
-            print("performUpload: Upload completed successfully for \(task.fileName)")
-        } else {
-            task.updateStatus(.failed(L10n.FileTransfer.uploadFailed))
-            print("performUpload: Upload failed for \(task.fileName)")
+        // Perform upload using mutable C string pointers
+        // Swift 6: Avoid nested withCString to prevent concurrency issues
+        debugLog("performUpload: Step 1 - Validating path encoding...")
+        // Note: Swift String is always valid UTF-8, no validation needed
+        debugLog("performUpload: Step 1 - Path validation passed (Swift String is always valid UTF-8)")
+
+        // Create mutable C string copies before calling Go function
+        debugLog("performUpload: Step 2 - Allocating C strings...")
+        debugLog("performUpload:   Source path length: \(sourceURL.path.count) bytes")
+        debugLog("performUpload:   Task ID length: \(task.id.uuidString.count) bytes")
+
+        // Use utf8CString to get C string representation
+        let sourceCStringArray = sourceURL.path.utf8CString
+        let taskCStringArray = task.id.uuidString.utf8CString
+
+        debugLog("performUpload:   Source C string array created")
+        debugLog("performUpload:   Task C string array created")
+
+        // Allocate memory manually to avoid closure issues
+        let mutableSource: UnsafeMutablePointer<CChar> = UnsafeMutablePointer.allocate(capacity: sourceCStringArray.count)
+        let mutableTask: UnsafeMutablePointer<CChar> = UnsafeMutablePointer.allocate(capacity: taskCStringArray.count)
+
+        debugLog("performUpload:   Memory allocated for source: \(sourceCStringArray.count) bytes")
+        debugLog("performUpload:   Memory allocated for task: \(taskCStringArray.count) bytes")
+
+        // Copy string contents manually
+        for (index, byte) in sourceCStringArray.enumerated() {
+            mutableSource.advanced(by: index).pointee = byte
+        }
+        for (index, byte) in taskCStringArray.enumerated() {
+            mutableTask.advanced(by: index).pointee = byte
         }
 
-        print("performUpload: Refreshing device storage...")
-        let refreshResult = Kalam_RefreshStorage(storageId)
-        if refreshResult > 0 {
-            print("performUpload: Storage refreshed successfully")
-        } else {
-            print("performUpload: Failed to refresh storage")
+        debugLog("performUpload:   String contents copied")
+
+        debugLog("performUpload: Step 2 - C strings allocated")
+        debugLog("performUpload:   mutableSource pointer: \(mutableSource)")
+        debugLog("performUpload:   mutableTask pointer: \(mutableTask)")
+
+        defer {
+            debugLog("performUpload: Cleanup - Deallocating C strings...")
+            mutableSource.deallocate()
+            debugLog("performUpload:   mutableSource deallocated")
+            mutableTask.deallocate()
+            debugLog("performUpload:   mutableTask deallocated")
+            debugLog("performUpload: Cleanup completed")
         }
 
-        print("performUpload: Resetting device cache...")
-        let resetResult = Kalam_ResetDeviceCache()
-        if resetResult > 0 {
-            print("performUpload: Device cache reset successfully")
-        } else {
-            print("performUpload: Failed to reset device cache")
+        debugLog("performUpload: Step 3 - Calling Kalam_UploadFile...")
+        debugLog("performUpload:   StorageID: \(storageId), ParentID: \(parentId)")
+        debugLog("performUpload:   Calling Go function with C pointers...")
+
+        let uploadResult = Kalam_UploadFile(storageId, parentId, mutableSource, mutableTask)
+
+        debugLog("performUpload: Step 3 - Kalam_UploadFile returned")
+        debugLog("performUpload:   Result: \(uploadResult) (1=success, 0=failure)")
+
+        // Handle result on main thread
+        Task { @MainActor in
+            debugLog("performUpload: Step 4 - Processing upload result...")
+            debugLog("performUpload:   Task cancelled: \(task.isCancelled)")
+            debugLog("performUpload:   Upload result: \(uploadResult)")
+
+            if task.isCancelled {
+                task.updateStatus(.cancelled)
+                debugLog("performUpload: Task was cancelled, skipping post-processing")
+                self.moveTaskToCompleted(task)
+                return
+            }
+
+            if uploadResult > 0 {
+                debugLog("performUpload: Step 4.1 - Upload successful")
+                task.updateProgress(transferred: fileSize, speed: 0)
+                task.updateStatus(.completed)
+                debugLog("performUpload: Upload completed successfully for \(task.fileName)")
+            } else {
+                debugLog("performUpload: Step 4.2 - Upload failed")
+                task.updateStatus(.failed(L10n.FileTransfer.uploadFailed))
+                debugLog("performUpload: Upload failed for \(task.fileName)")
+                debugLog("performUpload: Checking device connection...")
+                if let scanResult = Kalam_Scan() {
+                    if strlen(scanResult) > 0 {
+                        debugLog("performUpload: Device still connected")
+                    } else {
+                        debugLog("performUpload: Device disconnected")
+                    }
+                } else {
+                    debugLog("performUpload: Scan returned nil, connection issue")
+                }
+            }
+
+            debugLog("performUpload: Step 5 - Post-upload cleanup...")
+            debugLog("performUpload:   Refreshing device storage (StorageID: \(storageId))...")
+            let refreshResult = Kalam_RefreshStorage(storageId)
+            debugLog("performUpload:   Refresh result: \(refreshResult)")
+            if refreshResult > 0 {
+                debugLog("performUpload:   Storage refreshed successfully")
+            } else {
+                debugLog("performUpload:   Failed to refresh storage")
+            }
+
+            debugLog("performUpload:   Resetting device cache...")
+            let resetResult = Kalam_ResetDeviceCache()
+            debugLog("performUpload:   Reset result: \(resetResult)")
+            if resetResult > 0 {
+                debugLog("performUpload:   Device cache reset successfully")
+            } else {
+                debugLog("performUpload:   Failed to reset device cache")
+            }
+
+            debugLog("performUpload:   Clearing FileSystemManager caches...")
+            FileSystemManager.shared.clearCache(for: device)
+            FileSystemManager.shared.forceClearCache()
+            debugLog("performUpload:   Caches cleared")
+
+            debugLog("performUpload:   Scheduling file list refresh notification...")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                debugLog("performUpload:   Posting RefreshFileList notification")
+                NotificationCenter.default.post(name: NSNotification.Name("RefreshFileList"), object: nil)
+            }
+
+            debugLog("performUpload: Step 6 - Moving task to completed list")
+            self.moveTaskToCompleted(task)
+            debugLog("performUpload: Upload process completed for \(task.fileName)")
         }
-
-        FileSystemManager.shared.clearCache(for: device)
-        FileSystemManager.shared.forceClearCache()
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            NotificationCenter.default.post(name: NSNotification.Name("RefreshFileList"), object: nil)
-        }
-
-        moveTaskToCompleted(task)
     }
     
     private func moveTaskToCompleted(_ task: TransferTask) {
@@ -482,7 +616,7 @@ class FileTransferManager: ObservableObject {
     private func setupProgressCallback() {
         // Progress callbacks disabled due to stability issues
         // Kalam_SetProgressCallback(unsafeBitCast(progressCallbackFunction, to: UInt.self))
-        print("Progress callbacks disabled for download stability")
+        debugLog("Progress callbacks disabled for download stability")
     }
     
     private func startTaskTracking() {
