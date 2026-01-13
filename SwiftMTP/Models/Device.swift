@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct StorageInfo: Identifiable, Codable {
+struct StorageInfo: Identifiable, Codable, Sendable {
     let id: UUID
     let storageId: UInt32
     let maxCapacity: UInt64
@@ -32,7 +32,7 @@ struct StorageInfo: Identifiable, Codable {
     }
 }
 
-struct MTPSupportInfo: Identifiable, Codable {
+struct MTPSupportInfo: Identifiable, Codable, Sendable {
     let id: UUID
     let mtpVersion: String
     let deviceVersion: String
@@ -46,7 +46,7 @@ struct MTPSupportInfo: Identifiable, Codable {
     }
 }
 
-struct Device: Identifiable, Hashable {
+struct Device: Identifiable, Hashable, Sendable {
     let id: UUID
     let deviceIndex: Int
     let name: String

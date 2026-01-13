@@ -11,7 +11,7 @@ import Combine
 // MARK: - TransferType
 
 /// 文件传输类型枚举
-enum TransferType: String, Codable {
+enum TransferType: String, Codable, Sendable {
     case upload = "upload"
     case download = "download"
     
@@ -27,7 +27,7 @@ enum TransferType: String, Codable {
 // MARK: - TransferStatus
 
 /// 文件传输状态枚举
-enum TransferStatus: Codable, Equatable {
+enum TransferStatus: Codable, Equatable, Sendable {
     case pending           // 等待中
     case transferring      // 传输中
     case paused           // 已暂停

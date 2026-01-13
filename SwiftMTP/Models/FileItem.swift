@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct FileItem: Identifiable, Hashable, Comparable {
+struct FileItem: Identifiable, Hashable, Comparable, Sendable {
     let id: UUID
     let objectId: UInt32
     let parentId: UInt32
@@ -20,18 +20,9 @@ struct FileItem: Identifiable, Hashable, Comparable {
     let fileType: String
     var children: [FileItem]?
     
-    // Pre-computed formatted values to avoid MainActor isolation issues
-    let formattedSize: String
-    let formattedDate: String
-    let sortableDate: Date
-    
     init(id: UUID = UUID(), objectId: UInt32, parentId: UInt32, storageId: UInt32,
          name: String, path: String, size: UInt64, modifiedDate: Date?,
          isDirectory: Bool, fileType: String = "", children: [FileItem]? = nil) {
-        // Debug: Print each step to identify the crash point
-        print("[FileItem.init] Starting init for: \(name)")
-        print("[FileItem.init] Parameters - objectId=\(objectId), parentId=\(parentId), storageId=\(storageId), size=\(size), isDirectory=\(isDirectory), fileType=\(fileType)")
-
         // Validate name
         let safeName = name.isEmpty ? "Unknown" : name
         self.name = safeName
@@ -46,39 +37,35 @@ struct FileItem: Identifiable, Hashable, Comparable {
         self.isDirectory = isDirectory
         self.fileType = fileType
         self.children = children
-
-        print("[FileItem.init] Basic properties set")
-
-        // Pre-compute sortableDate
-        if let date = modifiedDate {
-            self.sortableDate = date
-            print("[FileItem.init] sortableDate set to modifiedDate: \(date)")
-        } else {
-            self.sortableDate = Date(timeIntervalSince1970: 0)
-            print("[FileItem.init] sortableDate set to epoch (no modifiedDate)")
-        }
-
-        print("[FileItem.init] sortableDate computed: \(sortableDate)")
-
-        // Pre-compute formattedSize using a simple formatter
+        
+        #if DEBUG
+        print("[FileItem.init] Created FileItem: \(name), size: \(size), isDirectory: \(isDirectory)")
+        #endif
+    }
+    
+    // Lazy-computed formatted values for better performance
+    var formattedSize: String {
         if isDirectory {
-            self.formattedSize = "--"
-            print("[FileItem.init] formattedSize set to '--' (directory)")
+            return "--"
         } else {
-            self.formattedSize = FileItem.formatFileSize(size)
-            print("[FileItem.init] formattedSize computed: \(formattedSize)")
+            return FileItem.formatFileSize(size)
         }
-
-        // Pre-compute formattedDate - use modifiedDate if available, otherwise use nil
+    }
+    
+    var formattedDate: String {
         if let date = modifiedDate {
-            self.formattedDate = FileItem.formatDate(date)
-            print("[FileItem.init] formattedDate computed from modifiedDate: \(formattedDate)")
+            return FileItem.formatDate(date)
         } else {
-            self.formattedDate = "--"
-            print("[FileItem.init] formattedDate set to '--' (no modifiedDate)")
+            return "--"
         }
-
-        print("[FileItem.init] Init completed for: \(name)")
+    }
+    
+    var sortableDate: Date {
+        if let date = modifiedDate {
+            return date
+        } else {
+            return Date(timeIntervalSince1970: 0)
+        }
     }
     
     // MARK: - Private Helper Methods
