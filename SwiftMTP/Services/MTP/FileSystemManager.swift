@@ -29,8 +29,6 @@ class FileSystemManager {
     
     /// 将字符串转换为大写，避免使用本地化的 uppercased() 方法
     private static func uppercaseString(_ str: String) -> String {
-        print("[FileSystemManager.uppercaseString] Input: '\(str)'")
-
         var result = ""
         for char in str {
             if char >= "a" && char <= "z" {
@@ -38,7 +36,6 @@ class FileSystemManager {
                 guard let charAscii = char.asciiValue,
                       let lowerAAscii = Character("a").asciiValue,
                       let upperAAscii = Character("A").asciiValue else {
-                    print("[FileSystemManager.uppercaseString] ERROR: Failed to get ASCII value for char: \(char)")
                     result.append(char)
                     continue
                 }
@@ -50,7 +47,6 @@ class FileSystemManager {
             }
         }
 
-        print("[FileSystemManager.uppercaseString] Output: '\(result)'")
         return result
     }
     
@@ -142,25 +138,15 @@ class FileSystemManager {
         do {
             let kalamFiles = try JSONDecoder().decode([KalamFile].self, from: data)
 
-            // 打印解码结果
+            #if DEBUG
             print("[FileSystemManager] Successfully decoded \(kalamFiles.count) files from JSON")
-            print("[FileSystemManager] JSON data: \(jsonString)")
-
-            // 打印每个文件的详细信息
-            for (index, kFile) in kalamFiles.enumerated() {
-                print("[FileSystemManager] File \(index): id=\(kFile.id), parentId=\(kFile.parentId), storageId=\(kFile.storageId), name=\(kFile.name), size=\(kFile.size), isFolder=\(kFile.isFolder), modTime=\(kFile.modTime)")
-            }
-
-            // 使用 map 转换文件列表
-            print("[FileSystemManager] Starting map transformation...")
+            #endif
 
             var items: [FileItem] = []
             var errorOccurred = false
 
             for (index, kFile) in kalamFiles.enumerated() {
                 do {
-                    print("[FileSystemManager] Processing file \(index): \(kFile.name)")
-
                     // 验证文件名
                     guard !kFile.name.isEmpty else {
                         print("[FileSystemManager] ERROR: Empty filename at index \(index)")
@@ -172,33 +158,20 @@ class FileSystemManager {
                     if kFile.modTime > 0 {
                         let timeInterval = TimeInterval(kFile.modTime)
                         modDate = Date(timeIntervalSince1970: timeInterval)
-                        print("[FileSystemManager] Created date from modTime \(kFile.modTime): \(String(describing: modDate))")
                     } else {
                         modDate = nil
-                        print("[FileSystemManager] modTime is \(kFile.modTime), setting modDate to nil")
                     }
 
                     // 处理文件类型
                     let fileType: String
                     if kFile.isFolder {
                         fileType = "folder"
-                        print("[FileSystemManager] File is folder")
                     } else {
                         let extensionStr = (kFile.name as NSString).pathExtension
                         fileType = FileSystemManager.uppercaseString(extensionStr)
-                        print("[FileSystemManager] File type extracted: \(fileType) from extension: \(extensionStr)")
                     }
 
                     // 创建 FileItem
-                    print("[FileSystemManager] Creating FileItem with parameters:")
-                    print("[FileSystemManager]   - objectId: \(kFile.id)")
-                    print("[FileSystemManager]   - parentId: \(kFile.parentId)")
-                    print("[FileSystemManager]   - storageId: \(kFile.storageId)")
-                    print("[FileSystemManager]   - name: \(kFile.name)")
-                    print("[FileSystemManager]   - size: \(kFile.size)")
-                    print("[FileSystemManager]   - isDirectory: \(kFile.isFolder)")
-                    print("[FileSystemManager]   - fileType: \(fileType)")
-
                     let item = FileItem(
                         objectId: kFile.id,
                         parentId: kFile.parentId,
@@ -211,7 +184,6 @@ class FileSystemManager {
                         fileType: fileType
                     )
 
-                    print("[FileSystemManager] Successfully created FileItem for: \(kFile.name)")
                     items.append(item)
                 } catch {
                     print("[FileSystemManager] ERROR: Exception while processing file \(kFile.name): \(error)")
@@ -223,13 +195,15 @@ class FileSystemManager {
                 print("[FileSystemManager] WARNING: Some files failed to process, continuing with \(items.count) files")
             }
 
+            #if DEBUG
             print("[FileSystemManager] Successfully created \(items.count) FileItem objects")
-            
+            #endif
+
             // 更新缓存（NSCache是线程安全的）
             let entry = CacheEntry(items: items, timestamp: Date())
             let entryWrapper = CacheEntryWrapper(entry)
             fileCache.setObject(entryWrapper, forKey: NSString(string: cacheKey))
-            
+
             // 记录缓存键到设备映射
             cacheKeysLock.lock()
             if deviceCacheKeys[device.id] == nil {
@@ -237,7 +211,7 @@ class FileSystemManager {
             }
             deviceCacheKeys[device.id]?.insert(cacheKey)
             cacheKeysLock.unlock()
-            
+
             return items
         } catch {
             print("[FileSystemManager] Failed to decode files JSON: \(error)")
