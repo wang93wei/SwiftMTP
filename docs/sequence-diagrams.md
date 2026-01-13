@@ -125,7 +125,7 @@ sequenceDiagram
     
     Note over Views: UI 更新完成
     Views->>Views: 应用内文本显示新语言
-    Note over Menu,Views: 菜单栏和文件选择器<br/>需要重启后生效
+    Note over Menu,Views: 菜单栏和文件选择器(需要重启后生效)
 ```
 
 ## 2. 设备检测时序图
@@ -284,48 +284,76 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant View as FileBrowserView
-    participant FSM as FileSystemManager
+    participant FSM as FileSystemManager (actor)
+    participant Cache as NSCache (文件列表)
+    participant CacheMap as deviceCacheKeys 映射
     participant Bridge as Kalam Bridge
     participant Go as Go桥接层
     participant MTP as MTP驱动层
 
     Note over View: 用户浏览文件
     View->>FSM: getRootFiles(for: device)
-    
+    Note over FSM: Actor 隔离，线程安全
+
     alt 有缓存且未过期
-        FSM-->>View: 返回缓存数据
-    else 无缓存/已过期
-        FSM->>Bridge: Kalam_ListFiles(storageId, parentId)
-        
-        Note over Bridge,Go: CGo 调用
-        Bridge->>Go: ListFiles()
-        Go->>Go: withDevice() 设备连接
-        Go->>MTP: GetObjectHandles()
-        MTP-->>Go: 文件句柄列表
-        
-        loop 遍历每个文件
-            Go->>MTP: GetObjectInfo(handle)
-            MTP-->>Go: 文件信息
-            Go->>Go: 构建 FileJSON
+        FSM->>Cache: 查询 fileCache (cacheKey)
+        Cache-->>FSM: 返回 CacheEntryWrapper
+        FSM->>FSM: 检查 entry.isExpired
+        alt 缓存未过期
+            FSM-->>View: 返回缓存数据
         end
-        
-        Go-->>Bridge: JSON 结果
-        Bridge-->>FSM: JSON 字符串
-        
-        FSM->>FSM: JSONDecoder 解码
-        FSM->>FSM: mapToFileItem() 映射
-        FSM->>FSM: 存入缓存 (60秒过期)
-        FSM-->>View: 文件列表
-    
+    end
+
+    Note over FSM: 无缓存/已过期
+    FSM->>Bridge: Kalam_ListFiles(storageId, parentId)
+
+    Note over Bridge,Go: CGo 调用
+    Bridge->>Go: ListFiles()
+    Go->>Go: withDevice() 设备连接
+    Go->>MTP: GetObjectHandles()
+    MTP-->>Go: 文件句柄列表
+
+    loop 遍历每个文件
+        Go->>MTP: GetObjectInfo(handle)
+        MTP-->>Go: 文件信息
+        Go->>Go: 构建 FileJSON
+    end
+
+    Go-->>Bridge: JSON 结果
+    Bridge-->>FSM: JSON 字符串
+
+    Note over FSM: 处理 JSON 结果
+    FSM->>FSM: JSONDecoder 解码 [KalamFile]
+    FSM->>FSM: 验证文件名
+    FSM->>FSM: 处理修改时间
+    FSM->>FSM: 处理文件类型（uppercaseString）
+    FSM->>FSM: 构建 FileItem 数组
+
+    Note over FSM,Cache: 更新缓存
+    FSM->>FSM: 创建 CacheEntry (items, timestamp)
+    FSM->>FSM: 包装为 CacheEntryWrapper
+    FSM->>Cache: 存储到 fileCache
+    FSM->>CacheMap: 记录 cacheKey 到 device.id 映射
+    FSM-->>View: 文件列表
+
     Note over View,FSM: 用户进入文件夹
     View->>FSM: getChildrenFiles(for: device, parent)
     FSM->>FSM: getFileList() 查询子文件
     FSM-->>View: 子文件列表
-    END
 
     Note over FSM: 缓存机制
-    FSM->>FSM: 文件列表缓存 60 秒过期
-    FSM->>FSM: 使用 NSCache 自动内存管理
+    FSM->>Cache: NSCache 自动内存管理
+    FSM->>Cache: countLimit = 1000
+    FSM->>Cache: totalCostLimit = 50MB
+    FSM->>FSM: 缓存过期时间 = 60秒
+
+    Note over FSM: 设备断开时的缓存清理
+    FSM->>CacheMap: 查询 device.id 的所有 cacheKey
+    CacheMap-->>FSM: 返回 Set<String>
+    loop 每个 cacheKey
+        FSM->>Cache: removeObject(forKey)
+    end
+    FSM->>CacheMap: 移除 device.id 映射
 ```
 
 ## 4. 文件下载时序图
@@ -333,7 +361,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant View as FileBrowserView
+    participant MainThread as 主线程 (@MainActor)
+    participant TransferQueue as 传输队列 (transferQueue)
     participant FTM as FileTransferManager
+    participant Lock as NSLock (taskLock)
     participant Bridge as Kalam Bridge
     participant Go as Go桥接层
     participant MTP as MTP驱动层
@@ -345,20 +376,22 @@ sequenceDiagram
 
     Note over FTM: 创建传输任务
     FTM->>FTM: 创建 TransferTask
-    FTM->>FTM: 添加到 activeTasks
-    FTM->>FTM: 提交到 transferQueue
+    MainThread->>MainThread: activeTasks.append(task)
+    FTM->>TransferQueue: 提交到 transferQueue.async
 
-    Note over FTM: 执行下载
-    FTM->>FTM: performDownload()
-    FTM->>FTM: task.updateStatus(.transferring)
+    Note over TransferQueue: 执行下载
+    TransferQueue->>FTM: performDownload()
+    TransferQueue->>Lock: 设置 currentDownloadTask (线程安全)
+    Lock->>Lock: _currentDownloadTask = task
+    MainThread->>MainThread: task.updateStatus(.transferring)
 
     Note over FTM: 验证目标路径
     FTM->>FTM: 获取目标目录
     FTM->>FS: createDirectory(目标目录)
     alt 目录创建失败
         FS-->>FTM: 错误
-        FTM->>FTM: task.updateStatus(.failed("无法创建目录"))
-        FTM->>FTM: 移动到 completedTasks
+        MainThread->>MainThread: task.updateStatus(.failed(L10n.FileTransfer.cannotCreateDirectory))
+        FTM->>FTM: moveTaskToCompleted(task)
     end
 
     Note over FTM: 检查文件是否存在
@@ -368,21 +401,22 @@ sequenceDiagram
             FTM->>FS: removeItem(现有文件)
             alt 删除失败
                 FS-->>FTM: 错误
-                FTM->>FTM: task.updateStatus(.failed("无法替换现有文件"))
-                FTM->>FTM: 移动到 completedTasks
+                MainThread->>MainThread: task.updateStatus(.failed(L10n.FileTransfer.cannotReplaceExistingFile))
+                FTM->>FTM: moveTaskToCompleted(task)
             end
         else shouldReplace = false
-            FTM->>FTM: task.updateStatus(.failed("文件已存在"))
-            FTM->>FTM: 移动到 completedTasks
+            MainThread->>MainThread: task.updateStatus(.failed(L10n.FileTransfer.fileAlreadyExistsAtDestination))
+            FTM->>FTM: moveTaskToCompleted(task)
         end
     end
 
-    Note over FTM: 验证设备连接
+    Note over FTM: 验证设备连接（第1次）
     FTM->>Bridge: Kalam_Scan()
     alt 设备已断开
         Bridge-->>FTM: 返回 nil
-        FTM->>FTM: task.updateStatus(.failed("设备已断开，请重新连接"))
-        FTM->>FTM: 移动到 completedTasks
+        MainThread->>MainThread: task.updateStatus(.failed(L10n.FileTransfer.deviceDisconnectedReconnect))
+        Lock->>Lock: _currentDownloadTask = nil
+        FTM->>FTM: moveTaskToCompleted(task)
     end
 
     Note over FTM: 开始下载
@@ -423,15 +457,18 @@ sequenceDiagram
     Note over FTM: 下载结果处理
     alt 下载成功 (result > 0)
         Bridge-->>FTM: 返回 1
+        Note over FTM: 延迟确保文件操作完成
+        FTM->>FTM: Thread.sleep(0.5秒)
+
         FTM->>FS: attributesOfItem(atPath: 目标路径)
         FS-->>FTM: 文件属性
 
-        alt 文件验证成功
-            FTM->>FTM: task.updateProgress(transferred: fileSize)
-            FTM->>FTM: task.updateStatus(.completed)
+        alt 文件验证成功 (fileSize > 0)
+            MainThread->>MainThread: task.updateProgress(transferred: fileSize, speed: 0)
+            MainThread->>MainThread: task.updateStatus(.completed)
         else 文件验证失败 (空文件或损坏)
             FTM->>FS: removeItem(损坏的文件)
-            FTM->>FTM: task.updateStatus(.failed("下载的文件无效或损坏"))
+            MainThread->>MainThread: task.updateStatus(.failed(L10n.FileTransfer.downloadedFileInvalidOrCorrupted))
         end
     else 下载失败 (result = 0)
         Bridge-->>FTM: 返回 0
@@ -440,16 +477,14 @@ sequenceDiagram
         FTM->>Bridge: Kalam_Scan()
         alt 设备已断开
             Bridge-->>FTM: 返回 nil
-            FTM->>FTM: task.updateStatus(.failed("设备已断开，请检查USB连接"))
+            MainThread->>MainThread: task.updateStatus(.failed(L10n.FileTransfer.deviceDisconnectedCheckUSB))
         else 设备连接正常
-            FTM->>FTM: task.updateStatus(.failed("下载失败，请检查连接和存储"))
+            MainThread->>MainThread: task.updateStatus(.failed(L10n.FileTransfer.checkConnectionAndStorage))
         end
     end
 
-    Note over FTM: 延迟确保文件操作完成
-    FTM->>FTM: Thread.sleep(0.5秒)
-
-    FTM->>FTM: 移动到 completedTasks
+    Lock->>Lock: _currentDownloadTask = nil
+    FTM->>FTM: moveTaskToCompleted(task)
     Note over View: 更新传输列表 UI
 ```
 
@@ -458,12 +493,15 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant View as FileBrowserView
+    participant MainThread as 主线程 (@MainActor)
+    participant TransferQueue as 传输队列 (transferQueue)
     participant FTM as FileTransferManager
     participant Bridge as Kalam Bridge
     participant Go as Go桥接层
     participant MTP as MTP驱动层
     participant Device as Android设备
     participant FS as 文件系统
+    participant FSM as FileSystemManager (actor)
 
     Note over View: 用户选择上传文件
     View->>FTM: uploadFile(to:device, sourceURL, parentId, storageId)
@@ -471,61 +509,81 @@ sequenceDiagram
     Note over FTM: 输入验证 - 第1步：路径验证
     FTM->>FTM: 检查路径是否为空
     alt 路径为空
-        FTM->>FTM: 返回错误
+        Note over FTM: 返回错误（日志记录）
     end
 
     Note over FTM: 输入验证 - 第2步：文件存在性
     FTM->>FS: fileExists(atPath: sourceURL)
     alt 文件不存在
         FS-->>FTM: false
-        FTM->>FTM: 返回错误
+        Note over FTM: 返回错误（日志记录）
     end
 
     Note over FTM: 输入验证 - 第3步：目录检查
     FTM->>FS: fileExists(atPath: sourceURL, isDirectory)
     alt 是目录
         FS-->>FTM: true
-        FTM->>FTM: 返回错误（不支持目录上传）
+        Note over FTM: 返回错误（不支持目录上传）
     end
 
     Note over FTM: 输入验证 - 第4步：文件大小
     FTM->>FS: attributesOfItem(atPath: sourceURL)
     FS-->>FTM: 文件属性
     alt 获取文件大小失败
-        FTM->>FTM: 返回错误
+        Note over FTM: 返回错误（日志记录）
     else 文件大小 > 10GB
-        FTM->>FTM: 返回错误（文件过大）
+        Note over FTM: 返回错误（文件过大）
     end
 
     Note over FTM: 输入验证 - 第5步：路径安全验证
-    FTM->>FTM: validatePathSecurity()
+    FTM->>FTM: validatePathSecurity(sourceURL)
     Note over FTM: 包含以下检查：
-    Note over FTM: - 路径长度限制
-    Note over FTM: - 路径遍历攻击检查
-    Note over FTM: - 特殊字符检查
-    Note over FTM: - 符号链接检查
-    Note over FTM: - 允许目录范围验证
-    Note over FTM: - 路径标准化验证
+    Note over FTM: - 路径长度限制（最大4096字符）
+    Note over FTM: - 路径遍历攻击检查（禁止 ".." 及其编码形式）
+    Note over FTM: - 特殊字符检查（禁止控制字符）
+    Note over FTM: - 符号链接检查（禁止符号链接）
+    Note over FTM: - 允许目录范围验证（仅允许 Downloads、Desktop、Documents）
+    Note over FTM: - 路径标准化验证（确保无相对引用）
     alt 验证失败
-        FTM->>FTM: 返回错误
+        Note over FTM: 返回错误（日志记录详细步骤）
     end
 
     Note over FTM: 输入验证 - 第6步：存储空间检查
     FTM->>FTM: 查找设备存储 (storageId)
     alt 存储未找到
-        FTM->>FTM: 返回错误（存储不存在）
+        Note over FTM: 返回错误（存储不存在）
     end
     alt 文件大小 > 存储可用空间
-        FTM->>FTM: 返回错误（设备存储空间不足）
+        Note over FTM: 返回错误（设备存储空间不足）
     end
 
     Note over FTM: 创建任务并执行
     FTM->>FTM: 创建 TransferTask
-    FTM->>FTM: 添加到 activeTasks
-    FTM->>FTM: 提交到 transferQueue
+    MainThread->>MainThread: activeTasks.append(task)
+    FTM->>TransferQueue: 提交到 transferQueue.async
 
-    FTM->>FTM: performUpload()
-    FTM->>FTM: task.updateStatus(.transferring)
+    TransferQueue->>FTM: performUpload()
+    MainThread->>MainThread: task.updateStatus(.transferring)
+
+    Note over FTM: 验证文件属性
+    FTM->>FS: attributesOfItem(atPath: sourceURL)
+    FS-->>FTM: 文件属性
+    alt 获取文件属性失败
+        MainThread->>MainThread: task.updateStatus(.failed(L10n.FileTransfer.cannotReadFileInfo))
+        FTM->>FTM: moveTaskToCompleted(task)
+    end
+
+    Note over FTM: 检查任务取消状态
+    alt task.isCancelled
+        MainThread->>MainThread: task.updateStatus(.cancelled)
+        FTM->>FTM: moveTaskToCompleted(task)
+    end
+
+    Note over FTM: Swift 6 内存管理
+    FTM->>FTM: 使用 utf8CString 获取 C 字符串数组
+    FTM->>FTM: 手动分配内存（UnsafeMutablePointer）
+    FTM->>FTM: 复制字符串内容到 C 指针
+    Note over FTM: 避免嵌套 withCString 防止并发问题
 
     Note over FTM: 开始上传
     FTM->>Bridge: Kalam_UploadFile(storageId, parentId, sourcePath, taskId)
@@ -534,7 +592,6 @@ sequenceDiagram
     Bridge->>Go: UploadFile()
 
     Go->>Go: 验证源文件存在
-
     Go->>Go: withDevice() 连接设备
 
     Note over Go: Step 1 - 发送对象信息
@@ -557,12 +614,17 @@ sequenceDiagram
         Note over Go: 停止传输
     end
 
+    Note over FTM: Swift 6 内存清理
+    FTM->>FTM: defer 块执行
+    FTM->>FTM: mutableSource.deallocate()
+    FTM->>FTM: mutableTask.deallocate()
+
     Note over FTM: 上传完成处理
     Bridge-->>FTM: 返回结果
 
     alt 上传成功 (result > 0)
-        FTM->>FTM: task.updateProgress(transferred: fileSize)
-        FTM->>FTM: task.updateStatus(.completed)
+        MainThread->>MainThread: task.updateProgress(transferred: fileSize, speed: 0)
+        MainThread->>MainThread: task.updateStatus(.completed)
 
         Note over FTM: 刷新设备存储
         FTM->>Bridge: Kalam_RefreshStorage(storageId)
@@ -572,18 +634,20 @@ sequenceDiagram
         FTM->>Bridge: Kalam_ResetDeviceCache()
         Bridge-->>FTM: 重置结果
 
-        Note over FTM: 清除文件系统缓存
+        Note over FSM: 清除文件系统缓存
         FTM->>FSM: clearCache(for: device)
         FTM->>FSM: forceClearCache()
 
         Note over FTM: 发送刷新通知
-        FTM->>View: 延迟1秒发送 RefreshFileList 通知
+        MainThread->>MainThread: 延迟1秒发送 RefreshFileList 通知
         Note over View: 刷新文件列表
     else 上传失败 (result = 0)
-        FTM->>FTM: task.updateStatus(.failed("上传失败"))
+        MainThread->>MainThread: task.updateStatus(.failed(L10n.FileTransfer.uploadFailed))
+        Note over FTM: 检查设备连接状态
+        FTM->>Bridge: Kalam_Scan()
     end
 
-    FTM->>FTM: 移动到 completedTasks
+    FTM->>FTM: moveTaskToCompleted(task)
     Note over View: 更新传输列表 UI
 ```
 
@@ -591,30 +655,39 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph SwiftUI 层
-        APP[SwiftMTPApp<br/>应用入口]
+    subgraph SwiftUI层
+        APP[SwiftMTPApp 应用入口]
         MV[MainWindowView]
         DL[DeviceListView]
         FB[FileBrowserView]
         FT[FileTransferView]
         SV[SettingsView]
-        Menu[自定义菜单栏<br/>Commands]
+        Menu[自定义菜单栏 Commands]
     end
 
-    subgraph Service 层
-        DM[DeviceManager<br/>单例 - 设备检测]
-        FSM[FileSystemManager<br/>单例 - 文件浏览]
-        FTM[FileTransferManager<br/>单例 - 传输管理]
-        LM[LanguageManager<br/>单例 - 语言管理]
-        L10N[LocalizationManager<br/>静态 - 本地化访问]
+    subgraph Service层
+        DM[DeviceManager MainActor 单例 设备检测]
+        FSM[FileSystemManager actor 单例 文件浏览]
+        FTM[FileTransferManager 单例 传输管理]
+        LM[LanguageManager 单例 语言管理]
+        L10N[LocalizationManager 静态 本地化访问]
+    end
+
+    subgraph 缓存层
+        DeviceCache[NSCache deviceIdCache deviceSerialCache]
+        FileCache[NSCache fileCache 60秒过期]
+    end
+
+    subgraph 线程安全
+        Lock[NSLock taskLock]
     end
 
     subgraph CGo Bridge 层
-        Bridge[Kalam Bridge<br/>CGO 桥接函数]
+        Bridge[Kalam Bridge CGO 桥接函数]
     end
 
     subgraph Go 桥接层
-        Go[Go Kalam Kernel<br/>MTP 协议实现]
+        Go[Go Kalam Kernel MTP 协议实现]
     end
 
     subgraph 底层驱动
@@ -623,14 +696,19 @@ graph TB
     end
 
     subgraph 语言资源
-        Base[Base.lproj<br/>基础语言包]
-        EN[en.lproj<br/>英文语言包]
-        ZH[zh-Hans.lproj<br/>简体中文语言包]
+        Base[Base.lproj 基础语言包]
+        EN[en.lproj 英文语言包]
+        ZH[zh-Hans.lproj 简体中文语言包]
+        JA[ja.lproj 日语语言包]
+        KO[ko.lproj 韩语语言包]
+        RU[ru.lproj 俄语语言包]
+        FR[fr.lproj 法语语言包]
+        DE[de.lproj 德语语言包]
     end
 
     subgraph 系统设置
-        UD[UserDefaults<br/>语言设置]
-        AL[AppleLanguages<br/>菜单栏和文件选择器]
+        UD[UserDefaults 语言设置]
+        AL[AppleLanguages 菜单栏和文件选择器]
     end
 
     APP -->|初始化| LM
@@ -644,9 +722,16 @@ graph TB
     MV --> FTM
     MV --> LM
 
-    DM --> Bridge
-    FSM --> Bridge
+    DM -->|MainActor 隔离| Bridge
+    DM -->|设备缓存| DeviceCache
+    DM -->|Task detached| Bridge
+
+    FSM -->|actor 隔离| Bridge
+    FSM -->|文件缓存| FileCache
+
     FTM --> Bridge
+    FTM -->|线程安全| Lock
+    FTM -->|transferQueue async| Bridge
 
     SV --> LM
     SV --> L10N
@@ -664,6 +749,11 @@ graph TB
     LM -->|语言包切换| Base
     LM -->|语言包切换| EN
     LM -->|语言包切换| ZH
+    LM -->|语言包切换| JA
+    LM -->|语言包切换| KO
+    LM -->|语言包切换| RU
+    LM -->|语言包切换| FR
+    LM -->|语言包切换| DE
 
     L10N --> LM
 
@@ -677,53 +767,111 @@ graph TB
 
     AL -->|影响| Menu
     AL -->|影响| Panel[文件选择器]
+
+    style DM fill:#e1f5ff
+    style FSM fill:#fff4e1
+    style FTM fill:#ffe1f5
+    style DeviceCache fill:#f0f0f0
+    style FileCache fill:#f0f0f0
+    style Lock fill:#f0f0f0
 ```
 
 ## 7. 线程模型时序图
 
 ```mermaid
 sequenceDiagram
-    participant MainThread as 主线程 (UI)
-    participant GlobalQueue as 全局队列 (Background)
-    participant TransferQueue as 传输队列 (Transfer)
+    participant MainThread as 主线程 (@MainActor)
+    participant GlobalQueue as 全局队列 (Task.detached)
+    participant TransferQueue as 传输队列 (transferQueue)
+    participant FileSystemActor as FileSystemManager (actor)
+    participant Lock as NSLock (taskLock)
+    participant Cache as NSCache (自动内存管理)
     participant Bridge as Kalam Bridge
     participant GoRuntime as Go Runtime
 
     Note over MainThread: UI 事件触发
-    MainThread->>GlobalQueue: 异步提交任务
-    GlobalQueue->>Bridge: CGo 调用 (阻塞)
-
-    Note over Bridge,GoRuntime: CGo 线程切换
-    Bridge->>GoRuntime: 切换到 Go 协程
-    GoRuntime->>GoRuntime: Go 协程执行
+    Note over MainThread: @MainActor 隔离，所有 @Published 属性访问在此线程
 
     alt 快速操作 (设备扫描)
+        MainThread->>GlobalQueue: Task.detached(priority: .userInitiated)
+        Note over GlobalQueue: Swift 6 结构化并发
+        GlobalQueue->>Bridge: Kalam_Scan()
+
+        Note over Bridge,GoRuntime: CGo 线程切换
+        Bridge->>GoRuntime: 切换到 Go 协程
+        GoRuntime->>GoRuntime: Go 协程执行
+
         GoRuntime-->>Bridge: 返回 JSON 结果
         Bridge-->>GlobalQueue: 返回结果
-        GlobalQueue->>MainThread: DispatchQueue.main.async
+
+        GlobalQueue->>GlobalQueue: JSONDecoder 解码
+        GlobalQueue->>MainThread: 切换到 @MainActor (await)
+
         Note over MainThread: 更新 @Published 属性
+        MainThread->>MainThread: devices = newDevices
+        MainThread->>MainThread: selectedDevice = device
         Note over MainThread: SwiftUI 自动刷新
+    end
+
+    alt 文件浏览操作
+        MainThread->>FileSystemActor: getFileList(for: device)
+        Note over FileSystemActor: Actor 隔离，线程安全
+        FileSystemActor->>Cache: 查询 fileCache (NSCache 线程安全)
+        alt 缓存命中且未过期
+            Cache-->>FileSystemActor: 返回 CacheEntry
+            FileSystemActor-->>MainThread: 返回文件列表
+        else 缓存未命中
+            FileSystemActor->>Bridge: Kalam_ListFiles()
+            Bridge->>GoRuntime: CGo 调用
+            GoRuntime-->>Bridge: 返回 JSON
+            Bridge-->>FileSystemActor: 返回结果
+            FileSystemActor->>FileSystemActor: JSONDecoder 解码
+            FileSystemActor->>Cache: 存储到 fileCache
+            FileSystemActor-->>MainThread: 返回文件列表
+        end
     end
 
     alt 耗时操作 (文件传输)
         MainThread->>TransferQueue: transferQueue.async
-        TransferQueue->>Bridge: Kalam_DownloadFile
+        TransferQueue->>TransferQueue: performUpload/performDownload
+
+        Note over TransferQueue: 线程安全的任务管理
+        TransferQueue->>Lock: 获取 taskLock
+        Lock->>Lock: _currentDownloadTask = task (NSLock 保护)
+        Lock-->>TransferQueue: 释放锁
+
+        TransferQueue->>Bridge: Kalam_UploadFile/Kalam_DownloadFile
 
         Note over TransferQueue: 长时间阻塞等待
         Bridge->>GoRuntime: 切换到 Go 协程
-        GoRuntime->>GoRuntime: 执行下载逻辑 (重试机制)
+        GoRuntime->>GoRuntime: 执行传输逻辑 (重试机制)
         GoRuntime-->>Bridge: 传输完成
         Bridge-->>TransferQueue: 返回结果
 
         TransferQueue->>TransferQueue: 验证结果
         TransferQueue->>MainThread: DispatchQueue.main.async
+
         Note over MainThread: 更新任务状态
+        MainThread->>MainThread: task.updateStatus(.completed/.failed)
+        MainThread->>MainThread: task.updateProgress(transferred, speed)
+
+        TransferQueue->>Lock: 获取 taskLock
+        Lock->>Lock: _currentDownloadTask = nil
+        Lock-->>TransferQueue: 释放锁
     end
 
     Note over MainThread: 进度更新 (已禁用)
     Note over MainThread,TransferQueue: 由于稳定性问题，进度回调已禁用
     Note over MainThread: 传输完成后一次性更新进度到 100%
     Note over MainThread: 不再实时显示传输进度
+
+    Note over MainThread: Swift 6 并发特性
+    Note over MainThread: @MainActor - 确保所有 UI 更新在主线程
+    Note over FileSystemActor: actor - 确保文件系统操作线程安全
+    Note over GlobalQueue: Task.detached - 结构化并发，避免数据竞争
+    Note over Lock: NSLock - 保护共享状态访问
+    Note over Cache: NSCache - 自动内存管理，线程安全
+    Note over MainThread: Sendable - 所有模型都实现 Sendable 协议
 ```
 
 ## 线程模型详细说明
@@ -732,15 +880,16 @@ sequenceDiagram
 
 | 队列 | 类型 | 用途 | QoS | 典型操作 |
 |------|------|------|-----|----------|
-| 主线程 (Main Thread) | 串行 | UI 更新、用户交互 | - | 更新 @Published 属性、SwiftUI 刷新 |
-| 全局队列 (Global Queue) | 并发 | 后台快速操作 | .userInitiated | 设备扫描、文件列表获取 |
-| 传输队列 (Transfer Queue) | 串行 | 文件传输操作 | .userInitiated | 文件下载、文件上传 |
+| 主线程 (@MainActor) | 串行 | UI 更新、用户交互 | - | 更新 @Published 属性、SwiftUI 刷新 |
+| 全局队列 (Task.detached) | 并发 | 后台快速操作 | .userInitiated | 设备扫描、文件列表获取 |
+| 传输队列 (transferQueue) | 串行 | 文件传输操作 | .userInitiated | 文件下载、文件上传 |
+| Actor (FileSystemManager) | 串行 | 文件系统操作 | - | 文件列表获取、缓存管理 |
 
 ### 线程切换流程
 
 1. **主线程 → 全局队列/传输队列**
    - 用户操作触发
-   - `DispatchQueue.global(qos: .userInitiated).async`
+   - `Task.detached(priority: .userInitiated)` (Swift 6 结构化并发)
    - `transferQueue.async`
 
 2. **后台队列 → CGo Bridge**
@@ -756,8 +905,43 @@ sequenceDiagram
    - 处理数据（JSON 解码等）
 
 5. **后台队列 → 主线程**
-   - `DispatchQueue.main.async`
+   - `await MainActor.run` (Swift 6)
    - 更新 UI 状态
+
+6. **主线程 → Actor**
+   - `await FileSystemManager.shared.getFileList()`
+   - Actor 隔离确保线程安全
+
+### Swift 6 并发特性
+
+1. **@MainActor 隔离**
+   - `DeviceManager` 使用 `@MainActor` 标记
+   - 确保所有属性访问和方法调用在主线程执行
+   - 编译器强制检查，防止数据竞争
+
+2. **Actor 隔离**
+   - `FileSystemManager` 使用 `actor` 标记
+   - 确保所有方法调用串行化执行
+   - 编译器强制检查，防止并发访问
+
+3. **Sendable 协议**
+   - 所有模型实现 `Sendable` 协议
+   - 支持跨线程传递
+   - 编译器验证线程安全性
+
+4. **Task.detached**
+   - 使用结构化并发进行后台操作
+   - 避免数据竞争
+   - 支持优先级设置
+
+5. **NSLock 线程安全**
+   - `FileTransferManager` 使用 `NSLock` 保护 `currentDownloadTask`
+   - 手动管理锁，确保线程安全
+
+6. **NSCache 自动内存管理**
+   - `DeviceManager` 和 `FileSystemManager` 使用 `NSCache`
+   - 自动内存管理，线程安全
+   - 支持内存压力响应
 
 ### 进度回调机制
 
@@ -780,19 +964,27 @@ sequenceDiagram
 
 ### 线程安全机制
 
-1. **@Published 属性**
-   - SwiftUI 自动处理 UI 更新
-   - 必须在主线程更新
+1. **@MainActor**
+   - `DeviceManager` 所有属性和方法都在主线程
+   - 编译器强制检查
 
-2. **缓存锁**
-   - `FileSystemManager` 使用 `NSLock`
-   - 保护文件缓存读写
+2. **Actor**
+   - `FileSystemManager` 所有方法串行化执行
+   - 编译器强制检查
 
-3. **任务锁**
-   - `FileTransferManager` 使用 `NSLock`
-   - 保护 `currentDownloadTask` 访问
+3. **NSLock**
+   - `FileTransferManager` 使用 `NSLock` 保护 `currentDownloadTask`
+   - 手动管理锁
 
-4. **原子操作**
+4. **NSCache**
+   - `DeviceManager` 和 `FileSystemManager` 使用 `NSCache`
+   - 自动线程安全
+
+5. **Sendable**
+   - 所有模型实现 `Sendable` 协议
+   - 支持跨线程传递
+
+6. **原子操作**
    - `isCancelled` 标志
    - 任务状态更新
 
@@ -800,6 +992,7 @@ sequenceDiagram
 
 1. **缓存策略**
    - 文件列表缓存 60 秒
+   - 设备 ID 和序列号缓存（NSCache 自动内存管理）
    - 减少重复的设备查询
 
 2. **自适应扫描**
@@ -815,33 +1008,55 @@ sequenceDiagram
    - 文件列表一次性获取
    - 减少设备通信次数
 
+5. **结构化并发**
+   - 使用 `Task.detached` 进行后台操作
+   - 避免数据竞争
+   - 更好的性能和可维护性
+
 ## 关键交互总结
 
 | 场景 | 发起方 | 桥接层 | Go层 | 线程处理 | 特殊处理 |
 |------|--------|--------|------|----------|----------|
-| 设备扫描 | DeviceManager | Kalam_Scan | withDeviceQuick | 全局队列 → 主线程 | 指数退避策略、手动刷新、用户可配置扫描间隔 |
-| 文件浏览 | FileSystemManager | Kalam_ListFiles | withDevice | 全局队列 → 主线程 | 30秒缓存 |
-| 文件下载 | FileTransferManager | Kalam_DownloadFile | withDevice + 重试 | 传输队列 → 主线程 | 设备连接验证、文件验证 |
-| 文件上传 | FileTransferManager | Kalam_UploadFile | withDevice | 传输队列 → 主线程 | 8步输入验证、上传后刷新 |
-| 设备断开 | DeviceManager | Kalam_Scan 返回空 | - | 主线程处理通知 | 取消所有任务、清除缓存 |
-| 手动刷新 | 用户 | - | - | 主线程 | 重置失败计数、重启扫描 |
-| 语言切换 (菜单栏) | SwiftMTPApp | - | - | 主线程 + 通知机制 | - |
-| 语言切换 (设置) | SettingsView | - | - | 主线程 + 通知机制 | - |
-| 应用重启 | SettingsView | - | - | Process + NSApp.terminate | - |
-| 本地化访问 | 各视图 | - | - | 计算属性实时获取 | - |
+| 设备扫描 | DeviceManager (@MainActor) | Kalam_Scan | withDeviceQuick | Task.detached → @MainActor | 指数退避策略、手动刷新、用户可配置扫描间隔、NSCache 缓存 |
+| 文件浏览 | FileSystemManager (actor) | Kalam_ListFiles | withDevice | Actor 隔离 | NSCache 自动内存管理、60秒过期、设备级缓存清理 |
+| 文件下载 | FileTransferManager | Kalam_DownloadFile | withDevice + 重试 | transferQueue → @MainActor | 设备连接验证（下载前和失败后）、NSLock 保护、文件验证 |
+| 文件上传 | FileTransferManager | Kalam_UploadFile | withDevice | transferQueue → @MainActor | 7步输入验证、Swift 6 内存管理、上传后刷新 |
+| 设备断开 | DeviceManager (@MainActor) | Kalam_Scan 返回空 | - | @MainActor 处理通知 | 取消所有任务、清除设备序列号缓存、清除文件系统缓存 |
+| 手动刷新 | 用户 | - | - | @MainActor | 重置失败计数、重启扫描 |
+| 语言切换 (菜单栏) | SwiftMTPApp | - | - | @MainActor + 通知机制 | 多语言支持（7种语言）、系统默认模式 |
+| 语言切换 (设置) | SettingsView | - | - | @MainActor + 通知机制 | 语言包验证、回退机制 |
+| 应用重启 | SettingsView | - | - | Process + NSApp.terminate | AppleLanguages 设置 |
+| 本地化访问 | 各视图 | - | - | 计算属性实时获取 | L10n 本地化字符串 |
 
 ## 新增功能说明
 
-### 1. 指数退避策略（设备扫描）
+### 1. Swift 6 并发特性
+- **@MainActor 隔离**: `DeviceManager` 使用 `@MainActor` 确保所有 UI 相关操作在主线程执行
+- **Actor 隔离**: `FileSystemManager` 使用 `actor` 确保文件系统操作线程安全
+- **Sendable 协议**: 所有模型（`Device`、`FileItem`、`StorageInfo`、`MTPSupportInfo`、`TransferTask`）都实现 `Sendable` 协议，支持跨线程传递
+- **Task.detached**: 使用结构化并发（`Task.detached`）进行后台操作，避免数据竞争
+- **NSLock 线程安全**: `FileTransferManager` 使用 `NSLock` 保护 `currentDownloadTask` 访问
+
+### 2. NSCache 缓存机制
+- **设备缓存**:
+  - `deviceIdCache`: 缓存设备 ID 到 UUID 的映射（NSCache 自动内存管理）
+  - `deviceSerialCache`: 缓存设备序列号，用于设备断开检测
+  - 使用序列号而不是 UUID 来检测设备断开，更可靠
+- **文件缓存**:
+  - `fileCache`: 缓存文件列表（60秒过期）
+  - `deviceCacheKeys`: 映射设备 ID 到缓存键，支持精确清理
+  - 自动内存管理：`countLimit = 1000`，`totalCostLimit = 50MB`
+
+### 3. 指数退避策略（设备扫描）
 - **目的**: 减少无设备时的扫描频率，节省系统资源
 - **机制**:
   - 初始间隔: 用户设置的值（默认3秒）
-  - 每次失败后: interval = min(userScanInterval × 2^failures, 30秒)
+  - 每次失败后: `interval = min(userScanInterval × 2^failures, 30秒)`
   - 最大失败次数: 3次
   - 达到最大失败次数后: 停止自动扫描，显示手动刷新按钮
 - **用户配置**: 可在设置中调整扫描间隔（1-10秒）
 
-### 2. 手动刷新功能
+### 4. 手动刷新功能
 - **触发条件**: 连续扫描失败3次后
 - **用户操作**: 点击手动刷新按钮
 - **系统行为**:
@@ -849,7 +1064,7 @@ sequenceDiagram
   - 重置扫描间隔为用户设置的值（默认3秒）
   - 重新开始自动扫描
 
-### 3. 文件上传输入验证（7步）
+### 5. 文件上传输入验证（7步）
 1. **路径验证**: 检查路径是否为空
 2. **文件存在性**: 验证文件是否存在
 3. **目录检查**: 确保不是目录
@@ -863,7 +1078,7 @@ sequenceDiagram
    - 路径标准化验证（确保无相对引用）
 6. **存储空间检查**: 验证设备存储存在且有足够空间
 
-### 4. 文件下载增强
+### 6. 文件下载增强
 - **设备连接验证**: 下载前和失败后验证设备连接
 - **目标目录创建**: 自动创建目标目录
 - **文件存在检查**: 检查目标文件是否已存在
@@ -872,18 +1087,26 @@ sequenceDiagram
 - **损坏文件清理**: 自动删除损坏的文件
 - **进度回调**: 已禁用以确保传输稳定性
 
-### 5. 上传后刷新机制
+### 7. 上传后刷新机制
 - **刷新设备存储**: `Kalam_RefreshStorage(storageId)`
 - **重置设备缓存**: `Kalam_ResetDeviceCache()`
 - **清除文件系统缓存**: `FileSystemManager.clearCache(for: device)`
 - **发送刷新通知**: 延迟1秒发送 `RefreshFileList` 通知
 
-### 6. 设备断开处理增强
+### 8. 设备断开处理增强
 - **取消所有任务**: `FileTransferManager.cancelAllTasks()`
 - **清除设备列表**: 清空 `devices` 和 `selectedDevice`
+- **清除设备序列号缓存**: 清空 `deviceSerialCache`
 - **清除文件系统缓存**: `FileSystemManager.clearCache()`
 - **发送通知**: `DeviceDisconnected` 通知
-- **更新错误状态**: `connectionError = "设备已断开"`
+- **更新错误状态**: `connectionError = L10n.MainWindow.deviceDisconnected`
+
+### 9. 多语言支持增强
+- **支持语言**: 英文、简体中文、日语、韩语、俄语、法语、德语
+- **系统默认模式**: 显式检测系统语言并加载对应语言包
+- **语言包验证**: 启动时验证语言包完整性
+- **回退机制**: 语言包加载失败时回退到主包
+- **AppleLanguages 设置**: 确保文件选择器使用正确的语言
 
 ## 语言切换机制说明
 
