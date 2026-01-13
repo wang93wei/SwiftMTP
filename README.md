@@ -177,7 +177,16 @@ SwiftMTP/
 │   │   ├── ja.lproj/              # Japanese language pack
 │   │   │   ├── InfoPlist.strings
 │   │   │   └── Localizable.strings
-│   │   └── ko.lproj/              # Korean language pack
+│   │   ├── ko.lproj/              # Korean language pack
+│   │   │   ├── InfoPlist.strings
+│   │   │   └── Localizable.strings
+│   │   ├── ru.lproj/              # Russian language pack
+│   │   │   ├── InfoPlist.strings
+│   │   │   └── Localizable.strings
+│   │   ├── fr.lproj/              # French language pack
+│   │   │   ├── InfoPlist.strings
+│   │   │   └── Localizable.strings
+│   │   └── de.lproj/              # German language pack
 │   │       ├── InfoPlist.strings
 │   │       └── Localizable.strings
 │   ├── libkalam.dylib             # Go dynamic library

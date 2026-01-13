@@ -157,41 +157,41 @@ SwiftMTP/
 │   │   ├── DeviceListView.swift   # Geräteliste
 │   │   ├── FileBrowserView.swift  # Dateibrowser
 │   │   ├── FileTransferView.swift # Übertragungsansicht
-│   │   ├── SettingsView.swift     // Einstellungsfenster
-│   │   └── Components/            // Wiederverwendbare Komponenten
+│   │   ├── SettingsView.swift     # Einstellungsfenster
+│   │   └── Components/            # Wiederverwendbare Komponenten
 │   │       ├── DeviceRowView.swift
 │   │       ├── LiquidGlassView.swift
 │   │       └── TransferTaskRowView.swift
-│   ├── Resources/                 // Ressourcendateien
-│   │   ├── Kalam.bundle/          // Go-Dynamic-Library-Bundle
+│   ├── Resources/                 # Ressourcendateien
+│   │   ├── Kalam.bundle/          # Go-Dynamic-Library-Bundle
 │   │   │   └── Contents/MacOS/Kalam
-│   │   ├── Base.lproj/            // Basissprachpaket (Englisch)
+│   │   ├── Base.lproj/            # Basissprachpaket (Englisch)
 │   │   │   ├── InfoPlist.strings
 │   │   │   └── Localizable.strings
-│   │   ├── en.lproj/              // Englisches Sprachpaket
+│   │   ├── en.lproj/              # Englisches Sprachpaket
 │   │   │   ├── InfoPlist.strings
 │   │   │   └── Localizable.strings
-│   │   ├── zh-Hans.lproj/         // Chinesisches Sprachpaket
+│   │   ├── zh-Hans.lproj/         # Chinesisches Sprachpaket
 │   │   │   ├── InfoPlist.strings
 │   │   │   └── Localizable.strings
-│   │   ├── ja.lproj/              // Japanisches Sprachpaket
+│   │   ├── ja.lproj/              # Japanisches Sprachpaket
 │   │   │   ├── InfoPlist.strings
 │   │   │   └── Localizable.strings
-│   │   ├── ko.lproj/              // Koreanisches Sprachpaket
+│   │   ├── ko.lproj/              # Koreanisches Sprachpaket
 │   │   │   ├── InfoPlist.strings
 │   │   │   └── Localizable.strings
-│   │   ├── ru.lproj/              // Russisches Sprachpaket
+│   │   ├── ru.lproj/              # Russisches Sprachpaket
 │   │   │   ├── InfoPlist.strings
 │   │   │   └── Localizable.strings
-│   │   ├── fr.lproj/              // Französisches Sprachpaket
+│   │   ├── fr.lproj/              # Französisches Sprachpaket
 │   │   │   ├── InfoPlist.strings
 │   │   │   └── Localizable.strings
-│   │   └── de.lproj/              // Deutsches Sprachpaket
+│   │   └── de.lproj/              # Deutsches Sprachpaket
 │   │       ├── InfoPlist.strings
 │   │       └── Localizable.strings
-│   ├── libkalam.dylib             // Go-Dynamic-Library
-│   ├── libkalam.h                 // C-Header-Datei
-│   └── SwiftMTP-Bridging-Header.h // Swift-C-Brücken-Header
+│   ├── libkalam.dylib             # Go-Dynamic-Library
+│   ├── libkalam.h                 # C-Header-Datei
+│   └── SwiftMTP-Bridging-Header.h # Swift-C-Brücken-Header
 ├── SwiftMTPTests/                 // Swift-Unit-Tests
 │   ├── AppLanguageTests.swift
 │   ├── DeviceTests.swift
