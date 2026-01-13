@@ -11,6 +11,7 @@ import SwiftUI
 import AppKit
 @testable import SwiftMTP
 
+@MainActor
 final class FileBrowserViewTests: XCTestCase {
     
     func testEmptyFolderViewComponentsExist() {

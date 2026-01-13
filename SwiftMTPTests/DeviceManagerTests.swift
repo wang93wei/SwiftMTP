@@ -9,6 +9,7 @@ import XCTest
 import Combine
 @testable import SwiftMTP
 
+@MainActor
 final class DeviceManagerTests: XCTestCase {
     
     var manager: DeviceManager!

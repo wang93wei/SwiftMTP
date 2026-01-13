@@ -55,6 +55,7 @@ class MockFileSystemManager: FileSystemManagerProtocol {
     }
 }
 
+@MainActor
 final class FileSystemManagerTests: XCTestCase {
     
     var manager: FileSystemManager!

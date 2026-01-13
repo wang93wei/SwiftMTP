@@ -9,6 +9,7 @@ import XCTest
 import Combine
 @testable import SwiftMTP
 
+@MainActor
 final class LanguageManagerTests: XCTestCase {
     
     var manager: LanguageManager!

@@ -8,6 +8,7 @@
 import XCTest
 @testable import SwiftMTP
 
+@MainActor
 final class AppLanguageTests: XCTestCase {
     
     // MARK: - CaseIterable Tests

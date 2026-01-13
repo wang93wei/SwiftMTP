@@ -58,6 +58,7 @@ class MockFileTransferManager: FileTransferManagerProtocol {
     }
 }
 
+@MainActor
 final class FileTransferManagerTests: XCTestCase {
     
     var manager: FileTransferManager!
