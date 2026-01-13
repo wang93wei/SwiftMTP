@@ -40,8 +40,8 @@ Native/ (Go 桥接), Scripts/ (构建脚本), SwiftMTP/ (App/Models/Services/Vie
 增量开发 → 编译验证 → 测试通过 → 提交
 
 ## 启动流程
-**每次会话开始时必须执行**: `project-health-checker` 技能  
-**重要事项**: 必须遵守 `swift6-exemption` 技能规则
+**每次会话开始时必须执行**: `project-exemption` 技能  
+**重要事项**: 必须遵守 `project-exemption` 技能规则
 
 ## 常用命令
 ```bash
