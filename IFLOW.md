@@ -11,7 +11,7 @@
 * Break down complex problems into smaller, manageable parts
 * Consider performance implications early and profile critical paths
 * Review code for correctness, robustness, and edge cases
-* Use appropriate tools and skills (agents, MCP tools, skills, etc.) based on task requirements
+* Use appropriate tools and skills (MCP tools, skills, etc.) based on task requirements
 * Write tests alongside code to ensure correctness
 
 ### Design for Testability
