@@ -209,3 +209,87 @@
 "uploadFailed" = "Hochladen fehlgeschlagen";
 "deleteMultipleFiles" = "Mehrere Dateien löschen";
 "confirmDeleteMultipleFiles" = "Sind Sie sicher, dass Sie diese %d Dateien löschen möchten?\n\n%@\n\nDiese Aktion kann nicht rückgängig gemacht werden.";
+
+// MTP-Fehler
+"error.mtp.deviceNotFound" = "Gerät nicht gefunden";
+"error.mtp.deviceDisconnected" = "Gerät getrennt";
+"error.mtp.deviceInitializationFailed" = "Geräteinitialisierung fehlgeschlagen：%@";
+"error.mtp.deviceBusy" = "Gerät ist beschäftigt";
+"error.mtp.deviceTimeout" = "Gerätevorgang abgelaufen";
+"error.mtp.deviceNotSupported" = "Gerät wird nicht unterstützt";
+
+// Dateisystem-Fehler
+"error.fs.fileNotFound" = "Datei nicht gefunden (ID: %u)";
+"error.fs.folderNotFound" = "Ordner nicht gefunden (ID: %u)";
+"error.fs.fileAlreadyExists" = "Datei existiert bereits：%@";
+"error.fs.invalidPath" = "Ungültiger Pfad '%@': %@";
+"error.fs.pathTooLong" = "Pfad zu lang (%d Zeichen, maximal %d)";
+"error.fs.invalidFileName" = "Ungültiger Dateiname '%@': %@";
+"error.fs.permissionDenied" = "Berechtigung verweigert";
+"error.fs.storageNotFound" = "Speicher nicht gefunden (ID: %u)";
+"error.fs.storageFull" = "Speicher voll (benötigt: %llu Bytes, verfügbar: %llu Bytes)";
+
+// Übertragungsfehler
+"error.transfer.cancelled" = "Übertragung abgebrochen (Aufgaben-ID: %@)";
+"error.transfer.failed" = "Übertragung für '%@' fehlgeschlagen：%@";
+"error.transfer.downloadFailed" = "Download für Objekt %u fehlgeschlagen：%@";
+"error.transfer.uploadFailed" = "Upload für '%@' fehlgeschlagen：%@";
+"error.transfer.fileTooLarge" = "Datei zu groß (%llu Bytes, maximal %llu Bytes)";
+"error.transfer.insufficientStorage" = "Unzureichender Speicherplatz (benötigt: %llu Bytes, verfügbar: %llu Bytes)";
+"error.transfer.destinationDirectoryDoesNotExist" = "Zielverzeichnis existiert nicht：%@";
+"error.transfer.fileAlreadyExistsAtDestination" = "Datei existiert bereits am Ziel：%@";
+"error.transfer.corruptedFile" = "Datei beschädigt：%@";
+"error.transfer.networkError" = "Netzwerkfehler：%@";
+"error.transfer.timeout" = "Vorgang abgelaufen";
+
+// Konfigurationsfehler
+"error.config.invalid" = "Ungültige Konfiguration '%@': %@";
+"error.config.missing" = "Fehlende Konfiguration：%@";
+"error.config.loadFailed" = "Konfigurationsladen fehlgeschlagen：%@";
+
+// Scan-Fehler
+"error.scan.failed" = "Scan fehlgeschlagen：%@";
+"error.scan.timeout" = "Scan abgelaufen";
+"error.scan.cancelled" = "Scan abgebrochen";
+"error.scan.noDevicesFound" = "Keine Geräte gefunden";
+"error.scan.maxRetriesExceeded" = "Maximale Wiederholungsversuche überschritten (%d)";
+
+// Gerätefehler
+"deviceNotFound" = "Gerät nicht gefunden";
+"deviceInitializationFailed" = "Geräteinitialisierung fehlgeschlagen：%@";
+"deviceBusy" = "Gerät ist beschäftigt";
+"deviceTimeout" = "Gerätevorgang abgelaufen";
+"deviceNotSupported" = "Gerät wird nicht unterstützt";
+
+// Dateisystem-Fehler-Schlüssel
+"fileNotFound" = "Datei nicht gefunden (ID: %u)";
+"folderNotFound" = "Ordner nicht gefunden (ID: %u)";
+"fileAlreadyExists" = "Datei existiert bereits：%@";
+"invalidPath" = "Ungültiger Pfad '%@': %@";
+"pathTooLong" = "Pfad zu lang (%d Zeichen, maximal %d)";
+"invalidFileName" = "Ungültiger Dateiname '%@': %@";
+"permissionDenied" = "Berechtigung verweigert";
+"storageNotFound" = "Speicher nicht gefunden (ID: %u)";
+"storageFull" = "Speicher voll (benötigt: %llu Bytes, verfügbar: %llu Bytes)";
+
+// Übertragungsfehler-Schlüssel
+"transferCancelled" = "Übertragung abgebrochen (Aufgaben-ID: %@)";
+"transferFailed" = "Übertragung für '%@' fehlgeschlagen：%@";
+"fileTooLarge" = "Datei zu groß (%llu Bytes, maximal %llu Bytes)";
+"insufficientStorage" = "Unzureichender Speicherplatz (benötigt: %llu Bytes, verfügbar: %llu Bytes)";
+"destinationDirectoryDoesNotExist" = "Zielverzeichnis existiert nicht：%@";
+"corruptedFile" = "Datei beschädigt：%@";
+"networkError" = "Netzwerkfehler：%@";
+"timeout" = "Vorgang abgelaufen";
+
+// Konfigurationsfehler-Schlüssel
+"invalidConfiguration" = "Ungültige Konfiguration '%@': %@";
+"missingConfiguration" = "Fehlende Konfiguration：%@";
+"configurationLoadFailed" = "Konfigurationsladen fehlgeschlagen：%@";
+
+// Scan-Fehler-Schlüssel
+"scanFailed" = "Scan fehlgeschlagen：%@";
+"scanTimeout" = "Scan abgelaufen";
+"scanCancelled" = "Scan abgebrochen";
+"noDevicesFound" = "Keine Geräte gefunden";
+"maxRetriesExceeded" = "Maximale Wiederholungsversuche überschritten (%d)";

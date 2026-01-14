@@ -208,4 +208,88 @@
 "cannotReadFileInfo" = "ファイル情報を読み取れません";
 "uploadFailed" = "アップロードに失敗しました";
 "deleteMultipleFiles" = "複数のファイルを削除";
-"confirmDeleteMultipleFiles" = "これらの%d個のファイルを削除してもよろしいですか？\n\n%@\n\nこの操作は取り消せません。";
+"confirmDeleteMultipleFiles" = "これらの %d ファイルを削除してもよろしいですか？\n\n%@\n\nこの操作は取り消せません。";
+
+// MTP エラー
+"error.mtp.deviceNotFound" = "デバイスが見つかりません";
+"error.mtp.deviceDisconnected" = "デバイスの接続が解除されました";
+"error.mtp.deviceInitializationFailed" = "デバイスの初期化に失敗しました：%@";
+"error.mtp.deviceBusy" = "デバイスが動作中";
+"error.mtp.deviceTimeout" = "デバイス操作がタイムアウトしました";
+"error.mtp.deviceNotSupported" = "デバイスには対応していません";
+
+// ファイルシステムエラー
+"error.fs.fileNotFound" = "ファイルが見つかりません (ID: %u)";
+"error.fs.folderNotFound" = "フォルダが見つかりません (ID: %u)";
+"error.fs.fileAlreadyExists" = "ファイルが既に存在します：%@";
+"error.fs.invalidPath" = "無効なパス '%@': %@";
+"error.fs.pathTooLong" = "パスが長すぎます (%d 文字、最大 %d)";
+"error.fs.invalidFileName" = "無効なファイル名 '%@': %@";
+"error.fs.permissionDenied" = "アクセスが拒否されました";
+"error.fs.storageNotFound" = "ストレージが見つかりません (ID: %u)";
+"error.fs.storageFull" = "ストレージがいっぱいです (必要: %llu バイト、利用可能: %llu バイト)";
+
+// 転送エラー
+"error.transfer.cancelled" = "転送がキャンセルされました (タスクID: %@)";
+"error.transfer.failed" = "'%@' の転送に失敗しました：%@";
+"error.transfer.downloadFailed" = "オブジェクト %u のダウンロードに失敗しました：%@";
+"error.transfer.uploadFailed" = "'%@' のアップロードに失敗しました：%@";
+"error.transfer.fileTooLarge" = "ファイルが大きすぎます (%llu バイト、最大 %llu バイト)";
+"error.transfer.insufficientStorage" = "ストレージ容量が不足しています (必要: %llu バイト、利用可能: %llu バイト)";
+"error.transfer.destinationDirectoryDoesNotExist" = "宛先ディレクトリが存在しません：%@";
+"error.transfer.fileAlreadyExistsAtDestination" = "ファイルが宛先に既に存在します：%@";
+"error.transfer.corruptedFile" = "ファイルが破損しています：%@";
+"error.transfer.networkError" = "ネットワークエラー：%@";
+"error.transfer.timeout" = "操作がタイムアウトしました";
+
+// 設定エラー
+"error.config.invalid" = "無効な設定 '%@': %@";
+"error.config.missing" = "設定が見つかりません：%@";
+"error.config.loadFailed" = "設定の読み込みに失敗しました：%@";
+
+// スキャンエラー
+"error.scan.failed" = "スキャンに失敗しました：%@";
+"error.scan.timeout" = "スキャンタイムアウト";
+"error.scan.cancelled" = "スキャンがキャンセルされました";
+"error.scan.noDevicesFound" = "デバイスが見つかりません";
+"error.scan.maxRetriesExceeded" = "最大再試行回数を超えました (%d 回)";
+
+// デバイスエラー
+"deviceNotFound" = "デバイスが見つかりません";
+"deviceInitializationFailed" = "デバイスの初期化に失敗しました：%@";
+"deviceBusy" = "デバイスが動作中";
+"deviceTimeout" = "デバイス操作がタイムアウトしました";
+"deviceNotSupported" = "デバイスには対応していません";
+
+// ファイルシステムエラーキー
+"fileNotFound" = "ファイルが見つかりません (ID: %u)";
+"folderNotFound" = "フォルダが見つかりません (ID: %u)";
+"fileAlreadyExists" = "ファイルが既に存在します：%@";
+"invalidPath" = "無効なパス '%@': %@";
+"pathTooLong" = "パスが長すぎます (%d 文字、最大 %d)";
+"invalidFileName" = "無効なファイル名 '%@': %@";
+"permissionDenied" = "アクセスが拒否されました";
+"storageNotFound" = "ストレージが見つかりません (ID: %u)";
+"storageFull" = "ストレージがいっぱいです (必要: %llu バイト、利用可能: %llu バイト)";
+
+// 転送エラーキー
+"transferCancelled" = "転送がキャンセルされました (タスクID: %@)";
+"transferFailed" = "'%@' の転送に失敗しました：%@";
+"fileTooLarge" = "ファイルが大きすぎます (%llu バイト、最大 %llu バイト)";
+"insufficientStorage" = "ストレージ容量が不足しています (必要: %llu バイト、利用可能: %llu バイト)";
+"destinationDirectoryDoesNotExist" = "宛先ディレクトリが存在しません：%@";
+"corruptedFile" = "ファイルが破損しています：%@";
+"networkError" = "ネットワークエラー：%@";
+"timeout" = "操作がタイムアウトしました";
+
+// 設定エラーキー
+"invalidConfiguration" = "無効な設定 '%@': %@";
+"missingConfiguration" = "設定が見つかりません：%@";
+"configurationLoadFailed" = "設定の読み込みに失敗しました：%@";
+
+// スキャンエラーキー
+"scanFailed" = "スキャンに失敗しました：%@";
+"scanTimeout" = "スキャンタイムアウト";
+"scanCancelled" = "スキャンがキャンセルされました";
+"noDevicesFound" = "デバイスが見つかりません";
+"maxRetriesExceeded" = "最大再試行回数を超えました (%d 回)";

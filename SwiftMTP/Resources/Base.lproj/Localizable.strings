@@ -199,7 +199,6 @@
 // FileTransfer error messages
 "cannotCreateDirectory" = "Cannot create destination directory: %@";
 "cannotReplaceExistingFile" = "Cannot replace existing file: %@";
-"fileAlreadyExistsAtDestination" = "File already exists at destination";
 "deviceDisconnectedReconnect" = "Device disconnected, please reconnect the device";
 "downloadedFileInvalidOrCorrupted" = "Downloaded file is invalid or corrupted";
 "downloadFailed" = "Download failed";
@@ -256,7 +255,6 @@
 
 /* MTP Errors */
 "deviceNotFound" = "Device not found";
-"deviceDisconnected" = "Device disconnected";
 "deviceInitializationFailed" = "Failed to initialize device: %@";
 "deviceBusy" = "Device is busy";
 "deviceTimeout" = "Device operation timed out";
@@ -276,8 +274,6 @@
 /* Transfer Errors */
 "transferCancelled" = "Transfer cancelled (Task ID: %@)";
 "transferFailed" = "Transfer failed for '%@': %@";
-"downloadFailed" = "Download failed for object %u: %@";
-"uploadFailed" = "Upload failed for '%@': %@";
 "fileTooLarge" = "File too large (%llu bytes, maximum %llu bytes)";
 "insufficientStorage" = "Insufficient storage space (required: %llu bytes, available: %llu bytes)";
 "destinationDirectoryDoesNotExist" = "Destination directory does not exist: %@";

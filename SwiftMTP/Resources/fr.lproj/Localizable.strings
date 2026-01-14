@@ -209,3 +209,87 @@
 "uploadFailed" = "Téléchargement échoué";
 "deleteMultipleFiles" = "Supprimer plusieurs fichiers";
 "confirmDeleteMultipleFiles" = "Êtes-vous sûr de vouloir supprimer ces %d fichiers?\n\n%@\n\nCette action ne peut pas être annulée.";
+
+// Erreurs MTP
+"error.mtp.deviceNotFound" = "Appareil non trouvé";
+"error.mtp.deviceDisconnected" = "Appareil déconnecté";
+"error.mtp.deviceInitializationFailed" = "Échec de l'initialisation de l'appareil：%@";
+"error.mtp.deviceBusy" = "Appareil occupé";
+"error.mtp.deviceTimeout" = "Opération de l'appareil expirée";
+"error.mtp.deviceNotSupported" = "Appareil non pris en charge";
+
+// Erreurs du système de fichiers
+"error.fs.fileNotFound" = "Fichier non trouvé (ID: %u)";
+"error.fs.folderNotFound" = "Dossier non trouvé (ID: %u)";
+"error.fs.fileAlreadyExists" = "Le fichier existe déjà：%@";
+"error.fs.invalidPath" = "Chemin invalide '%@': %@";
+"error.fs.pathTooLong" = "Chemin trop long (%d caractères, maximum %d)";
+"error.fs.invalidFileName" = "Nom de fichier invalide '%@': %@";
+"error.fs.permissionDenied" = "Permission refusée";
+"error.fs.storageNotFound" = "Stockage non trouvé (ID: %u)";
+"error.fs.storageFull" = "Stockage plein (requis: %llu octets, disponible: %llu octets)";
+
+// Erreurs de transfert
+"error.transfer.cancelled" = "Transfert annulé (ID de tâche: %@)";
+"error.transfer.failed" = "Échec du transfert pour '%@': %@";
+"error.transfer.downloadFailed" = "Échec du téléchargement de l'objet %u：%@";
+"error.transfer.uploadFailed" = "Échec du téléchargement pour '%@': %@";
+"error.transfer.fileTooLarge" = "Fichier trop volumineux (%llu octets, maximum %llu octets)";
+"error.transfer.insufficientStorage" = "Espace de stockage insuffisant (requis: %llu octets, disponible: %llu octets)";
+"error.transfer.destinationDirectoryDoesNotExist" = "Le répertoire de destination n'existe pas：%@";
+"error.transfer.fileAlreadyExistsAtDestination" = "Le fichier existe déjà à la destination：%@";
+"error.transfer.corruptedFile" = "Fichier corrompu：%@";
+"error.transfer.networkError" = "Erreur réseau：%@";
+"error.transfer.timeout" = "Opération expirée";
+
+// Erreurs de configuration
+"error.config.invalid" = "Configuration invalide '%@': %@";
+"error.config.missing" = "Configuration manquante：%@";
+"error.config.loadFailed" = "Échec du chargement de la configuration：%@";
+
+// Erreurs de scan
+"error.scan.failed" = "Échec du scan：%@";
+"error.scan.timeout" = "Scan expiré";
+"error.scan.cancelled" = "Scan annulé";
+"error.scan.noDevicesFound" = "Aucun appareil trouvé";
+"error.scan.maxRetriesExceeded" = "Nombre maximum de tentatives dépassé (%d)";
+
+// Erreurs d'appareil
+"deviceNotFound" = "Appareil non trouvé";
+"deviceInitializationFailed" = "Échec de l'initialisation de l'appareil：%@";
+"deviceBusy" = "Appareil occupé";
+"deviceTimeout" = "Opération de l'appareil expirée";
+"deviceNotSupported" = "Appareil non pris en charge";
+
+// Clés d'erreurs du système de fichiers
+"fileNotFound" = "Fichier non trouvé (ID: %u)";
+"folderNotFound" = "Dossier non trouvé (ID: %u)";
+"fileAlreadyExists" = "Le fichier existe déjà：%@";
+"invalidPath" = "Chemin invalide '%@': %@";
+"pathTooLong" = "Chemin trop long (%d caractères, maximum %d)";
+"invalidFileName" = "Nom de fichier invalide '%@': %@";
+"permissionDenied" = "Permission refusée";
+"storageNotFound" = "Stockage non trouvé (ID: %u)";
+"storageFull" = "Stockage plein (requis: %llu octets, disponible: %llu octets)";
+
+// Clés d'erreurs de transfert
+"transferCancelled" = "Transfert annulé (ID de tâche: %@)";
+"transferFailed" = "Échec du transfert pour '%@': %@";
+"fileTooLarge" = "Fichier trop volumineux (%llu octets, maximum %llu octets)";
+"insufficientStorage" = "Espace de stockage insuffisant (requis: %llu octets, disponible: %llu octets)";
+"destinationDirectoryDoesNotExist" = "Le répertoire de destination n'existe pas：%@";
+"corruptedFile" = "Fichier corrompu：%@";
+"networkError" = "Erreur réseau：%@";
+"timeout" = "Opération expirée";
+
+// Clés d'erreurs de configuration
+"invalidConfiguration" = "Configuration invalide '%@': %@";
+"missingConfiguration" = "Configuration manquante：%@";
+"configurationLoadFailed" = "Échec du chargement de la configuration：%@";
+
+// Clés d'erreurs de scan
+"scanFailed" = "Échec du scan：%@";
+"scanTimeout" = "Scan expiré";
+"scanCancelled" = "Scan annulé";
+"noDevicesFound" = "Aucun appareil trouvé";
+"maxRetriesExceeded" = "Nombre maximum de tentatives dépassé (%d)";

@@ -209,3 +209,87 @@
 "uploadFailed" = "Загрузка не удалась";
 "deleteMultipleFiles" = "Удалить несколько файлов";
 "confirmDeleteMultipleFiles" = "Вы уверены, что хотите удалить эти %d файлов?\n\n%@\n\nЭто действие нельзя отменить.";
+
+// Ошибки MTP
+"error.mtp.deviceNotFound" = "Устройство не найдено";
+"error.mtp.deviceDisconnected" = "Устройство отключено";
+"error.mtp.deviceInitializationFailed" = "Не удалось инициализировать устройство：%@";
+"error.mtp.deviceBusy" = "Устройство занято";
+"error.mtp.deviceTimeout" = "Операция устройства превысила время ожидания";
+"error.mtp.deviceNotSupported" = "Устройство не поддерживается";
+
+// Ошибки файловой системы
+"error.fs.fileNotFound" = "Файл не найден (ID: %u)";
+"error.fs.folderNotFound" = "Папка не найдена (ID: %u)";
+"error.fs.fileAlreadyExists" = "Файл уже существует：%@";
+"error.fs.invalidPath" = "Неверный путь '%@': %@";
+"error.fs.pathTooLong" = "Путь слишком длинный (%d символов, максимум %d)";
+"error.fs.invalidFileName" = "Неверное имя файла '%@': %@";
+"error.fs.permissionDenied" = "Доступ запрещён";
+"error.fs.storageNotFound" = "Хранилище не найдено (ID: %u)";
+"error.fs.storageFull" = "Хранилище заполнено (требуется: %llu байт, доступно: %llu байт)";
+
+// Ошибки передачи
+"error.transfer.cancelled" = "Передача отменена (ID задачи: %@)";
+"error.transfer.failed" = "Передача '%@' не удалась：%@";
+"error.transfer.downloadFailed" = "Не удалось загрузить объект %u：%@";
+"error.transfer.uploadFailed" = "Не удалось загрузить '%@': %@";
+"error.transfer.fileTooLarge" = "Файл слишком большой (%llu байт, максимум %llu байт)";
+"error.transfer.insufficientStorage" = "Недостаточно места (требуется: %llu байт, доступно: %llu байт)";
+"error.transfer.destinationDirectoryDoesNotExist" = "Конечная директория не существует：%@";
+"error.transfer.fileAlreadyExistsAtDestination" = "Файл уже существует в месте назначения：%@";
+"error.transfer.corruptedFile" = "Файл повреждён：%@";
+"error.transfer.networkError" = "Ошибка сети：%@";
+"error.transfer.timeout" = "Операция превысила время ожидания";
+
+// Ошибки конфигурации
+"error.config.invalid" = "Неверная конфигурация '%@': %@";
+"error.config.missing" = "Отсутствует конфигурация：%@";
+"error.config.loadFailed" = "Не удалось загрузить конфигурацию：%@";
+
+// Ошибки сканирования
+"error.scan.failed" = "Сканирование не удалось：%@";
+"error.scan.timeout" = "Время сканирования истекло";
+"error.scan.cancelled" = "Сканирование отменено";
+"error.scan.noDevicesFound" = "Устройства не найдены";
+"error.scan.maxRetriesExceeded" = "Превышено максимальное количество попыток (%d)";
+
+// Ошибки устройства
+"deviceNotFound" = "Устройство не найдено";
+"deviceInitializationFailed" = "Не удалось инициализировать устройство：%@";
+"deviceBusy" = "Устройство занято";
+"deviceTimeout" = "Операция устройства превысила время ожидания";
+"deviceNotSupported" = "Устройство не поддерживается";
+
+// Ключи ошибок файловой системы
+"fileNotFound" = "Файл не найден (ID: %u)";
+"folderNotFound" = "Папка не найдена (ID: %u)";
+"fileAlreadyExists" = "Файл уже существует：%@";
+"invalidPath" = "Неверный путь '%@': %@";
+"pathTooLong" = "Путь слишком длинный (%d символов, максимум %d)";
+"invalidFileName" = "Неверное имя файла '%@': %@";
+"permissionDenied" = "Доступ запрещён";
+"storageNotFound" = "Хранилище не найдено (ID: %u)";
+"storageFull" = "Хранилище заполнено (требуется: %llu байт, доступно: %llu байт)";
+
+// Ключи ошибок передачи
+"transferCancelled" = "Передача отменена (ID задачи: %@)";
+"transferFailed" = "Передача '%@' не удалась：%@";
+"fileTooLarge" = "Файл слишком большой (%llu байт, максимум %llu байт)";
+"insufficientStorage" = "Недостаточно места (требуется: %llu байт, доступно: %llu байт)";
+"destinationDirectoryDoesNotExist" = "Конечная директория не существует：%@";
+"corruptedFile" = "Файл повреждён：%@";
+"networkError" = "Ошибка сети：%@";
+"timeout" = "Операция превысила время ожидания";
+
+// Ключи ошибок конфигурации
+"invalidConfiguration" = "Неверная конфигурация '%@': %@";
+"missingConfiguration" = "Отсутствует конфигурация：%@";
+"configurationLoadFailed" = "Не удалось загрузить конфигурацию：%@";
+
+// Ключи ошибок сканирования
+"scanFailed" = "Сканирование не удалось：%@";
+"scanTimeout" = "Время сканирования истекло";
+"scanCancelled" = "Сканирование отменено";
+"noDevicesFound" = "Устройства не найдены";
+"maxRetriesExceeded" = "Превышено максимальное количество попыток (%d)";

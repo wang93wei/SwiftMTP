@@ -209,5 +209,87 @@
 "checkConnectionAndStorage" = "下载失败，请检查设备连接和存储空间";
 "cannotReadFileInfo" = "无法读取文件信息";
 "uploadFailed" = "上传失败";
-"deleteMultipleFiles" = "删除多个文件";
-"confirmDeleteMultipleFiles" = "确定要删除这 %d 个文件吗？\n\n%@\n\n此操作无法撤销。";
+
+// MTP 错误
+"error.mtp.deviceNotFound" = "未找到设备";
+"error.mtp.deviceDisconnected" = "设备已断开连接";
+"error.mtp.deviceInitializationFailed" = "初始化设备失败：%@";
+"error.mtp.deviceBusy" = "设备繁忙";
+"error.mtp.deviceTimeout" = "设备操作超时";
+"error.mtp.deviceNotSupported" = "设备不支持";
+
+// 文件系统错误
+"error.fs.fileNotFound" = "未找到文件 (ID: %u)";
+"error.fs.folderNotFound" = "未找到文件夹 (ID: %u)";
+"error.fs.fileAlreadyExists" = "文件已存在：%@";
+"error.fs.invalidPath" = "无效路径 '%@': %@";
+"error.fs.pathTooLong" = "路径过长 (%d 个字符，最大为 %d)";
+"error.fs.invalidFileName" = "无效文件名 '%@': %@";
+"error.fs.permissionDenied" = "权限被拒绝";
+"error.fs.storageNotFound" = "未找到存储设备 (ID: %u)";
+"error.fs.storageFull" = "存储空间已满 (需要: %llu 字节，可用: %llu 字节)";
+
+// 传输错误
+"error.transfer.cancelled" = "传输已取消 (任务ID: %@)";
+"error.transfer.failed" = "传输 '%@' 失败：%@";
+"error.transfer.downloadFailed" = "下载对象 %u 失败：%@";
+"error.transfer.uploadFailed" = "上传 '%@' 失败：%@";
+"error.transfer.fileTooLarge" = "文件过大 (%llu 字节，最大为 %llu 字节)";
+"error.transfer.insufficientStorage" = "存储空间不足 (需要: %llu 字节，可用: %llu 字节)";
+"error.transfer.destinationDirectoryDoesNotExist" = "目标目录不存在：%@";
+"error.transfer.fileAlreadyExistsAtDestination" = "文件已存在于目标位置：%@";
+"error.transfer.corruptedFile" = "文件已损坏：%@";
+"error.transfer.networkError" = "网络错误：%@";
+"error.transfer.timeout" = "操作超时";
+
+// 配置错误
+"error.config.invalid" = "无效配置 '%@': %@";
+"error.config.missing" = "缺少配置：%@";
+"error.config.loadFailed" = "加载配置失败：%@";
+
+// 扫描错误
+"error.scan.failed" = "扫描失败：%@";
+"error.scan.timeout" = "扫描超时";
+"error.scan.cancelled" = "扫描已取消";
+"error.scan.noDevicesFound" = "未找到设备";
+"error.scan.maxRetriesExceeded" = "超过最大重试次数 (%d 次)";
+
+// 设备错误
+"deviceNotFound" = "未找到设备";
+"deviceInitializationFailed" = "初始化设备失败：%@";
+"deviceBusy" = "设备繁忙";
+"deviceTimeout" = "设备操作超时";
+"deviceNotSupported" = "设备不支持";
+
+// 文件系统错误键
+"fileNotFound" = "未找到文件 (ID: %u)";
+"folderNotFound" = "未找到文件夹 (ID: %u)";
+"fileAlreadyExists" = "文件已存在：%@";
+"invalidPath" = "无效路径 '%@': %@";
+"pathTooLong" = "路径过长 (%d 个字符，最大为 %d)";
+"invalidFileName" = "无效文件名 '%@': %@";
+"permissionDenied" = "权限被拒绝";
+"storageNotFound" = "未找到存储设备 (ID: %u)";
+"storageFull" = "存储空间已满 (需要: %llu 字节，可用: %llu 字节)";
+
+// 传输错误键
+"transferCancelled" = "传输已取消 (任务ID: %@)";
+"transferFailed" = "传输 '%@' 失败：%@";
+"fileTooLarge" = "文件过大 (%llu 字节，最大为 %llu 字节)";
+"insufficientStorage" = "存储空间不足 (需要: %llu 字节，可用: %llu 字节)";
+"destinationDirectoryDoesNotExist" = "目标目录不存在：%@";
+"corruptedFile" = "文件已损坏：%@";
+"networkError" = "网络错误：%@";
+"timeout" = "操作超时";
+
+// 配置错误键
+"invalidConfiguration" = "无效配置 '%@': %@";
+"missingConfiguration" = "缺少配置：%@";
+"configurationLoadFailed" = "加载配置失败：%@";
+
+// 扫描错误键
+"scanFailed" = "扫描失败：%@";
+"scanTimeout" = "扫描超时";
+"scanCancelled" = "扫描已取消";
+"noDevicesFound" = "未找到设备";
+"maxRetriesExceeded" = "超过最大重试次数 (%d 次)";

@@ -208,4 +208,88 @@
 "cannotReadFileInfo" = "파일 정보를 읽을 수 없음";
 "uploadFailed" = "업로드 실패";
 "deleteMultipleFiles" = "여러 파일 삭제";
-"confirmDeleteMultipleFiles" = "이 %d개의 파일을 삭제하시겠습니까?\n\n%@\n\n이 작업은 취소할 수 없습니다.";
+"confirmDeleteMultipleFiles" = "이 %d 개의 파일을 삭제하시겠습니까?\n\n%@\n\n이 작업은 취소할 수 없습니다.";
+
+// MTP 오류
+"error.mtp.deviceNotFound" = "장치를 찾을 수 없습니다";
+"error.mtp.deviceDisconnected" = "장치 연결 해제됨";
+"error.mtp.deviceInitializationFailed" = "장치 초기화 실패：%@";
+"error.mtp.deviceBusy" = "장치가 사용 중";
+"error.mtp.deviceTimeout" = "장치 작업 시간 초과";
+"error.mtp.deviceNotSupported" = "장치를 지원하지 않음";
+
+// 파일 시스템 오류
+"error.fs.fileNotFound" = "파일을 찾을 수 없음 (ID: %u)";
+"error.fs.folderNotFound" = "폴더를 찾을 수 없음 (ID: %u)";
+"error.fs.fileAlreadyExists" = "파일이 이미 존재함：%@";
+"error.fs.invalidPath" = "잘못된 경로 '%@': %@";
+"error.fs.pathTooLong" = "경로가 너무 김 (%d 문자, 최대 %d)";
+"error.fs.invalidFileName" = "잘못된 파일명 '%@': %@";
+"error.fs.permissionDenied" = "권한 거부됨";
+"error.fs.storageNotFound" = "저장 장치를 찾을 수 없음 (ID: %u)";
+"error.fs.storageFull" = "저장 공간 부족 (필요: %llu 바이트, 사용 가능: %llu 바이트)";
+
+// 전송 오류
+"error.transfer.cancelled" = "전송 취소됨 (작업 ID: %@)";
+"error.transfer.failed" = "'%@' 전송 실패：%@";
+"error.transfer.downloadFailed" = "개체 %u 다운로드 실패：%@";
+"error.transfer.uploadFailed" = "'%@' 업로드 실패：%@";
+"error.transfer.fileTooLarge" = "파일이 너무 큼 (%llu 바이트, 최대 %llu 바이트)";
+"error.transfer.insufficientStorage" = "저장 공간 부족 (필요: %llu 바이트, 사용 가능: %llu 바이트)";
+"error.transfer.destinationDirectoryDoesNotExist" = "대상 디렉터리가 존재하지 않음：%@";
+"error.transfer.fileAlreadyExistsAtDestination" = "파일이 대상에 이미 존재함：%@";
+"error.transfer.corruptedFile" = "파일이 손상됨：%@";
+"error.transfer.networkError" = "네트워크 오류：%@";
+"error.transfer.timeout" = "작업 시간 초과";
+
+// 구성 오류
+"error.config.invalid" = "잘못된 구성 '%@': %@";
+"error.config.missing" = "구성 누락：%@";
+"error.config.loadFailed" = "구성 로드 실패：%@";
+
+// 스캔 오류
+"error.scan.failed" = "스캔 실패：%@";
+"error.scan.timeout" = "스캔 시간 초과";
+"error.scan.cancelled" = "스캔 취소됨";
+"error.scan.noDevicesFound" = "장치를 찾을 수 없음";
+"error.scan.maxRetriesExceeded" = "최대 재시도 횟수 초과 (%d 회)";
+
+// 장치 오류
+"deviceNotFound" = "장치를 찾을 수 없습니다";
+"deviceInitializationFailed" = "장치 초기화 실패：%@";
+"deviceBusy" = "장치가 사용 중";
+"deviceTimeout" = "장치 작업 시간 초과";
+"deviceNotSupported" = "장치를 지원하지 않음";
+
+// 파일 시스템 오류 키
+"fileNotFound" = "파일을 찾을 수 없음 (ID: %u)";
+"folderNotFound" = "폴더를 찾을 수 없음 (ID: %u)";
+"fileAlreadyExists" = "파일이 이미 존재함：%@";
+"invalidPath" = "잘못된 경로 '%@': %@";
+"pathTooLong" = "경로가 너무 김 (%d 문자, 최대 %d)";
+"invalidFileName" = "잘못된 파일명 '%@': %@";
+"permissionDenied" = "권한 거부됨";
+"storageNotFound" = "저장 장치를 찾을 수 없음 (ID: %u)";
+"storageFull" = "저장 공간 부족 (필요: %llu 바이트, 사용 가능: %llu 바이트)";
+
+// 전송 오류 키
+"transferCancelled" = "전송 취소됨 (작업 ID: %@)";
+"transferFailed" = "'%@' 전송 실패：%@";
+"fileTooLarge" = "파일이 너무 큼 (%llu 바이트, 최대 %llu 바이트)";
+"insufficientStorage" = "저장 공간 부족 (필요: %llu 바이트, 사용 가능: %llu 바이트)";
+"destinationDirectoryDoesNotExist" = "대상 디렉터리가 존재하지 않음：%@";
+"corruptedFile" = "파일이 손상됨：%@";
+"networkError" = "네트워크 오류：%@";
+"timeout" = "작업 시간 초과";
+
+// 구성 오류 키
+"invalidConfiguration" = "잘못된 구성 '%@': %@";
+"missingConfiguration" = "구성 누락：%@";
+"configurationLoadFailed" = "구성 로드 실패：%@";
+
+// 스캔 오류 키
+"scanFailed" = "스캔 실패：%@";
+"scanTimeout" = "스캔 시간 초과";
+"scanCancelled" = "스캔 취소됨";
+"noDevicesFound" = "장치를 찾을 수 없음";
+"maxRetriesExceeded" = "최대 재시도 횟수 초과 (%d 회)";
