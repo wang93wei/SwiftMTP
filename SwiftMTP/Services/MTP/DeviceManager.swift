@@ -35,56 +35,56 @@ struct KalamStorage: Codable {
 @MainActor
 class DeviceManager: ObservableObject, DeviceManaging {
     // MARK: - Singleton
-    
+
     static let shared = DeviceManager()
-    
+
     // MARK: - Constants
-    
+
     /// Default scan interval in seconds
     private static let DefaultScanInterval: TimeInterval = 3.0
-    
+
     /// Scan interval when device is connected (seconds)
     private static let ConnectedDeviceScanInterval: TimeInterval = 5.0
-    
+
     /// Maximum scan interval for exponential backoff (seconds)
     private static let MaxScanInterval: TimeInterval = 30.0
-    
+
     /// Maximum consecutive failures before stopping automatic scan
     private static let MaxFailuresBeforeManualRefresh: Int = 3
-    
+
     /// Root directory ID (MTP protocol standard value)
     private static let RootDirectoryId: UInt32 = 0xFFFFFFFF
-    
+
     // MARK: - 发布属性
-    
+
     /// 设备列表
     @Published var devices: [Device] = []
-    
+
     /// 当前选中的设备
     @Published var selectedDevice: Device?
-    
+
     /// 是否正在扫描
     @Published var isScanning: Bool = false
-    
+
     /// 连接错误信息
     @Published var connectionError: String?
-    
+
     /// 是否已扫描过至少一次
     @Published var hasScannedOnce: Bool = false
-    
+
     /// 是否显示手动刷新按钮
     @Published var showManualRefreshButton: Bool = false
-    
+
     // MARK: - 私有属性
-    
+
     /// User configured scan interval in seconds
     private var userScanInterval: TimeInterval {
         let interval = UserDefaults.standard.double(forKey: AppConfiguration.scanIntervalKey)
         return interval > 0 ? interval : AppConfiguration.defaultScanInterval
     }
-    
-    /// Scan timer
-    private var scanTimer: Timer?
+
+    /// Scan task for AsyncStream-based periodic scanning
+    private var scanTask: Task<Void, Never>?
     
     /// Device ID cache (using NSCache for automatic memory management)
     private let deviceIdCache = NSCache<NSNumber, UUIDWrapper>()
@@ -128,8 +128,9 @@ class DeviceManager: ObservableObject, DeviceManaging {
     }
     
     deinit {
-        // Timer cleanup will be handled by automatic deallocation
-        // No manual cleanup needed as Timer will be released with the instance
+        // Task cleanup will be handled by automatic deallocation
+        // Cancel the scan task to stop async operations
+        scanTask?.cancel()
     }
     
     // MARK: - 公共方法
@@ -138,28 +139,38 @@ class DeviceManager: ObservableObject, DeviceManaging {
     /// 当用户更改设置时调用此方法以应用新的扫描间隔
     func updateScanInterval() {
         // 重新启动扫描以应用新的间隔
-        if scanTimer != nil {
+        if scanTask != nil {
             stopScanning()
             startScanning()
         }
     }
-    
+
     /// Start scanning for devices
-    /// Uses user configured scan interval
+    /// Uses user configured scan interval with AsyncStream
     func startScanning() {
         let interval = TimeInterval(userScanInterval)
-        scanTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.scanDevices()
+
+        // Create an AsyncStream that emits values at regular intervals
+        let timerStream = AsyncStream.makeTimer(interval: interval)
+
+        scanTask = Task {
+            for await _ in timerStream {
+                // Check if task is cancelled
+                if Task.isCancelled {
+                    break
+                }
+                scanDevices()
             }
         }
+
+        // Perform initial scan immediately
         scanDevices()
     }
-    
+
     /// 停止扫描设备
     func stopScanning() {
-        scanTimer?.invalidate()
-        scanTimer = nil
+        scanTask?.cancel()
+        scanTask = nil
     }
     
     /// Scan for devices
@@ -175,7 +186,7 @@ class DeviceManager: ObservableObject, DeviceManaging {
             return
         }
         
-        let actualInterval = scanTimer?.timeInterval ?? userScanInterval
+        let actualInterval = userScanInterval
         print("[DeviceManager] Starting scan, current failures: \(consecutiveFailures), interval: \(actualInterval)s")
         
         // Set scanning flag on main thread
@@ -291,31 +302,25 @@ class DeviceManager: ObservableObject, DeviceManaging {
         }
         
         // Update device list
-        devices = newDevices
-        lastDeviceSerials = newSerials
+                devices = newDevices
+                lastDeviceSerials = newSerials
         
-        // Reset failure count when devices are successfully detected
-        if !newDevices.isEmpty {
-            consecutiveFailures = 0
-            currentScanInterval = userScanInterval
-            showManualRefreshButton = false
-        }
-        
-        // Check if scan interval needs to be updated (when user settings change)
-        let previousInterval = scanTimer?.timeInterval ?? userScanInterval
-        let newInterval = userScanInterval
-        
-        // Update scan interval if it differs from user settings
-        if abs(previousInterval - newInterval) > 0.5 {
-            scanTimer?.invalidate()
-            scanTimer = Timer.scheduledTimer(withTimeInterval: newInterval, repeats: true) { [weak self] _ in
-                Task { @MainActor in
-                    self?.scanDevices()
+                // Reset failure count when devices are successfully detected
+                if !newDevices.isEmpty {
+                    consecutiveFailures = 0
+                    currentScanInterval = userScanInterval
+                    showManualRefreshButton = false
                 }
-            }
-            print("[DeviceManager] Scanning interval updated to \(newInterval)s")
-        }
         
+                // Check if scan interval needs to be updated (when user settings change)
+                // Only restart if the interval has actually changed
+                let newInterval = userScanInterval
+                if abs(newInterval - currentScanInterval) > 0.5 {
+                    print("[DeviceManager] Scan interval changed from \(currentScanInterval)s to \(newInterval)s, restarting scanning")
+                    currentScanInterval = newInterval
+                    stopScanning()
+                    startScanning()
+                }        
         // Auto-select if only one device and none selected
         if selectedDevice == nil && newDevices.count == 1 {
             selectedDevice = newDevices.first
@@ -400,5 +405,24 @@ class DeviceManager: ObservableObject, DeviceManaging {
             mtpSupportInfo: mtpSupportInfo,
             isConnected: true
         )
+    }
+}
+
+// MARK: - AsyncStream Extensions
+
+extension AsyncStream where Element == Void {
+    /// Creates an AsyncStream that emits values at regular intervals
+    /// - Parameter interval: The time interval between emissions
+    /// - Returns: An AsyncStream that emits Void at the specified interval
+    static func makeTimer(interval: TimeInterval) -> AsyncStream<Void> {
+        return AsyncStream { continuation in
+            Task {
+                while !Task.isCancelled {
+                    continuation.yield()
+                    try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                }
+                continuation.finish()
+            }
+        }
     }
 }

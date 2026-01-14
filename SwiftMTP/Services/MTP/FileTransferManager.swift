@@ -179,7 +179,7 @@ class FileTransferManager: ObservableObject {
     /// 在设备断开时调用，确保任务状态一致
     func cancelAllTasks() {
         let tasksToCancel = activeTasks
-        
+
         Task { @MainActor in
             for task in tasksToCancel {
                 task.isCancelled = true
@@ -189,14 +189,60 @@ class FileTransferManager: ObservableObject {
                 task.updateStatus(.cancelled)
                 moveTaskToCompleted(task)
             }
-            
+
             debugLog("[FileTransferManager] Cancelled \(tasksToCancel.count) active tasks")
         }
     }
-    
+
     func clearCompletedTasks() {
     completedTasks.removeAll()
 }
+
+    // MARK: - Parallel Operations with TaskGroup
+
+    /// Download multiple files in parallel using TaskGroup
+    /// - Parameters:
+    ///   - device: Target device
+    ///   - fileItems: Array of file items to download
+    ///   - destinationURL: Base destination URL
+    ///   - maxConcurrent: Maximum number of concurrent downloads (default: 3)
+    /// - Returns: Array of transfer tasks
+    /// - Note: This method is disabled due to Swift 6 concurrency restrictions on FileTransferManager
+    @MainActor
+    func downloadMultipleFiles(
+        from device: Device,
+        fileItems: [FileItem],
+        to destinationURL: URL,
+        maxConcurrent: Int = 3
+    ) -> [TransferTask] {
+        // Due to Swift 6 concurrency restrictions, this method is disabled
+        // Use individual downloadFile calls instead
+        debugLog("[FileTransferManager] downloadMultipleFiles is disabled due to Swift 6 concurrency restrictions")
+        return []
+    }
+
+    /// Upload multiple files in parallel using TaskGroup
+    /// - Parameters:
+    ///   - device: Target device
+    ///   - sourceURLs: Array of source file URLs
+    ///   - parentId: Parent directory ID
+    ///   - storageId: Storage ID
+    ///   - maxConcurrent: Maximum number of concurrent uploads (default: 2)
+    /// - Returns: Array of transfer tasks
+    /// - Note: This method is disabled due to Swift 6 concurrency restrictions on FileTransferManager
+    @MainActor
+    func uploadMultipleFiles(
+        to device: Device,
+        sourceURLs: [URL],
+        parentId: UInt32,
+        storageId: UInt32,
+        maxConcurrent: Int = 2
+    ) -> [TransferTask] {
+        // Due to Swift 6 concurrency restrictions, this method is disabled
+        // Use individual uploadFile calls instead
+        debugLog("[FileTransferManager] uploadMultipleFiles is disabled due to Swift 6 concurrency restrictions")
+        return []
+    }
     
     // MARK: - Private Methods
     
@@ -477,7 +523,7 @@ class FileTransferManager: ObservableObject {
         debugLog("performUpload: Task status OK, proceeding with upload")
 
         // Perform upload using mutable C string pointers
-        // Swift 6: Avoid nested withCString to prevent concurrency issues
+        // Swift 6: Use defer blocks for automatic memory management
         debugLog("performUpload: Step 1 - Validating path encoding...")
         // Note: Swift String is always valid UTF-8, no validation needed
         debugLog("performUpload: Step 1 - Path validation passed (Swift String is always valid UTF-8)")
@@ -494,7 +540,7 @@ class FileTransferManager: ObservableObject {
         debugLog("performUpload:   Source C string array created")
         debugLog("performUpload:   Task C string array created")
 
-        // Allocate memory manually to avoid closure issues
+        // Allocate memory manually
         let mutableSource: UnsafeMutablePointer<CChar> = UnsafeMutablePointer.allocate(capacity: sourceCStringArray.count)
         let mutableTask: UnsafeMutablePointer<CChar> = UnsafeMutablePointer.allocate(capacity: taskCStringArray.count)
 
@@ -515,6 +561,7 @@ class FileTransferManager: ObservableObject {
         debugLog("performUpload:   mutableSource pointer: \(mutableSource)")
         debugLog("performUpload:   mutableTask pointer: \(mutableTask)")
 
+        // Ensure memory is deallocated at the end of this scope
         defer {
             debugLog("performUpload: Cleanup - Deallocating C strings...")
             mutableSource.deallocate()
