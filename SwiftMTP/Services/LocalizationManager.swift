@@ -198,6 +198,55 @@ enum L10n {
         static var restartLater: String { LanguageManager.shared.localizedString(for: "restartLater") }
         static var systemDefault: String { LanguageManager.shared.localizedString(for: "systemDefault") }
     }
+
+    enum DeviceError {
+        static var deviceNotFound: String { LanguageManager.shared.localizedString(for: "deviceNotFound") }
+        static var deviceDisconnected: String { LanguageManager.shared.localizedString(for: "deviceDisconnected") }
+        static var deviceInitializationFailed: String { LanguageManager.shared.localizedString(for: "deviceInitializationFailed") }
+        static var deviceBusy: String { LanguageManager.shared.localizedString(for: "deviceBusy") }
+        static var deviceTimeout: String { LanguageManager.shared.localizedString(for: "deviceTimeout") }
+        static var deviceNotSupported: String { LanguageManager.shared.localizedString(for: "deviceNotSupported") }
+    }
+
+    enum FileSystemError {
+        static var fileNotFound: String { LanguageManager.shared.localizedString(for: "fileNotFound") }
+        static var folderNotFound: String { LanguageManager.shared.localizedString(for: "folderNotFound") }
+        static var fileAlreadyExists: String { LanguageManager.shared.localizedString(for: "fileAlreadyExists") }
+        static var invalidPath: String { LanguageManager.shared.localizedString(for: "invalidPath") }
+        static var pathTooLong: String { LanguageManager.shared.localizedString(for: "pathTooLong") }
+        static var invalidFileName: String { LanguageManager.shared.localizedString(for: "invalidFileName") }
+        static var permissionDenied: String { LanguageManager.shared.localizedString(for: "permissionDenied") }
+        static var storageNotFound: String { LanguageManager.shared.localizedString(for: "storageNotFound") }
+        static var storageFull: String { LanguageManager.shared.localizedString(for: "storageFull") }
+    }
+
+    enum TransferError {
+        static var transferCancelled: String { LanguageManager.shared.localizedString(for: "transferCancelled") }
+        static var transferFailed: String { LanguageManager.shared.localizedString(for: "transferFailed") }
+        static var downloadFailed: String { LanguageManager.shared.localizedString(for: "downloadFailed") }
+        static var uploadFailed: String { LanguageManager.shared.localizedString(for: "uploadFailed") }
+        static var fileTooLarge: String { LanguageManager.shared.localizedString(for: "fileTooLarge") }
+        static var insufficientStorage: String { LanguageManager.shared.localizedString(for: "insufficientStorage") }
+        static var destinationDirectoryDoesNotExist: String { LanguageManager.shared.localizedString(for: "destinationDirectoryDoesNotExist") }
+        static var fileAlreadyExistsAtDestination: String { LanguageManager.shared.localizedString(for: "fileAlreadyExistsAtDestination") }
+        static var corruptedFile: String { LanguageManager.shared.localizedString(for: "corruptedFile") }
+        static var networkError: String { LanguageManager.shared.localizedString(for: "networkError") }
+        static var timeout: String { LanguageManager.shared.localizedString(for: "timeout") }
+    }
+
+    enum ConfigurationError {
+        static var invalidConfiguration: String { LanguageManager.shared.localizedString(for: "invalidConfiguration") }
+        static var missingConfiguration: String { LanguageManager.shared.localizedString(for: "missingConfiguration") }
+        static var configurationLoadFailed: String { LanguageManager.shared.localizedString(for: "configurationLoadFailed") }
+    }
+
+    enum ScanError {
+        static var scanFailed: String { LanguageManager.shared.localizedString(for: "scanFailed") }
+        static var scanTimeout: String { LanguageManager.shared.localizedString(for: "scanTimeout") }
+        static var scanCancelled: String { LanguageManager.shared.localizedString(for: "scanCancelled") }
+        static var noDevicesFound: String { LanguageManager.shared.localizedString(for: "noDevicesFound") }
+        static var maxRetriesExceeded: String { LanguageManager.shared.localizedString(for: "maxRetriesExceeded") }
+    }
 }
 
 extension String {

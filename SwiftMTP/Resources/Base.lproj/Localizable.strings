@@ -209,3 +209,91 @@
 "uploadFailed" = "Upload failed";
 "deleteMultipleFiles" = "Delete Multiple Files";
 "confirmDeleteMultipleFiles" = "Are you sure you want to delete these %d files?\n\n%@\n\nThis action cannot be undone.";
+
+// Error messages - MTP
+"error.mtp.deviceNotFound" = "Device not found";
+"error.mtp.deviceDisconnected" = "Device disconnected";
+"error.mtp.deviceInitializationFailed" = "Failed to initialize device: %@";
+"error.mtp.deviceBusy" = "Device is busy";
+"error.mtp.deviceTimeout" = "Device operation timed out";
+"error.mtp.deviceNotSupported" = "Device not supported";
+
+// Error messages - File System
+"error.fs.fileNotFound" = "File not found (ID: %u)";
+"error.fs.folderNotFound" = "Folder not found (ID: %u)";
+"error.fs.fileAlreadyExists" = "File already exists: %@";
+"error.fs.invalidPath" = "Invalid path '%@': %@";
+"error.fs.pathTooLong" = "Path too long (%d characters, maximum %d)";
+"error.fs.invalidFileName" = "Invalid file name '%@': %@";
+"error.fs.permissionDenied" = "Permission denied";
+"error.fs.storageNotFound" = "Storage not found (ID: %u)";
+"error.fs.storageFull" = "Storage full (required: %llu bytes, available: %llu bytes)";
+
+// Error messages - Transfer
+"error.transfer.cancelled" = "Transfer cancelled (Task ID: %@)";
+"error.transfer.failed" = "Transfer failed for '%@': %@";
+"error.transfer.downloadFailed" = "Download failed for object %u: %@";
+"error.transfer.uploadFailed" = "Upload failed for '%@': %@";
+"error.transfer.fileTooLarge" = "File too large (%llu bytes, maximum %llu bytes)";
+"error.transfer.insufficientStorage" = "Insufficient storage space (required: %llu bytes, available: %llu bytes)";
+"error.transfer.destinationDirectoryDoesNotExist" = "Destination directory does not exist: %@";
+"error.transfer.fileAlreadyExistsAtDestination" = "File already exists at destination: %@";
+"error.transfer.corruptedFile" = "Corrupted file: %@";
+"error.transfer.networkError" = "Network error: %@";
+"error.transfer.timeout" = "Operation timed out";
+
+// Error messages - Configuration
+"error.config.invalid" = "Invalid configuration '%@': %@";
+"error.config.missing" = "Missing configuration: %@";
+"error.config.loadFailed" = "Failed to load configuration: %@";
+
+// Error messages - Scan
+"error.scan.failed" = "Scan failed: %@";
+"error.scan.timeout" = "Scan timed out";
+"error.scan.cancelled" = "Scan cancelled";
+"error.scan.noDevicesFound" = "No devices found";
+"error.scan.maxRetriesExceeded" = "Maximum retries exceeded (%d attempts)";
+
+/* MTP Errors */
+"deviceNotFound" = "Device not found";
+"deviceDisconnected" = "Device disconnected";
+"deviceInitializationFailed" = "Failed to initialize device: %@";
+"deviceBusy" = "Device is busy";
+"deviceTimeout" = "Device operation timed out";
+"deviceNotSupported" = "Device not supported";
+
+/* File System Errors */
+"fileNotFound" = "File not found (ID: %u)";
+"folderNotFound" = "Folder not found (ID: %u)";
+"fileAlreadyExists" = "File already exists: %@";
+"invalidPath" = "Invalid path '%@': %@";
+"pathTooLong" = "Path too long (%d characters, maximum %d)";
+"invalidFileName" = "Invalid file name '%@': %@";
+"permissionDenied" = "Permission denied";
+"storageNotFound" = "Storage not found (ID: %u)";
+"storageFull" = "Storage full (required: %llu bytes, available: %llu bytes)";
+
+/* Transfer Errors */
+"transferCancelled" = "Transfer cancelled (Task ID: %@)";
+"transferFailed" = "Transfer failed for '%@': %@";
+"downloadFailed" = "Download failed for object %u: %@";
+"uploadFailed" = "Upload failed for '%@': %@";
+"fileTooLarge" = "File too large (%llu bytes, maximum %llu bytes)";
+"insufficientStorage" = "Insufficient storage space (required: %llu bytes, available: %llu bytes)";
+"destinationDirectoryDoesNotExist" = "Destination directory does not exist: %@";
+"fileAlreadyExistsAtDestination" = "File already exists at destination: %@";
+"corruptedFile" = "Corrupted file: %@";
+"networkError" = "Network error: %@";
+"timeout" = "Operation timed out";
+
+/* Configuration Errors */
+"invalidConfiguration" = "Invalid configuration '%@': %@";
+"missingConfiguration" = "Missing configuration: %@";
+"configurationLoadFailed" = "Failed to load configuration: %@";
+
+/* Scan Errors */
+"scanFailed" = "Scan failed: %@";
+"scanTimeout" = "Scan timed out";
+"scanCancelled" = "Scan cancelled";
+"noDevicesFound" = "No devices found";
+"maxRetriesExceeded" = "Maximum retries exceeded (%d attempts)";
