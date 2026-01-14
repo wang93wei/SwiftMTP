@@ -121,7 +121,6 @@ DMG 文件将生成在 `build/` 目录中。
 SwiftMTP/
 ├── Native/                         # Go 桥接层 (Kalam Kernel)
 │   ├── kalam_bridge.go            # 主要桥接实现 (CGO)
-│   ├── kalam_bridge_test.go       # Go 单元测试
 │   ├── libkalam.h                 # C 头文件（Swift 桥接）
 │   ├── go.mod / go.sum            # Go 模块依赖
 │   └── vendor/                    # Go 依赖 (go-mtpx, usb)

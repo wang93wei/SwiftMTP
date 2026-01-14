@@ -121,7 +121,6 @@ The DMG file will be generated in the `build/` directory.
 SwiftMTP/
 ├── Native/                         # Go bridge layer (Kalam Kernel)
 │   ├── kalam_bridge.go            # Main bridge implementation (CGO)
-│   ├── kalam_bridge_test.go       # Go unit tests
 │   ├── libkalam.h                 # C header (Swift bridging)
 │   ├── go.mod / go.sum            # Go module dependencies
 │   └── vendor/                    # Go dependencies (go-mtpx, usb)

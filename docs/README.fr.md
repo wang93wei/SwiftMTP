@@ -30,7 +30,7 @@
 | 📦 **Opérations en lot** | Sélection et traitement en lot de fichiers |
 | 🎨 **Interface moderne** | Belle interface SwiftUI |
 | 📊 **Informations de stockage** | Affiche l'utilisation du stockage de l'appareil |
-| 🌍 **Support multilingue** | Supporte le chinois simplifié, l'anglais, le japonais, le coréen, le russe, le français, suit la langue du système |
+| 🌍 **Support multilingue** | Supporte le chinois simplifié, l'anglais, le japonais, le coréen, le russe, le français, l'allemand, suit la langue du système |
 
 ## 📸 Capture d'écran de l'application
 ![SwiftMTP Logo](../SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png)
@@ -121,7 +121,6 @@ Le fichier DMG sera généré dans le répertoire `build/`.
 SwiftMTP/
 ├── Native/                         # Pont Go (Kalam Kernel)
 │   ├── kalam_bridge.go            # Implémentation principale du pont (CGO)
-│   ├── kalam_bridge_test.go       # Tests unitaires Go
 │   ├── libkalam.h                 # En-tête C (pont Swift)
 │   ├── go.mod / go.sum            # Dépendances des modules Go
 │   └── vendor/                    # Dépendances Go (go-mtpx, usb)
