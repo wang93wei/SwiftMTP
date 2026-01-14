@@ -111,6 +111,7 @@ Le fichier DMG sera généré dans le répertoire `build/`.
    - **한국어** - Interface en coréen
    - **Русский** - Interface en russe
    - **Français** - Interface en français
+   - **Deutsch** - Interface en allemand
 4. L'interface de l'application mettra immédiatement à jour la langue
 5. **La barre de menus et les sélecteurs de fichiers** nécessitent un redémarrage de l'application pour prendre effet, le système proposera un redémarrage immédiat
 

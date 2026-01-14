@@ -177,7 +177,16 @@ SwiftMTP/
 │   │   ├── ja.lproj/              # 日语语言包
 │   │   │   ├── InfoPlist.strings
 │   │   │   └── Localizable.strings
-│   │   └── ko.lproj/              # 韩语语言包
+│   │   ├── ko.lproj/              # 韩语语言包
+│   │   │   ├── InfoPlist.strings
+│   │   │   └── Localizable.strings
+│   │   ├── ru.lproj/              # 俄语语言包
+│   │   │   ├── InfoPlist.strings
+│   │   │   └── Localizable.strings
+│   │   ├── fr.lproj/              # 法语语言包
+│   │   │   ├── InfoPlist.strings
+│   │   │   └── Localizable.strings
+│   │   └── de.lproj/              # 德语语言包
 │   │       ├── InfoPlist.strings
 │   │       └── Localizable.strings
 │   ├── libkalam.dylib             # Go 动态库
