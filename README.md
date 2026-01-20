@@ -225,6 +225,9 @@ SwiftMTP/
 1. Sandbox must be disabled to access USB devices
 2. Transfer speed is limited by MTP protocol
 3. Currently only supports single file upload (folder upload not supported)
+4. Swift unit tests are incomplete and need further development
+5. Liquid Glass UI implementation is incomplete and contains bugs that need fixing
+6. We welcome more contributors to help improve the codebase
 
 ## 🔧 Troubleshooting
 

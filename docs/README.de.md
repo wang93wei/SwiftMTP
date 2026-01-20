@@ -225,6 +225,9 @@ SwiftMTP/
 1. Sandbox muss deaktiviert sein, um auf USB-Geräte zuzugreifen
 2. Übertragungsgeschwindigkeit ist durch MTP-Protokoll begrenzt
 3. Derzeit wird nur der Upload einzelner Dateien unterstützt (Ordner-Upload wird nicht unterstützt)
+4. Swift-Unit-Tests sind unvollständig und benötigen weitere Entwicklung
+5. Die Liquid Glass UI-Implementierung ist unvollständig und enthält Fehler, die behoben werden müssen
+6. Wir begrüßen mehr Mitwirkende, die helfen, die Codebasis zu verbessern
 
 ## 🔧 Fehlerbehebung
 
