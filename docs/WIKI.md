@@ -273,8 +273,7 @@ SwiftMTP/
 │   │   ├── en.lproj/              # 英文语言包
 │   │   ├── zh-Hans.lproj/         # 简体中文语言包
 │   │   ├── ja.lproj/              # 日语语言包
-│   │   ├── ko.lproj/              # 韩语语言包
-│   │   └── Kalam.bundle/          # Go 动态库
+│   │   └── ko.lproj/              # 韩语语言包
 │   │
 │   ├── libkalam.dylib             # Go 动态库
 │   ├── libkalam.h                 # C 桥接头文件

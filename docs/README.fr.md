@@ -164,8 +164,7 @@ SwiftMTP/
 │   │       ├── LiquidGlassView.swift
 │   │       └── TransferTaskRowView.swift
 │   ├── Resources/                 # Fichiers de ressources
-│   │   ├── Kalam.bundle/          # Bundle de bibliothèque dynamique Go
-│   │   │   └── Contents/MacOS/Kalam
+│   │   ├── libkalam.dylib         # Bibliothèque dynamique Go (pont CGO)
 │   │   ├── Base.lproj/            # Pack de langue de base (anglais)
 │   │   │   ├── InfoPlist.strings
 │   │   │   └── Localizable.strings
