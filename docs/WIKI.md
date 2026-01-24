@@ -639,8 +639,9 @@ DispatchQueue.main.async
 
 | 库 | 安装命令 |
 |------|----------|
-| libusb-1.0 | `brew install libusb-1.0` |
 | Go | `brew install go` |
+
+> 📝 **说明**: libusb-1.0 现已打包到应用中，无需手动安装。
 
 ### 安装步骤
 
@@ -652,7 +653,7 @@ git clone https://github.com/wang93wei/SwiftMTP.git
 cd SwiftMTP
 
 # 2. 安装依赖
-brew install libusb-1.0 go
+brew install go
 
 # 3. 构建 Go 桥接层
 ./Scripts/build_kalam.sh
@@ -784,15 +785,14 @@ brew --version
 #### 3. 安装依赖
 
 ```bash
-# 安装 libusb-1.0
-brew install libusb-1.0
-
 # 安装 Go
 brew install go
 
 # 验证安装
 go version
 ```
+
+> 📝 **说明**: libusb-1.0 已在构建过程中自动处理，无需手动安装。
 
 #### 4. 克隆项目
 
@@ -1246,9 +1246,9 @@ A: 在 Xcode 项目设置中：
 **Q: 应用无法启动怎么办？**
 
 A: 检查以下几点：
-1. 确保已安装 libusb-1.0: `brew list libusb-1.0`
-2. 确保已构建 Go 桥接层: `./Scripts/build_kalam.sh`
-3. 检查 libkalam.dylib 是否存在: `ls SwiftMTP/libkalam.dylib`
+1. 确保已构建 Go 桥接层: `./Scripts/build_kalam.sh`
+2. 检查 libkalam.dylib 是否存在: `ls SwiftMTP/libkalam.dylib`
+3. 检查 libusb-1.0.dylib 是否存在: `ls SwiftMTP/libusb-1.0.dylib`
 
 ### 设备连接
 
@@ -1382,10 +1382,7 @@ A: 为了提高稳定性，进度回调功能已被禁用。传输完成后会�
 # 1. 检查 USB 设备是否被识别
 system_profiler SPUSBDataType | grep -i android
 
-# 2. 检查 libusb-1.0 安装
-brew list libusb-1.0
-
-# 3. 检查应用日志
+# 2. 检查应用日志
 # Console.app → 选择 SwiftMTP → 查看日志
 ```
 
