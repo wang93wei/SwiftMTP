@@ -24,10 +24,8 @@ BUILD_PATH="$PROJECT_ROOT/build"
 DMG_PATH="$PROJECT_ROOT/build"
 APP_NAME="$PROJECT_NAME.app"
 DMG_NAME="$PROJECT_NAME"
-VERSION=$(cd "$PROJECT_ROOT" && git describe --tags --always --dirty 2>/dev/null || echo "1.0.0")
 
 echo -e "${GREEN}开始打包 $PROJECT_NAME (简化版)...${NC}"
-echo -e "${YELLOW}版本: $VERSION${NC}"
 
 # 清理旧的构建文件
 echo -e "${YELLOW}清理旧的构建文件...${NC}"
@@ -57,6 +55,13 @@ fi
 
 echo -e "${GREEN}找到 APP: $APP_PATH${NC}"
 
+# 从构建后的 .app 包中读取版本号（已解析 Xcode 变量）
+APP_INFO_PLIST="$APP_PATH/Contents/Info.plist"
+VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_INFO_PLIST" 2>/dev/null || echo "1.0.0")
+BUILD_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_INFO_PLIST" 2>/dev/null || echo "1")
+
+echo -e "${YELLOW}版本: $VERSION (Build $BUILD_VERSION)${NC}"
+
 # 2. 创建 DMG
 echo -e "${YELLOW}正在创建 DMG...${NC}"
 
@@ -70,9 +75,6 @@ cp -R "$APP_PATH" "$DMG_TEMP_DIR/"
 
 # 创建 Applications 文件夹链接
 ln -s /Applications "$DMG_TEMP_DIR/Applications"
-
-# 创建一个简单的背景文件夹（可选）
-mkdir -p "$DMG_TEMP_DIR/.background"
 
 # 创建 DMG
 DMG_FILE="$DMG_PATH/${DMG_NAME}_${VERSION}.dmg"
