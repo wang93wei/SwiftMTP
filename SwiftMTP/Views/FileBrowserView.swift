@@ -48,6 +48,11 @@ struct FileBrowserView: View {
     // Create folder state
     @State private var showingCreateFolderDialog = false
     @State private var newFolderName = ""
+
+    // Upload file state
+    @State private var pendingUploadFiles: [(url: URL, parentId: UInt32, storageId: UInt32)] = []
+    @State private var showingUploadReplaceDialog = false
+    @State private var filesToReplace: [(url: URL, existingFile: FileItem)] = []
     
     // MARK: - Sort Option
     
@@ -621,6 +626,108 @@ struct FileBrowserView: View {
     
     // MARK: - Helper Methods
 
+    /// 检查文件是否已存在于目标目录
+    private func checkFileExists(_ fileName: String, parentId: UInt32) -> FileItem? {
+        let existingFile = currentFiles.first { $0.name == fileName && !$0.isDirectory }
+        if existingFile != nil {
+            print("[checkFileExists] Found duplicate file: \(fileName)")
+        }
+        return existingFile
+    }
+
+    /// 显示文件替换确认对话框
+    private func showFileReplaceDialog(existingFiles: [(url: URL, existingFile: FileItem)], completion: @escaping ([(url: URL, shouldReplace: Bool)]) -> Void) {
+        print("[showFileReplaceDialog] Showing dialog for \(existingFiles.count) files")
+
+        let alert = NSAlert()
+        alert.messageText = L10n.FileBrowser.someFilesAlreadyExist
+        alert.informativeText = L10n.FileBrowser.filesAlreadyExistMessage.localized(
+            existingFiles.count,
+            existingFiles.map { "• \($0.url.lastPathComponent)" }.joined(separator: "\n")
+        )
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: L10n.FileBrowser.cancel)
+        alert.addButton(withTitle: L10n.FileBrowser.skipExistingFiles)
+        alert.addButton(withTitle: L10n.FileBrowser.replaceAll)
+
+        // Try to get a window - prefer key window, then main window, then any window
+        let window = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first
+
+        print("[showFileReplaceDialog] Window: \(window != nil)")
+
+        if let window = window {
+            alert.beginSheetModal(for: window) { response in
+                print("[showFileReplaceDialog] User response: \(response)")
+                switch response {
+                case .alertSecondButtonReturn:
+                    // Skip existing files
+                    let filesToUpload = existingFiles.map { ($0.url, false) }
+                    completion(filesToUpload)
+                case .alertThirdButtonReturn:
+                    // Replace all files
+                    let filesToUpload = existingFiles.map { ($0.url, true) }
+                    completion(filesToUpload)
+                default:
+                    // Cancel
+                    completion([])
+                }
+            }
+        } else {
+            // If no window is available, cancel the operation
+            print("[showFileReplaceDialog] No window available, cancelling")
+            completion([])
+        }
+    }
+
+    /// 处理待上传的文件，检查重复并显示确认对话框
+    private func processUploadFiles(_ files: [(url: URL, parentId: UInt32, storageId: UInt32)]) {
+        print("[processUploadFiles] Processing \(files.count) files")
+        print("[processUploadFiles] Current directory has \(currentFiles.count) files")
+
+        // Check for existing files
+        var existingFiles: [(url: URL, existingFile: FileItem)] = []
+        var newFiles: [(url: URL, parentId: UInt32, storageId: UInt32)] = []
+
+        for file in files {
+            print("[processUploadFiles] Checking file: \(file.url.lastPathComponent)")
+            if let existingFile = checkFileExists(file.url.lastPathComponent, parentId: file.parentId) {
+                existingFiles.append((url: file.url, existingFile: existingFile))
+            } else {
+                newFiles.append(file)
+            }
+        }
+
+        print("[processUploadFiles] Found \(existingFiles.count) existing files, \(newFiles.count) new files")
+
+        // If no existing files, upload all new files
+        if existingFiles.isEmpty {
+            print("[processUploadFiles] No existing files, uploading \(newFiles.count) new files directly")
+            for file in newFiles {
+                FileTransferManager.shared.uploadFile(to: device, sourceURL: file.url, parentId: file.parentId, storageId: file.storageId)
+            }
+            return
+        }
+
+        print("[processUploadFiles] Showing replace dialog for \(existingFiles.count) files")
+
+        // Show confirmation dialog for existing files
+        showFileReplaceDialog(existingFiles: existingFiles) { decision in
+            print("[processUploadFiles] User decision: \(decision.count) files to process")
+            // Upload new files
+            for file in newFiles {
+                FileTransferManager.shared.uploadFile(to: device, sourceURL: file.url, parentId: file.parentId, storageId: file.storageId)
+            }
+
+            // Upload existing files based on user decision
+            for (url, shouldReplace) in decision {
+                if shouldReplace {
+                    let file = files.first { $0.url == url }!
+                    FileTransferManager.shared.uploadFile(to: device, sourceURL: file.url, parentId: file.parentId, storageId: file.storageId)
+                }
+            }
+        }
+    }
+
     private func selectFilesToUpload() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
@@ -634,7 +741,7 @@ struct FileBrowserView: View {
             if response == .OK {
                 // Determine parent ID: use current folder or root (0xFFFFFFFF)
                 let parentId = currentPath.last?.objectId ?? 0xFFFFFFFF
-                
+
                 // Determine storage ID: use current path's storage or device's first storage
                 let storageId: UInt32
                 if let pathStorageId = currentPath.first?.storageId {
@@ -645,12 +752,12 @@ struct FileBrowserView: View {
                     print("Error: No storage available for upload")
                     return
                 }
-                
+
                 print("Uploading to parentId: \(parentId), storageId: \(storageId)")
-                
-                for url in panel.urls {
-                    FileTransferManager.shared.uploadFile(to: device, sourceURL: url, parentId: parentId, storageId: storageId)
-                }
+
+                // Process files with duplicate checking
+                let filesToUpload = panel.urls.map { (url: $0, parentId: parentId, storageId: storageId) }
+                processUploadFiles(filesToUpload)
             }
         }
     }
@@ -952,19 +1059,23 @@ struct FileBrowserView: View {
     
     private func uploadDroppedFiles(_ urls: [URL], parentId: UInt32, storageId: UInt32) {
         print("Uploading \(urls.count) dropped files...")
-        
+
+        var filesToUpload: [(url: URL, parentId: UInt32, storageId: UInt32)] = []
+
         for url in urls {
             // Skip directories and hidden files
             var isDirectory: ObjCBool = false
-            if url.lastPathComponent.hasPrefix(".") || 
+            if url.lastPathComponent.hasPrefix(".") ||
                FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue {
                 print("Skipping: \(url.lastPathComponent) (hidden or directory)")
                 continue
             }
-            
-            // Upload file
-            FileTransferManager.shared.uploadFile(to: device, sourceURL: url, parentId: parentId, storageId: storageId)
+
+            filesToUpload.append((url: url, parentId: parentId, storageId: storageId))
         }
+
+        // Process files with duplicate checking
+        processUploadFiles(filesToUpload)
     }
 }
 
