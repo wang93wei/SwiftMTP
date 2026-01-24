@@ -35,14 +35,13 @@ struct DeviceListView: View {
                         
                         Button(action: {
                             deviceManager.manualRefresh()
-                        }) {
-                            HStack(spacing: 8) {
+                        }){
+                           HStack(spacing: 4) {
                                 Image(systemName: "arrow.clockwise")
-                                Text(L10n.MainWindow.refresh)
+                                Text(L10n.MainWindow.refresh) 
                             }
-                            .font(.system(size: 14, weight: .medium))
                         }
-                        .glassEffect()
+                        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 8))
                         .scaleEffect(deviceManager.isScanning ? 0.95 : 1.0)
                         .animation(.easeInOut(duration: 0.2), value: deviceManager.isScanning)
                         .disabled(deviceManager.isScanning)
