@@ -114,24 +114,28 @@ struct FileBrowserView: View {
                     .disabled(currentPath.isEmpty)
                     .glassEffect()
                 }
-                
+
                 ToolbarItem {
-                    GlassEffectContainer(spacing: 20) {
-                        HStack(spacing: 4) {
+                    GlassEffectContainer(spacing: 1) {
+                        HStack(spacing: 1) {
                             refreshButton
-                            transferTasksButton
+                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             sortMenu
-                            Divider()
-                                .frame(height: 20)
+                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             newFolderButton
+                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             uploadFilesButton
+                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             downloadButton
+                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             deleteButton
+                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+                            transferTasksButton
+                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                         }
                     }
                 }
             }
-            .toolbarLiquidGlass()
             .sheet(isPresented: $showTransferPanel) {
                 FileTransferView()
                     .environmentObject(transferManager)
@@ -756,7 +760,6 @@ struct FileBrowserView: View {
         }
         .help(L10n.MainWindow.refreshFileList)
         .glassEffect()
-        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
     }
     
     private var transferTasksButton: some View {
@@ -766,10 +769,9 @@ struct FileBrowserView: View {
             Label(L10n.MainWindow.transferTasks, systemImage: "arrow.up.arrow.down.circle")
                 .labelStyle(.iconOnly)
         }
-        .badge(transferManager.activeTasks.count)
         .help(L10n.MainWindow.viewTransferTasks)
         .glassEffect()
-        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
+        .badge(transferManager.activeTasks.count)
     }
     
     private var newFolderButton: some View {
@@ -778,7 +780,6 @@ struct FileBrowserView: View {
         }
         .help(L10n.FileBrowser.createNewFolderHelp)
         .glassEffect()
-        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
     }
     
     private var uploadFilesButton: some View {
@@ -787,7 +788,6 @@ struct FileBrowserView: View {
         }
         .help(L10n.FileBrowser.uploadFilesHelp)
         .glassEffect()
-        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
     }
     
     private var downloadButton: some View {
@@ -800,7 +800,6 @@ struct FileBrowserView: View {
         .help(L10n.FileBrowser.downloadHelp)
         .disabled(!hasDownloadableFiles)
         .glassEffect()
-        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
     }
     
     private var deleteButton: some View {
@@ -814,7 +813,6 @@ struct FileBrowserView: View {
         .disabled(selectedFiles.isEmpty)
         .tint(selectedFiles.isEmpty ? .secondary : .red)
         .glassEffect()
-        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
     }
 
     private var sortMenu: some View {
@@ -850,7 +848,6 @@ struct FileBrowserView: View {
         }
         .help(L10n.FileBrowser.sortFiles)
         .glassEffect()
-        .glassEffectUnion(id: "primary", namespace: toolbarNamespace)
     }
 
     // MARK: - Create Folder Dialog
