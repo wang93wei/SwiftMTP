@@ -48,8 +48,10 @@
 ### 安装依赖
 
 ```bash
-brew install libusb-1.0 go
+brew install go
 ```
+
+> 📝 **说明**: libusb-1.0 现已打包到应用中，无需手动安装。
 
 ### 构建运行
 
@@ -243,9 +245,6 @@ SwiftMTP/
 ### 编译错误
 
 ```bash
-# 检查 libusb-1.0 安装
-brew list libusb-1.0
-
 # 重新构建 Go 桥接层
 ./Scripts/build_kalam.sh
 

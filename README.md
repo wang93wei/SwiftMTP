@@ -48,8 +48,10 @@
 ### Install Dependencies
 
 ```bash
-brew install libusb-1.0 go
+brew install go
 ```
+
+> 📝 **Note**: libusb-1.0 is now bundled with the application, so no manual installation is required.
 
 ### Build and Run
 
@@ -243,9 +245,6 @@ SwiftMTP/
 ### Build Errors
 
 ```bash
-# Check libusb-1.0 installation
-brew list libusb-1.0
-
 # Rebuild Go bridge layer
 ./Scripts/build_kalam.sh
 

@@ -48,8 +48,10 @@
 ### 依存関係のインストール
 
 ```bash
-brew install libusb-1.0 go
+brew install go
 ```
+
+> 📝 **注**: libusb-1.0 はアプリケーションにバンドルされているため、手動インストールは不要です。
 
 ### ビルドと実行
 
@@ -243,9 +245,6 @@ SwiftMTP/
 ### ビルドエラー
 
 ```bash
-# libusb-1.0 のインストールを確認
-brew list libusb-1.0
-
 # Go ブリッジレイヤーを再ビルド
 ./Scripts/build_kalam.sh
 

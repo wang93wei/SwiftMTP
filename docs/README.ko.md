@@ -48,8 +48,10 @@
 ### 의존성 설치
 
 ```bash
-brew install libusb-1.0 go
+brew install go
 ```
+
+> 📝 **참고**: libusb-1.0은 애플리케이션에 번들되어 있으므로 수동 설치가 필요하지 않습니다.
 
 ### 빌드 및 실행
 
@@ -243,9 +245,6 @@ SwiftMTP/
 ### 빌드 오류
 
 ```bash
-# libusb-1.0 설치 확인
-brew list libusb-1.0
-
 # Go 브리지 레이어 재빌드
 ./Scripts/build_kalam.sh
 

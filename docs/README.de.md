@@ -48,8 +48,10 @@
 ### Abhängigkeiten installieren
 
 ```bash
-brew install libusb-1.0 go
+brew install go
 ```
+
+> 📝 **Hinweis**: libusb-1.0 ist jetzt in der Anwendung enthalten, keine manuelle Installation erforderlich.
 
 ### Kompilieren und Ausführen
 
@@ -243,9 +245,6 @@ SwiftMTP/
 ### Kompilierungsfehler
 
 ```bash
-# Überprüfen Sie die Installation von libusb-1.0
-brew list libusb-1.0
-
 # Go-Brücke neu kompilieren
 ./Scripts/build_kalam.sh
 
