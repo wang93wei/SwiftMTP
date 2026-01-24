@@ -39,10 +39,12 @@
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			attributesByRelativePath = {
 				libkalam.dylib = (CodeSignOnCopy, );
+				"libusb-1.0.dylib" = (CodeSignOnCopy, );
 			};
 			buildPhase = F5FF14C72EF73F3800308744 /* Embed Libraries */;
 			membershipExceptions = (
 				libkalam.dylib,
+				"libusb-1.0.dylib",
 			);
 		};
 /* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
@@ -297,11 +299,11 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				HEADER_SEARCH_PATHS = (
-					"/opt/homebrew/Cellar/libusb/1.0.29/include/libusb-1.0/**",
-					"$(SRCROOT)/SwiftMTP/Services/MTP/**",
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/SwiftMTP/Services/MTP/**";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/SwiftMTP",
 				);
-				LIBRARY_SEARCH_PATHS = "";
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -359,11 +361,11 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				HEADER_SEARCH_PATHS = (
-					"/opt/homebrew/Cellar/libusb/1.0.29/include/libusb-1.0/**",
-					"$(SRCROOT)/SwiftMTP/Services/MTP/**",
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/SwiftMTP/Services/MTP/**";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/SwiftMTP",
 				);
-				LIBRARY_SEARCH_PATHS = "";
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -387,10 +389,7 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = (
-					"/opt/homebrew/Cellar/libusb/1.0.29/include/libusb-1.0/**",
-					"$(SRCROOT)/SwiftMTP/Services/MTP/**",
-				);
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/SwiftMTP/Services/MTP/**";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -407,7 +406,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/SwiftMTP",
-					/opt/homebrew/opt/libmtp/lib,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
@@ -443,10 +441,7 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = (
-					"/opt/homebrew/Cellar/libusb/1.0.29/include/libusb-1.0/**",
-					"$(SRCROOT)/SwiftMTP/Services/MTP/**",
-				);
+				HEADER_SEARCH_PATHS = "$(SRCROOT)/SwiftMTP/Services/MTP/**";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -463,7 +458,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/SwiftMTP",
-					/opt/homebrew/opt/libmtp/lib,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
