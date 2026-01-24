@@ -154,30 +154,34 @@ struct FileBrowserView: View {
                 .opacity(0.15)
             fileContentView
         }
-        .overlay(
-            Group {
-                if isDropTargeted {
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.blue, lineWidth: 2)
-                }
-            }
-        )
-        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
-            handleDroppedFiles(providers)
-        }
-        .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
     }
     
     @ViewBuilder
     private var fileContentView: some View {
-        if isLoading {
-            ProgressView(L10n.FileBrowser.loadingFiles)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if currentFiles.isEmpty {
-            emptyFolderView
-        } else {
-            fileTableView
+        let content: some View = Group {
+            if isLoading {
+                ProgressView(L10n.FileBrowser.loadingFiles)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if currentFiles.isEmpty {
+                emptyFolderView
+            } else {
+                fileTableView
+            }
         }
+
+        content
+            .overlay(
+                Group {
+                    if isDropTargeted {
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.blue, lineWidth: 2)
+                    }
+                }
+            )
+            .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+                handleDroppedFiles(providers)
+            }
+            .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
     }
     
     private var emptyFolderView: some View {
@@ -187,18 +191,6 @@ struct FileBrowserView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            Group {
-                if isDropTargeted {
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.blue, lineWidth: 2)
-                }
-            }
-        )
-        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
-            handleDroppedFiles(providers)
-        }
-        .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
     }
     
     private var emptyFolderIconView: some View {
@@ -268,19 +260,7 @@ struct FileBrowserView: View {
                 pendingNavigation = nil
             }
         }
-        .overlay(
-            Group {
-                if isDropTargeted {
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.blue, lineWidth: 2)
-                }
-            }
-        )
-        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
-            handleDroppedFiles(providers)
-        }
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
     }
 
     /// 可排序的列标题
@@ -413,12 +393,12 @@ struct FileBrowserView: View {
                         .labelStyle(.titleAndIcon)
                 }
                 .buttonStyle(.borderless)
-                
+
                 ForEach(Array(currentPath.enumerated()), id: \.element.id) { index, item in
                     Image(systemName: "chevron.right")
                         .tint(.secondary)
                         .font(.caption)
-                    
+
                     Button {
                         navigateToPath(at: index)
                     } label: {
@@ -430,7 +410,20 @@ struct FileBrowserView: View {
             .scrollEdgeEffectStyle(.hard, for: .all)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+        }
+        .onDrop(of: [.fileURL], delegate: RejectDropDelegate())
+    }
 
+    // MARK: - Drop Delegates
+
+    /// 拒绝拖放的委托，用于防止拖放事件冒泡
+    private struct RejectDropDelegate: DropDelegate {
+        func validateDrop(info: DropInfo) -> Bool {
+            return false
+        }
+
+        func performDrop(info: DropInfo) -> Bool {
+            return false
         }
     }
     
@@ -856,18 +849,18 @@ struct FileBrowserView: View {
         VStack(spacing: 16) {
             Text(L10n.FileBrowser.createNewFolderDialog)
                 .font(.headline)
-            
+
             TextField(L10n.FileBrowser.folderNamePlaceholder, text: $newFolderName)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 300)
-            
+
             HStack(spacing: 12) {
                 Button(L10n.FileBrowser.cancel) {
                     showingCreateFolderDialog = false
                     newFolderName = ""
                 }
                 .keyboardShortcut(.cancelAction)
-                
+
                 Button(L10n.FileBrowser.create) {
                     createFolder()
                 }
@@ -877,6 +870,7 @@ struct FileBrowserView: View {
         }
         .padding(24)
         .frame(width: 350)
+        .onDrop(of: [.fileURL], delegate: RejectDropDelegate())
     }
     
     private func createFolder() {

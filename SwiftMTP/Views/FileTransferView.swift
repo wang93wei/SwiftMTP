@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct FileTransferView: View {
     @EnvironmentObject private var transferManager: FileTransferManager
@@ -15,10 +16,10 @@ struct FileTransferView: View {
     var body: some View {
         VStack(spacing: 0) {
             headerView
-            
+
             Divider()
                 .opacity(0.15)
-            
+
             if transferManager.activeTasks.isEmpty && transferManager.completedTasks.isEmpty {
                 emptyStateView
             } else {
@@ -31,6 +32,20 @@ struct FileTransferView: View {
         .id(refreshID)
         .onReceive(NotificationCenter.default.publisher(for: .languageDidChange)) { _ in
             refreshID = UUID()
+        }
+        .onDrop(of: [.fileURL], delegate: RejectDropDelegate())
+    }
+
+    // MARK: - Drop Delegates
+
+    /// 拒绝拖放的委托，用于防止拖放事件冒泡
+    private struct RejectDropDelegate: DropDelegate {
+        func validateDrop(info: DropInfo) -> Bool {
+            return false
+        }
+
+        func performDrop(info: DropInfo) -> Bool {
+            return false
         }
     }
     
