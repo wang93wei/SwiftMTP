@@ -7,3 +7,7 @@ github.com/ganeshrvel/go-mtpx
 # github.com/ganeshrvel/usb v0.0.0-20210103155855-14d96f5ae403
 ## explicit; go 1.15
 github.com/ganeshrvel/usb
+# github.com/gopherjs/gopherjs v1.20.0
+## explicit; go 1.20
+# github.com/smartystreets/goconvey v1.8.1
+## explicit; go 1.18
