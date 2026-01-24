@@ -54,6 +54,17 @@ if [ -f "${TARGET_DIR}/libkalam.dylib" ] && [ -f "${TARGET_DIR}/libkalam.h" ]; t
     echo "📦 Bundling libusb.dylib..."
     cp -f "/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib" "${TARGET_DIR}/libusb-1.0.dylib"
 
+    # Copy com.apple.provenance extended attribute from system libusb
+    echo "🔧 Copying extended attributes from system libusb..."
+    if xattr -p com.apple.provenance "/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib" > /dev/null 2>&1; then
+        chmod +w "${TARGET_DIR}/libusb-1.0.dylib"
+        xattr -w com.apple.provenance "$(xattr -p com.apple.provenance /opt/homebrew/opt/libusb/lib/libusb-1.0.dylib | xxd -p -r)" "${TARGET_DIR}/libusb-1.0.dylib"
+        chmod -w "${TARGET_DIR}/libusb-1.0.dylib"
+        echo "   ✅ Extended attributes copied"
+    else
+        echo "   ⚠️ No extended attributes found, skipping"
+    fi
+
     # Set install name for libkalam.dylib to be relative to @rpath
     echo "🔧 Setting install name for libkalam.dylib..."
     install_name_tool -id "@rpath/libkalam.dylib" "${TARGET_DIR}/libkalam.dylib"
