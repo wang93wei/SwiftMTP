@@ -349,11 +349,14 @@ class FileTransferManager: ObservableObject {
     }
     
     private func performDownload(task: TransferTask, device: Device, fileItem: FileItem, shouldReplace: Bool) {
+        // Capture destination path in a local variable to avoid accessing @MainActor class properties from background thread
+        let destinationPath = task.destinationPath
+        
         currentDownloadTask = task
         task.updateStatus(.transferring)
         
         // Validate destination path
-        let destinationURL = URL(fileURLWithPath: task.destinationPath)
+        let destinationURL = URL(fileURLWithPath: destinationPath)
         let destinationDir = destinationURL.deletingLastPathComponent()
         
         // Ensure destination directory exists
@@ -368,11 +371,11 @@ class FileTransferManager: ObservableObject {
         }
         
         // Check if file already exists
-        if FileManager.default.fileExists(atPath: task.destinationPath) {
+        if FileManager.default.fileExists(atPath: destinationPath) {
             if shouldReplace {
                 // Remove existing file before download
                 do {
-                    try FileManager.default.removeItem(atPath: task.destinationPath)
+                    try FileManager.default.removeItem(atPath: destinationPath)
                 } catch {
                     DispatchQueue.main.async {
                         task.updateStatus(.failed(L10n.FileTransfer.cannotReplaceExistingFile.localized(error.localizedDescription)))
@@ -411,25 +414,59 @@ class FileTransferManager: ObservableObject {
         
         // Perform download with enhanced error handling
         debugLog("Starting download of file \(fileItem.name) (ID: \(fileItem.objectId))")
-        let result = task.destinationPath.withCString { cString in
-            // Create mutable copies of the C strings to avoid unsafe pointer mutation
-            let mutableDest = strdup(cString)
-            defer { free(mutableDest) }
-            
-            return task.id.uuidString.withCString { taskCString in
-                let mutableTask = strdup(taskCString)
-                defer { free(mutableTask) }
-                
-                return Kalam_DownloadFile(fileItem.objectId, mutableDest, mutableTask)
-            }
+        debugLog("Download parameters:")
+        debugLog("  File ID: \(fileItem.objectId)")
+        debugLog("  Destination path: \(destinationPath)")
+        debugLog("  Task ID: \(task.id.uuidString)")
+        debugLog("  Should replace: \(shouldReplace)")
+
+        let taskIdString = task.id.uuidString
+        let objectId = fileItem.objectId
+
+        debugLog("Step 1: Creating C strings manually")
+
+        // Create C strings manually to avoid Swift 6 concurrency issues with withCString
+        let destCStringArray = destinationPath.utf8CString
+        let taskCStringArray = taskIdString.utf8CString
+
+        debugLog("Step 2: Allocating memory for C strings")
+        debugLog("  destCStringArray count: \(destCStringArray.count)")
+        debugLog("  taskCStringArray count: \(taskCStringArray.count)")
+
+        let mutableDest: UnsafeMutablePointer<CChar> = UnsafeMutablePointer.allocate(capacity: destCStringArray.count)
+        let mutableTask: UnsafeMutablePointer<CChar> = UnsafeMutablePointer.allocate(capacity: taskCStringArray.count)
+
+        debugLog("Step 3: Copying string contents to C pointers")
+
+        for (index, byte) in destCStringArray.enumerated() {
+            mutableDest.advanced(by: index).pointee = byte
         }
+        for (index, byte) in taskCStringArray.enumerated() {
+            mutableTask.advanced(by: index).pointee = byte
+        }
+
+        debugLog("Step 4: About to call Kalam_DownloadFile")
+        debugLog("  objectId: \(objectId)")
+        debugLog("  mutableDest: \(mutableDest)")
+        debugLog("  mutableTask: \(mutableTask)")
+
+        let downloadResult = Kalam_DownloadFile(objectId, mutableDest, mutableTask)
+
+        debugLog("Step 5: Kalam_DownloadFile returned: \(downloadResult)")
+        debugLog("Step 6: Deallocating C strings")
+
+        mutableDest.deallocate()
+        mutableTask.deallocate()
+
+        debugLog("Step 7: C strings deallocated, result: \(downloadResult)")
+        let result = downloadResult
         
         // Add a small delay to ensure file operations complete
         Thread.sleep(forTimeInterval: 0.5)
         
         if result > 0 {
             // Verify file was actually created and has content
-            if let attributes = try? FileManager.default.attributesOfItem(atPath: task.destinationPath),
+            if let attributes = try? FileManager.default.attributesOfItem(atPath: destinationPath),
                let fileSize = attributes[.size] as? UInt64,
                fileSize > 0 {
                 task.updateProgress(transferred: fileSize, speed: 0)
@@ -437,9 +474,9 @@ class FileTransferManager: ObservableObject {
                 debugLog("Download completed successfully: \(fileItem.name)")
             } else {
                 // Check if file exists but is empty or corrupted
-                if FileManager.default.fileExists(atPath: task.destinationPath) {
+                if FileManager.default.fileExists(atPath: destinationPath) {
                     do {
-                        try FileManager.default.removeItem(atPath: task.destinationPath)
+                        try FileManager.default.removeItem(atPath: destinationPath)
                     } catch {
                         debugLog("Failed to remove corrupted file: \(error)")
                     }

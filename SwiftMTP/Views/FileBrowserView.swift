@@ -521,11 +521,12 @@ struct FileBrowserView: View {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = file.name
         panel.canCreateDirectories = true
-        
+
         panel.begin { response in
             if response == .OK, let url = panel.url {
-                // System NSSavePanel already handles file replacement confirmation
-                // Just download directly - if file exists, system would have asked user
+                // NSSavePanel automatically handles file replacement confirmation
+                // If file exists, system will ask user to replace
+                // If user confirms, we download with shouldReplace: true
                 FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: url, shouldReplace: true)
             }
         }
