@@ -5,4 +5,4 @@
 
 /* Localized versions of Info.plist keys */
 CFBundleDisplayName = "SwiftMTP";
-NSHumanReadableCopyright = "Copyright © 2025 SwiftMTP. All rights reserved.";
+NSHumanReadableCopyright = "Copyright © 2026 SwiftMTP. All rights reserved.";

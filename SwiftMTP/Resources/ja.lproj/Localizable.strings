@@ -123,7 +123,7 @@
 "version" = "バージョン %1$@";
 "author" = "作者：Alan Wang";
 "mtpFileTransferTool" = "macOS Android MTPファイル転送ツール";
-"copyright" = "© 2025 SwiftMTP";
+"copyright" = "© 2026 SwiftMTP";
 "builtWith" = "libusb-1.0 + go-mtpxで構築";
 
 /* Additional */

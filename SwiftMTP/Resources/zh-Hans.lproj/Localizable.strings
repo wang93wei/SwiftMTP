@@ -125,7 +125,7 @@
 "version" = "版本 %1$@";
 "author" = "作者：Alan Wang";
 "mtpFileTransferTool" = "macOS Android MTP 文件传输工具";
-"copyright" = "© 2025 SwiftMTP";
+"copyright" = "© 2026 SwiftMTP";
 "builtWith" = "基于 libusb-1.0 + go-mtpx 构建";
 
 /* Additional */

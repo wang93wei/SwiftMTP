@@ -123,7 +123,7 @@
 "version" = "Version %1$@";
 "author" = "Auteur: Alan Wang";
 "mtpFileTransferTool" = "Outil de transfert de fichiers MTP Android pour macOS";
-"copyright" = "© 2025 SwiftMTP";
+"copyright" = "© 2026 SwiftMTP";
 "builtWith" = "Construit avec libusb-1.0 + go-mtpx";
 
 /* Additional */

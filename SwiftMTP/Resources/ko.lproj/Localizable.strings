@@ -123,7 +123,7 @@
 "version" = "버전 %1$@";
 "author" = "작성자: Alan Wang";
 "mtpFileTransferTool" = "macOS Android MTP 파일 전송 도구";
-"copyright" = "© 2025 SwiftMTP";
+"copyright" = "© 2026 SwiftMTP";
 "builtWith" = "libusb-1.0 + go-mtpx로 빌드";
 
 /* Additional */
