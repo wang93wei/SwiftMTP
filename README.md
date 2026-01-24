@@ -14,7 +14,7 @@
 
 ---
 
-**🌍 Languages:** [English](README.md) | [Simplified Chinese](docs/README.zh-CN.md) | [Japanese](docs/README.ja.md) | [Korean](docs/README.ko.md) | [Russian](docs/README.ru.md) | [French](docs/README.fr.md) | [German](docs/README.de.md)
+**🌍 Languages:** [English](README.md) | [简体中文](docs/README.zh-CN.md) | [Japanese](docs/README.ja.md) | [Korean](docs/README.ko.md) | [Russian](docs/README.ru.md) | [French](docs/README.fr.md) | [German](docs/README.de.md)
 
 ---
 
