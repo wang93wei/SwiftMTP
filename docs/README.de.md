@@ -33,7 +33,7 @@
 | 🌍 **Mehrsprachig** | Unterstützt vereinfachtes Chinesisch, Englisch, Japanisch, Koreanisch, Russisch, Französisch, Deutsch, folgt der Systemsprache |
 
 ## 📸 App-Screenshot
-![SwiftMTP Logo](../SwiftMTP/Resources/cap_2025-12-24%2005.29.36.png)
+![SwiftMTP Logo](cap_2025-12-24%2005.29.36.png)
 
 ## 🚀 Schnellstart
 
