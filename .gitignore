@@ -94,3 +94,7 @@ gemini.md
 IFLOW.md
 .kiro
 .trae
+
+# Code coverage
+*.profraw
+*.profdata
