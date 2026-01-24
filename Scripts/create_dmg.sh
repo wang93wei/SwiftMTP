@@ -25,15 +25,13 @@ EXPORT_PATH="$PROJECT_ROOT/build"
 DMG_PATH="$PROJECT_ROOT/build"
 APP_NAME="$PROJECT_NAME.app"
 DMG_NAME="$PROJECT_NAME"
-VERSION=$(cd "$PROJECT_ROOT" && git describe --tags --always --dirty 2>/dev/null || echo "1.0.0")
 
 echo -e "${GREEN}开始打包 $PROJECT_NAME...${NC}"
-echo -e "${YELLOW}版本: $VERSION${NC}"
 
 # 清理旧的构建文件
 echo -e "${YELLOW}清理旧的构建文件...${NC}"
-rm -rf "$BUILD_PATH"
-mkdir -p "$BUILD_PATH"
+rm -rf "$ARCHIVE_PATH"
+mkdir -p "$ARCHIVE_PATH"
 
 # 1. Archive 项目
 echo -e "${YELLOW}正在 Archive 项目...${NC}"
@@ -67,6 +65,13 @@ if [ ! -d "$APP_PATH" ]; then
     exit 1
 fi
 
+# 从导出的 .app 包中读取版本号（已解析 Xcode 变量）
+APP_INFO_PLIST="$APP_PATH/Contents/Info.plist"
+VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_INFO_PLIST" 2>/dev/null || echo "1.0.0")
+BUILD_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_INFO_PLIST" 2>/dev/null || echo "1")
+
+echo -e "${YELLOW}版本: $VERSION (Build $BUILD_VERSION)${NC}"
+
 # 3. 创建 DMG
 echo -e "${YELLOW}正在创建 DMG...${NC}"
 
@@ -98,10 +103,10 @@ fi
 echo -e "${YELLOW}正在美化 DMG...${NC}"
 
 # 挂载 DMG
-MOUNT_DIR=$(hdiutil attach "$DMG_FILE" | grep -E '/Volumes/' | awk '{print $3}')
+MOUNT_DIR=$(hdiutil attach "$DMG_FILE" -readonly -nobrowse | grep -E '/Volumes/' | awk '{print $3}')
 
 if [ ! -z "$MOUNT_DIR" ]; then
-    # 设置 DMG 外观
+    # 设置 DMG 外观（简化版，不使用背景图片）
     echo '
     tell application "Finder"
         tell disk "'$PROJECT_NAME'"
@@ -113,8 +118,6 @@ if [ ! -z "$MOUNT_DIR" ]; then
             set viewOptions to the icon view options of container window
             set arrangement of viewOptions to not arranged
             set icon size of viewOptions to 96
-            set background picture of viewOptions to file ".background:background.png"
-            make new alias file at container window to POSIX file "/Applications" with properties {name:"Applications"}
             set position of item "'$APP_NAME'" of container window to {150, 200}
             set position of item "Applications" of container window to {350, 200}
             close
@@ -124,9 +127,9 @@ if [ ! -z "$MOUNT_DIR" ]; then
         end tell
     end tell
     ' | osascript
-    
+
     # 卸载 DMG
-    hdiutil detach "$MOUNT_DIR"
+    hdiutil detach "$MOUNT_DIR" -quiet || true
 fi
 
 # 清理临时文件
