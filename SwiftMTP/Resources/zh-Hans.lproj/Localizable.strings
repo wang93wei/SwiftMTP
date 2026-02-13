@@ -128,12 +128,24 @@
 "copyright" = "© 2026 SwiftMTP";
 "builtWith" = "基于 libusb-1.0 + go-mtpx 构建";
 
+/* Update Checking */
+"checkForUpdates" = "检查更新";
+"checkingForUpdates" = "正在检查更新...";
+"updateAvailable" = "有可用更新：%1$@";
+"updateAvailableTitle" = "发现新版本";
+"updateAvailableMessage" = "版本 %1$@ 已可用（当前：%2$@）。是否立即下载？";
+"noUpdateAvailableTitle" = "已是最新版本";
+"noUpdateMessage" = "你正在运行最新版本（%1$@）。";
+"downloadUpdate" = "下载更新";
+"autoCheckUpdates" = "自动检查更新";
+
 /* Additional */
 "createNewFolderDialog" = "新建文件夹";
 "uploadFilesToCurrentDir" = "上传文件到当前目录：%1$@";
 "confirmDeleteFileWithName" = "确定要删除 \"%1$@\" 吗？此操作无法撤销。";
 "operationFailedWithMessage" = "操作失败：%1$@";
 "help" = "帮助";
+"swiftMtpHelp" = "SwiftMTP 帮助";
 "createNewFolderHelp" = "在当前目录创建新文件夹";
 "uploadFilesHelp" = "将文件从 Mac 上传到当前目录";
 "downloadHelp" = "将选中的文件下载到 Mac";
@@ -293,3 +305,11 @@
 "scanCancelled" = "扫描已取消";
 "noDevicesFound" = "未找到设备";
 "maxRetriesExceeded" = "超过最大重试次数 (%d 次)";
+
+// 更新错误
+"error.update.networkError" = "检查更新时网络错误：%@";
+"error.update.invalidResponse" = "更新服务器返回无效响应";
+"error.update.parsingError" = "解析更新信息失败：%@";
+"error.update.timeout" = "检查更新超时";
+"error.update.cancelled" = "检查更新已取消";
+"error.update.rateLimited" = "请求过于频繁。请在 %.0f 秒后重试。";

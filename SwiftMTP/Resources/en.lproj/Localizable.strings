@@ -126,12 +126,24 @@
 "copyright" = "© 2026 SwiftMTP";
 "builtWith" = "Built with libusb-1.0 + go-mtpx";
 
+/* Update Checking */
+"checkForUpdates" = "Check for Updates";
+"checkingForUpdates" = "Checking for updates...";
+"updateAvailable" = "Update Available: %1$@";
+"updateAvailableTitle" = "Update Available";
+"updateAvailableMessage" = "Version %1$@ is available (current: %2$@). Would you like to download it?";
+"noUpdateAvailableTitle" = "No Update Available";
+"noUpdateMessage" = "You're running the latest version (%1$@).";
+"downloadUpdate" = "Download Update";
+"autoCheckUpdates" = "Automatically check for updates";
+
 /* Additional */
 "createNewFolderDialog" = "Create New Folder";
 "uploadFilesToCurrentDir" = "Upload files to current directory: %1$@";
 "confirmDeleteFileWithName" = "Are you sure you want to delete \"%1$@\"? This action cannot be undone.";
 "operationFailedWithMessage" = "Operation failed: %1$@";
 "help" = "Help";
+"swiftMtpHelp" = "SwiftMTP Help";
 "createNewFolderHelp" = "Create a new folder in the current directory";
 "uploadFilesHelp" = "Upload files from your Mac to the current directory";
 "downloadHelp" = "Download selected files to your Mac";
@@ -286,6 +298,14 @@
 "invalidConfiguration" = "Invalid configuration '%@': %@";
 "missingConfiguration" = "Missing configuration: %@";
 "configurationLoadFailed" = "Failed to load configuration: %@";
+
+// Update Errors
+"error.update.networkError" = "Network error while checking for updates: %@";
+"error.update.invalidResponse" = "Invalid response from update server";
+"error.update.parsingError" = "Failed to parse update information: %@";
+"error.update.timeout" = "Update check timed out";
+"error.update.cancelled" = "Update check cancelled";
+"error.update.rateLimited" = "Rate limited. Please try again in %.0f seconds.";
 
 // Scan Error Keys
 "scanFailed" = "Scan failed: %@";

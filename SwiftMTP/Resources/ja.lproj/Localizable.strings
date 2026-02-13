@@ -126,12 +126,24 @@
 "copyright" = "© 2026 SwiftMTP";
 "builtWith" = "libusb-1.0 + go-mtpxで構築";
 
+/* Update Checking */
+"checkForUpdates" = "アップデートを確認";
+"checkingForUpdates" = "アップデートを確認中...";
+"updateAvailable" = "アップデートあり: %1$@";
+"updateAvailableTitle" = "アップデートあり";
+"updateAvailableMessage" = "バージョン%1$@が利用可能です（現在: %2$@）。ダウンロードしますか？";
+"noUpdateAvailableTitle" = "最新バージョンです";
+"noUpdateMessage" = "最新バージョン（%1$@）を使用しています。";
+"downloadUpdate" = "アップデートをダウンロード";
+"autoCheckUpdates" = "自動的にアップデートを確認";
+
 /* Additional */
 "createNewFolderDialog" = "新しいフォルダを作成";
 "uploadFilesToCurrentDir" = "ファイルを現在のディレクトリにアップロード：%1$@";
 "confirmDeleteFileWithName" = "\"%1$@\"を削除してもよろしいですか？この操作は取り消せません。";
 "operationFailedWithMessage" = "操作に失敗しました：%1$@";
 "help" = "ヘルプ";
+"swiftMtpHelp" = "SwiftMTP ヘルプ";
 "createNewFolderHelp" = "現在のディレクトリに新しいフォルダを作成";
 "uploadFilesHelp" = "Macから現在のディレクトリにファイルをアップロード";
 "downloadHelp" = "選択したファイルをMacにダウンロード";

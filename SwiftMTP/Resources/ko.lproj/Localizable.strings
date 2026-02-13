@@ -126,12 +126,24 @@
 "copyright" = "© 2026 SwiftMTP";
 "builtWith" = "libusb-1.0 + go-mtpx로 빌드";
 
+/* Update Checking */
+"checkForUpdates" = "업데이트 확인";
+"checkingForUpdates" = "업데이트 확인 중...";
+"updateAvailable" = "업데이트 사용 가능: %1$@";
+"updateAvailableTitle" = "업데이트 사용 가능";
+"updateAvailableMessage" = "버전 %1$@을(를) 사용할 수 있습니다(현재: %2$@). 다운로드하시겠습니까?";
+"noUpdateAvailableTitle" = "최신 버전입니다";
+"noUpdateMessage" = "최신 버전(%1$@)을 사용하고 있습니다.";
+"downloadUpdate" = "업데이트 다운로드";
+"autoCheckUpdates" = "자동으로 업데이트 확인";
+
 /* Additional */
 "createNewFolderDialog" = "새 폴더 만들기";
 "uploadFilesToCurrentDir" = "파일을 현재 디렉토리에 업로드: %1$@";
 "confirmDeleteFileWithName" = "\"%1$@\"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.";
 "operationFailedWithMessage" = "작업 실패: %1$@";
 "help" = "도움말";
+"swiftMtpHelp" = "SwiftMTP 도움말";
 "createNewFolderHelp" = "현재 디렉토리에 새 폴더 만들기";
 "uploadFilesHelp" = "Mac에서 현재 디렉토리로 파일 업로드";
 "downloadHelp" = "선택한 파일을 Mac으로 다운로드";

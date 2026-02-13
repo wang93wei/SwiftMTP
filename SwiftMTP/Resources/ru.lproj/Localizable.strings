@@ -126,12 +126,24 @@
 "copyright" = "© 2026 SwiftMTP";
 "builtWith" = "Построено на libusb-1.0 + go-mtpx";
 
+/* Update Checking */
+"checkForUpdates" = "Проверить обновления";
+"checkingForUpdates" = "Проверка обновлений...";
+"updateAvailable" = "Доступно обновление: %1$@";
+"updateAvailableTitle" = "Доступно обновление";
+"updateAvailableMessage" = "Версия %1$@ доступна (текущая: %2$@). Хотите скачать?";
+"noUpdateAvailableTitle" = "Обновлений нет";
+"noUpdateMessage" = "Вы используете последнюю версию (%1$@).";
+"downloadUpdate" = "Скачать обновление";
+"autoCheckUpdates" = "Автоматически проверять обновления";
+
 /* Additional */
 "createNewFolderDialog" = "Создать новую папку";
 "uploadFilesToCurrentDir" = "Загрузить файлы в текущий каталог: %1$@";
 "confirmDeleteFileWithName" = "Вы уверены, что хотите удалить \"%1$@\"? Это действие нельзя отменить.";
 "operationFailedWithMessage" = "Операция не удалась: %1$@";
 "help" = "Справка";
+"swiftMtpHelp" = "Справка SwiftMTP";
 "createNewFolderHelp" = "Создать новую папку в текущем каталоге";
 "uploadFilesHelp" = "Загрузить файлы с Mac в текущий каталог";
 "downloadHelp" = "Скачать выбранные файлы на Mac";

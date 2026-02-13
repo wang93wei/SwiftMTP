@@ -126,12 +126,24 @@
 "copyright" = "© 2026 SwiftMTP";
 "builtWith" = "Construit avec libusb-1.0 + go-mtpx";
 
+/* Update Checking */
+"checkForUpdates" = "Vérifier les mises à jour";
+"checkingForUpdates" = "Recherche de mises à jour...";
+"updateAvailable" = "Mise à jour disponible: %1$@";
+"updateAvailableTitle" = "Mise à jour disponible";
+"updateAvailableMessage" = "La version %1$@ est disponible (actuelle: %2$@). Voulez-vous la télécharger?";
+"noUpdateAvailableTitle" = "Aucune mise à jour disponible";
+"noUpdateMessage" = "Vous utilisez la dernière version (%1$@).";
+"downloadUpdate" = "Télécharger la mise à jour";
+"autoCheckUpdates" = "Vérifier automatiquement les mises à jour";
+
 /* Additional */
 "createNewFolderDialog" = "Créer un nouveau dossier";
 "uploadFilesToCurrentDir" = "Télécharger des fichiers vers le répertoire actuel: %1$@";
 "confirmDeleteFileWithName" = "Êtes-vous sûr de vouloir supprimer \"%1$@\"? Cette action ne peut pas être annulée.";
 "operationFailedWithMessage" = "Opération échouée: %1$@";
 "help" = "Aide";
+"swiftMtpHelp" = "Aide SwiftMTP";
 "createNewFolderHelp" = "Créer un nouveau dossier dans le répertoire actuel";
 "uploadFilesHelp" = "Télécharger des fichiers de votre Mac vers le répertoire actuel";
 "downloadHelp" = "Télécharger les fichiers sélectionnés vers votre Mac";
