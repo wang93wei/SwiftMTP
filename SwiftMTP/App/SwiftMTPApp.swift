@@ -61,6 +61,17 @@ struct SwiftMTPApp: App {
                     languageManager.currentLanguage = .system
                 }
             }
+
+            // 添加检查更新菜单到 Help 菜单
+            CommandGroup(replacing: .help) {
+                Button(L10n.Common.swiftMtpHelp) {
+                    if let url = URL(string: AppConfiguration.githubWikiURL) {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                Divider()
+                CheckForUpdatesMenuItem()
+            }
         }
         
         #if os(macOS)
@@ -148,5 +159,44 @@ struct SwiftMTPApp: App {
         print("[SwiftMTPApp] \(message)")
         #endif
     }
-    
+}
+
+// MARK: - Check for Updates Menu Item
+
+struct CheckForUpdatesMenuItem: View {
+    @StateObject private var updateChecker = UpdateChecker.shared
+
+    var body: some View {
+        Button(L10n.Settings.checkForUpdates) {
+            Task {
+                await performCheck()
+            }
+        }
+        .disabled(updateChecker.isChecking)
     }
+
+    private func performCheck() async {
+        let result = await updateChecker.checkForUpdatesWithResult()
+
+        // Use NSAlert for menu bar commands - SwiftUI alert doesn't work well in menus
+        await MainActor.run {
+            let alert = NSAlert()
+            alert.messageText = result.title
+            alert.informativeText = result.message
+            alert.alertStyle = result.isUpdateAvailable ? .warning : .informational
+
+            if result.isUpdateAvailable, let url = result.updateURL {
+                alert.addButton(withTitle: L10n.Settings.downloadUpdate)
+                alert.addButton(withTitle: L10n.Common.cancel)
+
+                let response = alert.runModal()
+                if response == .alertFirstButtonReturn {
+                    NSWorkspace.shared.open(url)
+                }
+            } else {
+                alert.addButton(withTitle: L10n.Common.ok)
+                alert.runModal()
+            }
+        }
+    }
+}

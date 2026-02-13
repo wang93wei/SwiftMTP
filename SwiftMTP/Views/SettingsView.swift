@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     @AppStorage("defaultDownloadPath") private var downloadPath = NSHomeDirectory() + "/Downloads"
@@ -183,12 +184,22 @@ struct AdvancedSettingsView: View {
 }
 
 struct AboutView: View {
+    @StateObject private var updateChecker = UpdateChecker.shared
+    @State private var showingAlert = false
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
+    @State private var updateURL: URL?
+
     private var appIcon: NSImage {
         NSImage(named: "AppIcon") ?? NSImage()
     }
 
+    private var currentVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    }
+
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Image(nsImage: appIcon)
                 .resizable()
                 .scaledToFit()
@@ -198,7 +209,7 @@ struct AboutView: View {
                 .font(.title)
                 .fontWeight(.bold)
 
-            Text(String(format: L10n.Settings.version, "1.0.0"))
+            Text(String(format: L10n.Settings.version, currentVersion))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -209,6 +220,44 @@ struct AboutView: View {
             Text(L10n.Settings.mtpFileTransferTool)
                 .font(.body)
                 .multilineTextAlignment(.center)
+
+            // Update check section
+            VStack(spacing: 12) {
+                if updateChecker.isChecking {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .frame(height: 20)
+                    Text(L10n.Settings.checkingForUpdates)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if let update = updateChecker.latestUpdate {
+                    VStack(spacing: 4) {
+                        Text(String(format: L10n.Settings.updateAvailable, update.version))
+                            .font(.subheadline)
+                            .foregroundStyle(.green)
+                        Button(L10n.Settings.downloadUpdate) {
+                            updateChecker.openDownloadPage()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                } else {
+                    Button(L10n.Settings.checkForUpdates) {
+                        Task {
+                            await performUpdateCheck()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(updateChecker.isChecking)
+                }
+
+                // Auto-check toggle
+                Toggle(L10n.Settings.autoCheckUpdates, isOn: $updateChecker.autoCheckEnabled)
+                    .font(.caption)
+                    .controlSize(.small)
+            }
+            .padding(.top, 8)
 
             Divider()
                 .padding(.horizontal, 40)
@@ -225,6 +274,29 @@ struct AboutView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.vertical, 16)
+        .alert(alertTitle, isPresented: $showingAlert) {
+            if updateURL != nil {
+                Button(L10n.Common.cancel, role: .cancel) {}
+                Button(L10n.Settings.downloadUpdate) {
+                    if let url = updateURL {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            } else {
+                Button(L10n.Common.ok, role: .cancel) {}
+            }
+        } message: {
+            Text(alertMessage)
+        }
+    }
+
+    private func performUpdateCheck() async {
+        let result = await updateChecker.checkForUpdatesWithResult()
+        alertTitle = result.title
+        alertMessage = result.message
+        updateURL = result.updateURL
+        showingAlert = true
     }
 }
 

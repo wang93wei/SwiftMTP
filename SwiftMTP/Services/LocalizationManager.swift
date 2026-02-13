@@ -172,11 +172,23 @@ enum L10n {
         static var mtpFileTransferTool: String { LanguageManager.shared.localizedString(for: "mtpFileTransferTool") }
         static var copyright: String { LanguageManager.shared.localizedString(for: "copyright") }
         static var builtWith: String { LanguageManager.shared.localizedString(for: "builtWith") }
+        // Update checking
+        static var checkForUpdates: String { LanguageManager.shared.localizedString(for: "checkForUpdates") }
+        static var checkingForUpdates: String { LanguageManager.shared.localizedString(for: "checkingForUpdates") }
+        static var updateAvailable: String { LanguageManager.shared.localizedString(for: "updateAvailable") }
+        static var updateAvailableTitle: String { LanguageManager.shared.localizedString(for: "updateAvailableTitle") }
+        static var updateAvailableMessage: String { LanguageManager.shared.localizedString(for: "updateAvailableMessage") }
+        static var noUpdateAvailableTitle: String { LanguageManager.shared.localizedString(for: "noUpdateAvailableTitle") }
+        static var noUpdateMessage: String { LanguageManager.shared.localizedString(for: "noUpdateMessage") }
+        static var downloadUpdate: String { LanguageManager.shared.localizedString(for: "downloadUpdate") }
+        static var autoCheckUpdates: String { LanguageManager.shared.localizedString(for: "autoCheckUpdates") }
     }
 
     enum Common {
         static var path: String { LanguageManager.shared.localizedString(for: "path") }
         static var cancel: String { LanguageManager.shared.localizedString(for: "cancel") }
+        static var ok: String { LanguageManager.shared.localizedString(for: "ok") }
+        static var error: String { LanguageManager.shared.localizedString(for: "operationFailed") }
         static var language: String { LanguageManager.shared.localizedString(for: "language") }
         static var languageSettings: String { LanguageManager.shared.localizedString(for: "languageSettings") }
         static var selectLanguage: String { LanguageManager.shared.localizedString(for: "selectLanguage") }
@@ -197,6 +209,7 @@ enum L10n {
         static var restartNow: String { LanguageManager.shared.localizedString(for: "restartNow") }
         static var restartLater: String { LanguageManager.shared.localizedString(for: "restartLater") }
         static var systemDefault: String { LanguageManager.shared.localizedString(for: "systemDefault") }
+        static var swiftMtpHelp: String { LanguageManager.shared.localizedString(for: "swiftMtpHelp") }
     }
 
     enum DeviceError {
