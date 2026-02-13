@@ -67,6 +67,9 @@ SwiftMTP/
 xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP build
 ```
 
+## 打包要求（强制）
+- 只能在项目根目录下，调用[create_dmg_simple.sh](Scripts/create_dmg_simple.sh)脚本打包
+
 ## 重要提醒
 **禁止**:
 - 非主线程更新SwiftUI状态
