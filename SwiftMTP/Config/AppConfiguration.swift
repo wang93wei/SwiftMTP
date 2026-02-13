@@ -73,6 +73,29 @@ struct AppConfiguration {
     /// UserDefaults key for scan interval
     static let scanIntervalKey = "scanInterval"
     
+    /// UserDefaults key for automatic update checking
+    static let autoCheckUpdatesKey = "autoCheckUpdates"
+    
+    /// UserDefaults key for last update check timestamp
+    static let lastUpdateCheckKey = "lastUpdateCheckDate"
+    
+    // MARK: - Update Checking Configuration
+    
+    /// GitHub repository owner
+    static let githubRepoOwner = "wang93wei"
+    
+    /// GitHub repository name
+    static let githubRepoName = "SwiftMTP"
+    
+    /// GitHub Wiki URL
+    static let githubWikiURL = "https://github.com/wang93wei/SwiftMTP/wiki"
+    
+    /// Update check timeout in seconds
+    static let updateCheckTimeout: TimeInterval = 30.0
+    
+    /// Automatic update check interval in seconds (24 hours)
+    static let autoCheckInterval: TimeInterval = 24 * 60 * 60
+    
     // MARK: - Security Configuration
     
     /// Maximum path length to prevent buffer overflow

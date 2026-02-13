@@ -188,6 +188,38 @@ enum ScanError: Error {
     }
 }
 
+// MARK: - Update Errors
+
+/// Update checking errors
+enum UpdateError: Error, Sendable {
+    case networkError(underlying: Error)
+    case invalidResponse
+    case parsingError(underlying: Error)
+    case checkTimeout
+    case checkCancelled
+    case rateLimited(retryAfter: TimeInterval)
+
+    nonisolated var localizedDescription: String {
+        switch self {
+        case .networkError(let error):
+            let format = NSLocalizedString("error.update.networkError", value: "Network error while checking for updates: %@", comment: "Update network error")
+            return String(format: format, String(describing: error))
+        case .invalidResponse:
+            return NSLocalizedString("error.update.invalidResponse", value: "Invalid response from update server", comment: "Invalid update response error")
+        case .parsingError(let error):
+            let format = NSLocalizedString("error.update.parsingError", value: "Failed to parse update information: %@", comment: "Update parsing error")
+            return String(format: format, String(describing: error))
+        case .checkTimeout:
+            return NSLocalizedString("error.update.timeout", value: "Update check timed out", comment: "Update check timeout error")
+        case .checkCancelled:
+            return NSLocalizedString("error.update.cancelled", value: "Update check cancelled", comment: "Update check cancelled error")
+        case .rateLimited(let retryAfter):
+            let format = NSLocalizedString("error.update.rateLimited", value: "Rate limited. Please try again in %.0f seconds.", comment: "Update rate limited error")
+            return String(format: format, retryAfter)
+        }
+    }
+}
+
 // MARK: - Error Extensions
 
 extension Error {
@@ -202,6 +234,8 @@ extension Error {
         } else if let appError = self as? ConfigurationError {
             return appError.localizedDescription
         } else if let appError = self as? ScanError {
+            return appError.localizedDescription
+        } else if let appError = self as? UpdateError {
             return appError.localizedDescription
         } else {
             return self.localizedDescription
@@ -227,6 +261,13 @@ extension Error {
         } else if let scanError = self as? ScanError {
             switch scanError {
             case .scanTimeout:
+                return true
+            default:
+                return false
+            }
+        } else if let updateError = self as? UpdateError {
+            switch updateError {
+            case .networkError, .checkTimeout, .rateLimited:
                 return true
             default:
                 return false
