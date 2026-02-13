@@ -1346,17 +1346,25 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 
 	destPath := C.GoString(destinationPath)
 	taskIDStr := C.GoString(taskID)
-	
+
 	if destPath == "" {
 		fmt.Printf("Kalam_DownloadFile: Empty destination path\n")
 		return 0
 	}
-	
-	// Validate and clean the destination path to prevent path traversal attacks
-	defaultDir := getDefaultDownloadDir()
-	validatedPath, err := validateAndCleanPath(destPath, defaultDir)
-	if err != nil {
-		fmt.Printf("Kalam_DownloadFile: Invalid destination path %s: %v\n", destPath, err)
+
+	// Basic path validation (no directory restriction since user chooses location via NSSavePanel)
+	// Only check for dangerous patterns and normalize the path
+	validatedPath := filepath.Clean(destPath)
+
+	// Check for path traversal attempts
+	if strings.Contains(validatedPath, "..") {
+		fmt.Printf("Kalam_DownloadFile: Path contains traversal attempt: %s\n", destPath)
+		return 0
+	}
+
+	// Ensure path is absolute
+	if !filepath.IsAbs(validatedPath) {
+		fmt.Printf("Kalam_DownloadFile: Path must be absolute: %s\n", destPath)
 		return 0
 	}
 

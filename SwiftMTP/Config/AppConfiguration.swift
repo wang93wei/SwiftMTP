@@ -79,12 +79,12 @@ struct AppConfiguration {
     static let maxPathLength: Int = 4096
     
     /// Allowed directories for file upload
+    /// Includes user home directory and external drives (/Volumes)
     static var allowedUploadDirectories: [URL] {
         let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
         return [
-            homeDirectory.appendingPathComponent("Downloads"),
-            homeDirectory.appendingPathComponent("Desktop"),
-            homeDirectory.appendingPathComponent("Documents")
+            homeDirectory, // Allow entire user home directory
+            URL(fileURLWithPath: "/Volumes") // Allow external drives
         ]
     }
     
