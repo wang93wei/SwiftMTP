@@ -818,13 +818,14 @@ struct FileBrowserView: View {
         }
     }
     
+    @MainActor
     private func uploadDirectoryWithProgress(
         directoryURL: URL,
         parentId: UInt32,
         storageId: UInt32
     ) async {
         print("[uploadDirectoryWithProgress] Starting upload for: \(directoryURL.lastPathComponent)")
-        
+
         let result = await FileTransferManager.shared.uploadDirectory(
             to: self.device,
             sourceURL: directoryURL,
@@ -834,49 +835,39 @@ struct FileBrowserView: View {
             let progress = Double(completed) / Double(total) * 100
             print("[uploadDirectoryWithProgress] Progress: \(completed)/\(total) (\(Int(progress))%)")
         }
-        
-        // 显示上传结果提示
-        await MainActor.run {
-            print("[uploadDirectoryWithProgress] Upload complete: \(result.uploadedFiles)/\(result.totalFiles)")
-            
-            let alert = NSAlert()
-            alert.alertStyle = .informational
-            
-            if result.failedFiles == 0 {
-                // 全部成功
-                alert.messageText = L10n.FileBrowser.uploadSuccess
-                alert.informativeText = L10n.FileBrowser.uploadDirectorySuccess.localized(
+
+        // 使用 Toast 显示上传结果 (已在主线程)
+        print("[uploadDirectoryWithProgress] Upload complete: \(result.uploadedFiles)/\(result.totalFiles)")
+
+        if result.failedFiles == 0 {
+            // 全部成功
+            ToastManager.shared.showSuccess(
+                title: L10n.FileBrowser.uploadSuccess,
+                message: L10n.FileBrowser.uploadDirectorySuccess.localized(
                     result.uploadedFiles,
                     directoryURL.lastPathComponent
                 )
-            } else if result.uploadedFiles == 0 {
-                // 全部失败
-                alert.messageText = L10n.FileBrowser.uploadFailed
-                alert.alertStyle = .critical
-                alert.informativeText = L10n.FileBrowser.uploadDirectoryFailed.localized(
+            )
+        } else if result.uploadedFiles == 0 {
+            // 全部失败
+            ToastManager.shared.showError(
+                title: L10n.FileBrowser.uploadFailed,
+                message: L10n.FileBrowser.uploadDirectoryFailed.localized(
                     result.failedFiles,
                     result.errors.first ?? "Unknown error"
                 )
-            } else {
-                // 部分成功
-                alert.messageText = L10n.FileBrowser.uploadDirectoryPartial.localized(
-                    result.uploadedFiles,
-                    result.totalFiles
-                )
-                alert.alertStyle = .warning
-                if !result.errors.isEmpty {
-                    let errorDetails = result.errors.prefix(5).joined(separator: "\n")
-                    alert.informativeText = errorDetails + (result.errors.count > 5 ? "\n..." : "")
-                }
-            }
-            
-            alert.addButton(withTitle: L10n.MainWindow.ok)
-            
-            if let window = NSApp.keyWindow {
-                alert.beginSheetModal(for: window) { _ in }
-            } else {
-                alert.runModal()
-            }
+            )
+        } else {
+            // 部分成功
+            let message = L10n.FileBrowser.uploadDirectoryPartial.localized(
+                result.uploadedFiles,
+                result.totalFiles
+            )
+            let errorDetails = result.errors.isEmpty ? "" : result.errors.prefix(3).joined(separator: "\n")
+            ToastManager.shared.showWarning(
+                title: message,
+                message: errorDetails.isEmpty ? nil : errorDetails + (result.errors.count > 3 ? "\n..." : "")
+            )
         }
     }
     

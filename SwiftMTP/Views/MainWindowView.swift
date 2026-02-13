@@ -42,6 +42,7 @@ struct MainWindowView: View {
         .onReceive(NotificationCenter.default.publisher(for: .languageDidChange)) { _ in
             refreshID = UUID()
         }
+        .toastContainer()
     }
 }
 
