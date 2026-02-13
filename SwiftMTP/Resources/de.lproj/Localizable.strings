@@ -305,3 +305,14 @@
 "scanCancelled" = "Scan abgebrochen";
 "noDevicesFound" = "Keine Geräte gefunden";
 "maxRetriesExceeded" = "Maximale Wiederholungsversuche überschritten (%d)";
+
+/* Verzeichnis-Upload */
+"uploadFolder" = "Ordner hochladen";
+"uploadingDirectory" = "Ordner wird hochgeladen...";
+"uploadDirectorySuccess" = "Ordner erfolgreich hochgeladen! %1$d Dateien nach '%2$@' hochgeladen";
+"uploadDirectoryFailed" = "Ordner-Upload fehlgeschlagen! %1$d Dateien konnten nicht hochgeladen werden. Fehler: %2$@";
+"uploadDirectoryPartial" = "Ordner-Upload teilweise abgeschlossen. %1$d von %2$d Dateien erfolgreich hochgeladen";
+
+/* Verzeichnis löschen */
+"deleteFolder" = "Ordner löschen";
+"confirmDeleteFolderWithName" = "Sind Sie sicher, dass Sie \"%1$@\" löschen möchten? Diese Aktion löscht den Ordner und alle seine Inhalte rekursiv und kann nicht rückgängig gemacht werden.";

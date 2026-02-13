@@ -116,6 +116,13 @@ enum L10n {
         static var confirmDeleteMultipleFiles: String { LanguageManager.shared.localizedString(for: "confirmDeleteMultipleFiles") }
         static var sort: String { LanguageManager.shared.localizedString(for: "sort") }
         static var sortFiles: String { LanguageManager.shared.localizedString(for: "sortFiles") }
+        static var uploadFolder: String { LanguageManager.shared.localizedString(for: "uploadFolder") }
+        static var uploadingDirectory: String { LanguageManager.shared.localizedString(for: "uploadingDirectory") }
+        static var uploadDirectorySuccess: String { LanguageManager.shared.localizedString(for: "uploadDirectorySuccess") }
+        static var uploadDirectoryFailed: String { LanguageManager.shared.localizedString(for: "uploadDirectoryFailed") }
+        static var uploadDirectoryPartial: String { LanguageManager.shared.localizedString(for: "uploadDirectoryPartial") }
+        static var deleteFolder: String { LanguageManager.shared.localizedString(for: "deleteFolder") }
+        static var confirmDeleteFolderWithName: String { LanguageManager.shared.localizedString(for: "confirmDeleteFolderWithName") }
     }
 
     enum FileTransfer {

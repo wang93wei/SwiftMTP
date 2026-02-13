@@ -54,6 +54,23 @@ struct FileBrowserView: View {
     @State private var showingUploadReplaceDialog = false
     @State private var filesToReplace: [(url: URL, existingFile: FileItem)] = []
     
+    // MARK: - Delete Alert Helpers
+    
+    /// 根据待删除文件类型返回警告标题
+    private var deleteAlertTitle: String {
+        guard let file = fileToDelete else { return L10n.FileBrowser.deleteFile }
+        return file.isDirectory ? L10n.FileBrowser.deleteFolder : L10n.FileBrowser.deleteFile
+    }
+    
+    /// 根据待删除文件类型返回警告消息
+    private func deleteAlertMessage(for file: FileItem) -> String {
+        if file.isDirectory {
+            return L10n.FileBrowser.confirmDeleteFolderWithName.localized(file.name)
+        } else {
+            return L10n.FileBrowser.confirmDeleteFileWithName.localized(file.name)
+        }
+    }
+    
     // MARK: - Sort Option
     
     enum SortOption: String, CaseIterable {
@@ -90,7 +107,7 @@ struct FileBrowserView: View {
                 selectedFiles.removeAll()
                 isLoading = false
             }
-            .alert(L10n.FileBrowser.deleteFile, isPresented: $showingDeleteAlert) {
+            .alert(deleteAlertTitle, isPresented: $showingDeleteAlert) {
                 Button(L10n.FileBrowser.cancel, role: .cancel) {}
                 Button(L10n.FileBrowser.delete, role: .destructive) {
                     if let file = fileToDelete {
@@ -99,7 +116,7 @@ struct FileBrowserView: View {
                 }
             } message: {
                 if let file = fileToDelete {
-                    Text(L10n.FileBrowser.confirmDeleteFileWithName.localized(file.name))
+                    Text(deleteAlertMessage(for: file))
                 }
             }
             .alert(L10n.FileBrowser.operationFailed, isPresented: $showingErrorAlert) {
@@ -741,7 +758,7 @@ struct FileBrowserView: View {
         panel.begin { response in
             if response == .OK {
                 // Determine parent ID: use current folder or root (0xFFFFFFFF)
-                let parentId = currentPath.last?.objectId ?? 0xFFFFFFFF
+                let parentId = currentPath.last?.objectId ?? AppConfiguration.rootDirectoryId
 
                 // Determine storage ID: use current path's storage or device's first storage
                 let storageId: UInt32
@@ -759,6 +776,106 @@ struct FileBrowserView: View {
                 // Process files with duplicate checking
                 let filesToUpload = panel.urls.map { (url: $0, parentId: parentId, storageId: storageId) }
                 processUploadFiles(filesToUpload)
+            }
+        }
+    }
+    
+    private func selectDirectoryToUpload() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = L10n.FileBrowser.selectUploadFolder
+        
+        // 在显示文件选择器之前，确保 AppleLanguages 设置正确
+        LanguageManager.ensureAppleLanguages()
+        
+        panel.begin { response in
+            if response == .OK, let directoryURL = panel.url {
+                // 确定父目录 ID 和存储 ID
+                let parentId = self.currentPath.last?.objectId ?? AppConfiguration.rootDirectoryId
+                let storageId: UInt32
+                if let pathStorageId = self.currentPath.first?.storageId {
+                    storageId = pathStorageId
+                } else if let firstStorage = self.device.storageInfo.first {
+                    storageId = firstStorage.storageId
+                } else {
+                    print("Error: No storage available for upload")
+                    return
+                }
+                
+                print("Uploading directory: \(directoryURL.path) to parentId: \(parentId), storageId: \(storageId)")
+                
+                // 创建目录上传任务并显示进度
+                Task {
+                    await self.uploadDirectoryWithProgress(
+                        directoryURL: directoryURL,
+                        parentId: parentId,
+                        storageId: storageId
+                    )
+                }
+            }
+        }
+    }
+    
+    private func uploadDirectoryWithProgress(
+        directoryURL: URL,
+        parentId: UInt32,
+        storageId: UInt32
+    ) async {
+        print("[uploadDirectoryWithProgress] Starting upload for: \(directoryURL.lastPathComponent)")
+        
+        let result = await FileTransferManager.shared.uploadDirectory(
+            to: self.device,
+            sourceURL: directoryURL,
+            parentId: parentId,
+            storageId: storageId
+        ) { completed, total in
+            let progress = Double(completed) / Double(total) * 100
+            print("[uploadDirectoryWithProgress] Progress: \(completed)/\(total) (\(Int(progress))%)")
+        }
+        
+        // 显示上传结果提示
+        await MainActor.run {
+            print("[uploadDirectoryWithProgress] Upload complete: \(result.uploadedFiles)/\(result.totalFiles)")
+            
+            let alert = NSAlert()
+            alert.alertStyle = .informational
+            
+            if result.failedFiles == 0 {
+                // 全部成功
+                alert.messageText = L10n.FileBrowser.uploadSuccess
+                alert.informativeText = L10n.FileBrowser.uploadDirectorySuccess.localized(
+                    result.uploadedFiles,
+                    directoryURL.lastPathComponent
+                )
+            } else if result.uploadedFiles == 0 {
+                // 全部失败
+                alert.messageText = L10n.FileBrowser.uploadFailed
+                alert.alertStyle = .critical
+                alert.informativeText = L10n.FileBrowser.uploadDirectoryFailed.localized(
+                    result.failedFiles,
+                    result.errors.first ?? "Unknown error"
+                )
+            } else {
+                // 部分成功
+                alert.messageText = L10n.FileBrowser.uploadDirectoryPartial.localized(
+                    result.uploadedFiles,
+                    result.totalFiles
+                )
+                alert.alertStyle = .warning
+                if !result.errors.isEmpty {
+                    let errorDetails = result.errors.prefix(5).joined(separator: "\n")
+                    alert.informativeText = errorDetails + (result.errors.count > 5 ? "\n..." : "")
+                }
+            }
+            
+            alert.addButton(withTitle: L10n.MainWindow.ok)
+            
+            if let window = NSApp.keyWindow {
+                alert.beginSheetModal(for: window) { _ in }
+            } else {
+                alert.runModal()
             }
         }
     }
@@ -884,8 +1001,20 @@ struct FileBrowserView: View {
     }
     
     private var uploadFilesButton: some View {
-        Button(L10n.FileBrowser.uploadFiles, systemImage: "square.and.arrow.up") {
-            selectFilesToUpload()
+        Menu {
+            Button {
+                selectFilesToUpload()
+            } label: {
+                Label(L10n.FileBrowser.uploadFiles, systemImage: "doc")
+            }
+            
+            Button {
+                selectDirectoryToUpload()
+            } label: {
+                Label(L10n.FileBrowser.uploadFolder, systemImage: "folder")
+            }
+        } label: {
+            Label(L10n.FileBrowser.uploadFiles, systemImage: "square.and.arrow.up")
         }
         .help(L10n.FileBrowser.uploadFilesHelp)
         .glassEffect()
@@ -985,8 +1114,8 @@ struct FileBrowserView: View {
     let folderName = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !folderName.isEmpty else { return }
 
-    let parentId = currentPath.last?.objectId ?? 0xFFFFFFFF
-    let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId ?? 0xFFFFFFFF
+    let parentId = currentPath.last?.objectId ?? AppConfiguration.rootDirectoryId
+    let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId ?? AppConfiguration.rootDirectoryId
 
     Task {
         let result = folderName.withCString { cString in
@@ -1016,8 +1145,8 @@ struct FileBrowserView: View {
         }
         
         // Determine parent ID and storage ID
-        let parentId = currentPath.last?.objectId ?? 0xFFFFFFFF
-        let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId ?? 0xFFFFFFFF
+        let parentId = currentPath.last?.objectId ?? AppConfiguration.rootDirectoryId
+        let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId ?? AppConfiguration.rootDirectoryId
         
         var fileURLs: [URL] = []
         let dispatchGroup = DispatchGroup()
@@ -1059,24 +1188,49 @@ struct FileBrowserView: View {
     }
     
     private func uploadDroppedFiles(_ urls: [URL], parentId: UInt32, storageId: UInt32) {
-        print("Uploading \(urls.count) dropped files...")
+        print("[uploadDroppedFiles] Processing \(urls.count) dropped items...")
 
         var filesToUpload: [(url: URL, parentId: UInt32, storageId: UInt32)] = []
+        var directoriesToUpload: [URL] = []
 
         for url in urls {
-            // Skip directories and hidden files
-            var isDirectory: ObjCBool = false
-            if url.lastPathComponent.hasPrefix(".") ||
-               FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue {
-                print("Skipping: \(url.lastPathComponent) (hidden or directory)")
+            // Skip hidden files
+            if url.lastPathComponent.hasPrefix(".") {
+                print("[uploadDroppedFiles] Skipping hidden file: \(url.lastPathComponent)")
                 continue
             }
-
-            filesToUpload.append((url: url, parentId: parentId, storageId: storageId))
+            
+            // Check if it's a directory
+            var isDirectory: ObjCBool = false
+            let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+            
+            if exists && isDirectory.boolValue {
+                // It's a directory, add to directories list
+                print("[uploadDroppedFiles] Found directory: \(url.lastPathComponent)")
+                directoriesToUpload.append(url)
+            } else {
+                // It's a file
+                filesToUpload.append((url: url, parentId: parentId, storageId: storageId))
+            }
         }
 
         // Process files with duplicate checking
-        processUploadFiles(filesToUpload)
+        if !filesToUpload.isEmpty {
+            print("[uploadDroppedFiles] Uploading \(filesToUpload.count) files")
+            processUploadFiles(filesToUpload)
+        }
+        
+        // Upload directories using the new method
+        for directoryURL in directoriesToUpload {
+            print("[uploadDroppedFiles] Starting directory upload: \(directoryURL.lastPathComponent)")
+            Task {
+                await uploadDirectoryWithProgress(
+                    directoryURL: directoryURL,
+                    parentId: parentId,
+                    storageId: storageId
+                )
+            }
+        }
     }
 }
 

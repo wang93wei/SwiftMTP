@@ -682,4 +682,491 @@ class FileTransferManager: ObservableObject {
         taskTrackingTimer?.invalidate()
         taskTrackingTimer = nil
     }
+    
+    // MARK: - Directory Upload
+    
+    /// 目录上传结果
+    struct DirectoryUploadResult {
+        let totalFiles: Int
+        let uploadedFiles: Int
+        let failedFiles: Int
+        let skippedFiles: Int
+        let errors: [String]
+    }
+    
+    private var directoryUploadCancelled = false
+    private let directoryUploadLock = NSLock()
+    
+    private func isDirectoryUploadCancelled() -> Bool {
+        directoryUploadLock.lock()
+        defer { directoryUploadLock.unlock() }
+        return directoryUploadCancelled
+    }
+    
+    func cancelDirectoryUpload() {
+        directoryUploadLock.lock()
+        defer { directoryUploadLock.unlock() }
+        directoryUploadCancelled = true
+    }
+    
+    private func resetDirectoryUploadCancel() {
+        directoryUploadLock.lock()
+        defer { directoryUploadLock.unlock() }
+        directoryUploadCancelled = false
+    }
+    
+    /// 上传目录到设备（创建一个总任务，不显示每个文件）
+    /// - Parameters:
+    ///   - device: 目标设备
+    ///   - sourceURL: 源目录 URL
+    ///   - parentId: 父目录 ID
+    ///   - storageId: 存储 ID
+    ///   - progressHandler: 进度回调 (completed, total)
+    /// - Returns: 上传结果
+    func uploadDirectory(
+        to device: Device,
+        sourceURL: URL,
+        parentId: UInt32,
+        storageId: UInt32,
+        progressHandler: ((Int, Int) -> Void)? = nil
+    ) async -> DirectoryUploadResult {
+        debugLog("[uploadDirectory] Starting directory upload: \(sourceURL.path)")
+        resetDirectoryUploadCancel()
+        
+        let filesToUpload = collectFilesInDirectory(sourceURL)
+        debugLog("[uploadDirectory] Found \(filesToUpload.count) files to upload")
+        
+        guard !filesToUpload.isEmpty else {
+            return DirectoryUploadResult(totalFiles: 0, uploadedFiles: 0, failedFiles: 0, skippedFiles: 0, errors: ["No files found in directory"])
+        }
+        
+        let totalSize: UInt64 = filesToUpload.reduce(0) { sum, url in
+            let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? UInt64) ?? 0
+            return sum + fileSize
+        }
+        
+        if let storage = device.storageInfo.first(where: { $0.storageId == storageId }) {
+            if totalSize > storage.freeSpace {
+                let needed = FileTransferManager.formatFileSize(totalSize)
+                let available = FileTransferManager.formatFileSize(storage.freeSpace)
+                debugLog("[uploadDirectory] Insufficient storage: needed \(needed), available \(available)")
+                return DirectoryUploadResult(
+                    totalFiles: filesToUpload.count,
+                    uploadedFiles: 0,
+                    failedFiles: filesToUpload.count,
+                    skippedFiles: 0,
+                    errors: ["Insufficient storage space: needed \(needed), available \(available)"]
+                )
+            }
+        }
+        
+        let directoryTask = TransferTask(
+            type: .upload,
+            fileName: "📁 \(sourceURL.lastPathComponent)",
+            sourceURL: sourceURL,
+            destinationPath: "/device/\(parentId)",
+            totalSize: totalSize
+        )
+        
+        await MainActor.run {
+            self.activeTasks.append(directoryTask)
+            directoryTask.updateStatus(TransferStatus.transferring)
+        }
+        
+        let dirName = sourceURL.lastPathComponent
+        let targetFolderId = await getOrCreateFolder(
+            device: device,
+            folderName: dirName,
+            parentId: parentId,
+            storageId: storageId
+        )
+        
+        guard targetFolderId != 0 else {
+            let failStatus = TransferStatus.failed("Failed to create target folder: \(dirName)")
+            await MainActor.run {
+                directoryTask.updateStatus(failStatus)
+                self.moveTaskToCompleted(directoryTask)
+            }
+            return DirectoryUploadResult(
+                totalFiles: filesToUpload.count,
+                uploadedFiles: 0,
+                failedFiles: filesToUpload.count,
+                skippedFiles: 0,
+                errors: ["Failed to create target folder: \(dirName)"]
+            )
+        }
+        
+        debugLog("[uploadDirectory] Target folder ID: \(targetFolderId)")
+        
+        var uploadedCount = 0
+        var failedCount = 0
+        var skippedCount = 0
+        var errors: [String] = []
+        var totalTransferred: UInt64 = 0
+        
+        let basePath = sourceURL.path
+        var folderCache: [String: UInt32] = [:]
+        
+        for (index, fileURL) in filesToUpload.enumerated() {
+            if isDirectoryUploadCancelled() || directoryTask.isCancelled {
+                debugLog("[uploadDirectory] Upload cancelled by user")
+                skippedCount = filesToUpload.count - index
+                errors.append("Upload cancelled by user")
+                break
+            }
+            
+            let fileSize = (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? UInt64) ?? 0
+            
+            if let storage = device.storageInfo.first(where: { $0.storageId == storageId }) {
+                let remainingSpace = storage.freeSpace > totalTransferred ? storage.freeSpace - totalTransferred : 0
+                if fileSize > remainingSpace {
+                    let needed = FileTransferManager.formatFileSize(fileSize)
+                    let available = FileTransferManager.formatFileSize(remainingSpace)
+                    debugLog("[uploadDirectory] Insufficient storage for \(fileURL.lastPathComponent): needed \(needed), available \(available)")
+                    failedCount += 1
+                    errors.append("Insufficient storage for \(fileURL.lastPathComponent): needed \(needed), available \(available)")
+                    continue
+                }
+            }
+            
+            // 计算相对路径
+            guard let relativePath = getRelativePath(from: basePath, to: fileURL.path) else {
+                debugLog("[uploadDirectory] Failed to get relative path for: \(fileURL.path)")
+                failedCount += 1
+                errors.append("Failed to get relative path: \(fileURL.lastPathComponent)")
+                continue
+            }
+            
+            // 创建子目录结构（如果需要）
+            let subFolderId = await createSubdirectoryStructure(
+                device: device,
+                relativePath: relativePath,
+                baseFolderId: targetFolderId,
+                storageId: storageId,
+                folderCache: &folderCache
+            )
+            
+            guard subFolderId != 0 else {
+                debugLog("[uploadDirectory] Failed to create subdirectory for: \(relativePath)")
+                failedCount += 1
+                errors.append("Failed to create subdirectory: \(relativePath)")
+                continue
+            }
+            
+            // 上传文件（不创建 TransferTask，使用底层 API 直接上传）
+            let success = await performFileUploadWithoutTask(
+                device: device,
+                sourceURL: fileURL,
+                parentId: subFolderId,
+                storageId: storageId
+            )
+            
+            if success {
+                uploadedCount += 1
+                totalTransferred += fileSize
+            } else {
+                failedCount += 1
+                errors.append("Failed to upload: \(fileURL.lastPathComponent)")
+            }
+            
+            // 更新总任务进度
+            await MainActor.run {
+                directoryTask.updateProgress(transferred: totalTransferred, speed: 0)
+            }
+            
+            // 报告进度
+            progressHandler?(index + 1, filesToUpload.count)
+        }
+        
+        let finalStatus: TransferStatus
+        if isDirectoryUploadCancelled() || directoryTask.isCancelled {
+            finalStatus = .cancelled
+        } else if failedCount == 0 {
+            finalStatus = .completed
+        } else if uploadedCount == 0 {
+            finalStatus = .failed("All files failed to upload")
+        } else {
+            finalStatus = .completed
+        }
+        
+        await MainActor.run {
+            directoryTask.updateStatus(finalStatus)
+            self.moveTaskToCompleted(directoryTask)
+        }
+        
+        let _ = Kalam_RefreshStorage(storageId)
+        let _ = Kalam_ResetDeviceCache()
+        await FileSystemManager.shared.clearCache(for: device)
+        await FileSystemManager.shared.forceClearCache()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshFileList"), object: nil)
+        }
+        
+        debugLog("[uploadDirectory] Upload complete: \(uploadedCount) uploaded, \(failedCount) failed, \(skippedCount) skipped")
+        
+        return DirectoryUploadResult(
+            totalFiles: filesToUpload.count,
+            uploadedFiles: uploadedCount,
+            failedFiles: failedCount,
+            skippedFiles: skippedCount,
+            errors: errors
+        )
+    }
+    
+    /// 格式化文件大小为人类可读格式
+    private static func formatFileSize(_ size: UInt64) -> String {
+        let units = ["B", "KB", "MB", "GB", "TB"]
+        var size = Double(size)
+        var unitIndex = 0
+        
+        while size >= 1024 && unitIndex < units.count - 1 {
+            size /= 1024
+            unitIndex += 1
+        }
+        
+        return String(format: "%.2f %@", size, units[unitIndex])
+    }
+    
+    /// 收集目录中的所有文件（递归）
+    private func collectFilesInDirectory(_ directoryURL: URL) -> [URL] {
+        var files: [URL] = []
+        let fileManager = FileManager.default
+        
+        guard let enumerator = fileManager.enumerator(
+            at: directoryURL,
+            includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        ) else {
+            return []
+        }
+        
+        for case let fileURL as URL in enumerator {
+            do {
+                let resourceValues = try fileURL.resourceValues(forKeys: [.isRegularFileKey])
+                if resourceValues.isRegularFile == true {
+                    files.append(fileURL)
+                }
+            } catch {
+                debugLog("[collectFilesInDirectory] Error checking file: \(error)")
+            }
+        }
+        
+        return files
+    }
+    
+    /// 获取相对路径
+    private func getRelativePath(from basePath: String, to targetPath: String) -> String? {
+        guard targetPath.hasPrefix(basePath) else { return nil }
+        
+        let relativePath = String(targetPath.dropFirst(basePath.count))
+        return relativePath.hasPrefix("/") ? String(relativePath.dropFirst()) : relativePath
+    }
+    
+    /// 获取或创建文件夹
+    private func getOrCreateFolder(
+        device: Device,
+        folderName: String,
+        parentId: UInt32,
+        storageId: UInt32
+    ) async -> UInt32 {
+        // 首先检查文件夹是否已存在
+        let files = await FileSystemManager.shared.getFileList(
+            for: device,
+            parentId: parentId,
+            storageId: storageId
+        )
+        
+        if let existingFolder = files.first(where: { $0.name == folderName && $0.isDirectory }) {
+            debugLog("[getOrCreateFolder] Found existing folder: \(folderName) (ID: \(existingFolder.objectId))")
+            return existingFolder.objectId
+        }
+        
+        // 创建新文件夹
+        let result = folderName.withCString { cString in
+            Kalam_CreateFolder(storageId, parentId, UnsafeMutablePointer(mutating: cString))
+        }
+        
+        if result > 0 {
+            debugLog("[getOrCreateFolder] Created folder: \(folderName) (ID: \(result))")
+            // 刷新缓存以获取新文件夹的 ID
+            await FileSystemManager.shared.clearCache(for: device)
+            let updatedFiles = await FileSystemManager.shared.getFileList(
+                for: device,
+                parentId: parentId,
+                storageId: storageId
+            )
+            if let newFolder = updatedFiles.first(where: { $0.name == folderName && $0.isDirectory }) {
+                return newFolder.objectId
+            }
+            return UInt32(result)
+        } else {
+            debugLog("[getOrCreateFolder] Failed to create folder: \(folderName)")
+            return 0
+        }
+    }
+    
+    /// 创建子目录结构（带缓存优化）
+    private func createSubdirectoryStructure(
+        device: Device,
+        relativePath: String,
+        baseFolderId: UInt32,
+        storageId: UInt32,
+        folderCache: inout [String: UInt32]
+    ) async -> UInt32 {
+        let components = relativePath.split(separator: "/").dropLast().map(String.init)
+        var currentParentId = baseFolderId
+        var currentPath = ""
+        
+        for component in components {
+            currentPath = currentPath.isEmpty ? String(component) : "\(currentPath)/\(component)"
+            
+            // 检查缓存
+            if let cachedId = folderCache[currentPath] {
+                currentParentId = cachedId
+                continue
+            }
+            
+            let folderId = await getOrCreateFolder(
+                device: device,
+                folderName: component,
+                parentId: currentParentId,
+                storageId: storageId
+            )
+            
+            guard folderId != 0 else {
+                return 0
+            }
+            
+            // 缓存已创建的目录
+            folderCache[currentPath] = folderId
+            currentParentId = folderId
+        }
+        
+        return currentParentId
+    }
+    
+    /// 上传单个文件（异步版本）
+    private func uploadSingleFile(
+        to device: Device,
+        sourceURL: URL,
+        parentId: UInt32,
+        storageId: UInt32
+    ) async -> Bool {
+        final class CheckCounter {
+            var count: Int = 0
+        }
+        
+        return await withCheckedContinuation { continuation in
+            let counter = CheckCounter()
+            let maxChecks = 300
+            var resumed = false
+            
+            let timer = DispatchSource.makeTimerSource(queue: .global())
+            timer.schedule(deadline: .now(), repeating: .milliseconds(100))
+            
+            timer.setEventHandler { [weak self] in
+                guard self != nil else {
+                    timer.cancel()
+                    return
+                }
+                
+                counter.count += 1
+                
+                guard !resumed else {
+                    timer.cancel()
+                    return
+                }
+                
+                let task = self?.activeTasks.first { $0.sourceURL == sourceURL }
+                
+                if let task = task {
+                    switch task.status {
+                    case .completed:
+                        timer.cancel()
+                        resumed = true
+                        continuation.resume(returning: true)
+                        return
+                    case .failed, .cancelled:
+                        timer.cancel()
+                        resumed = true
+                        continuation.resume(returning: false)
+                        return
+                    default:
+                        break
+                    }
+                }
+                
+                if counter.count >= maxChecks {
+                    timer.cancel()
+                    resumed = true
+                    continuation.resume(returning: false)
+                }
+            }
+            
+            timer.resume()
+            
+            uploadFile(to: device, sourceURL: sourceURL, parentId: parentId, storageId: storageId)
+        }
+    }
+    
+    /// 底层文件上传，不创建 TransferTask，直接使用 C API
+    private func performFileUploadWithoutTask(
+        device: Device,
+        sourceURL: URL,
+        parentId: UInt32,
+        storageId: UInt32
+    ) async -> Bool {
+        debugLog("[performFileUploadWithoutTask] Uploading: \(sourceURL.lastPathComponent)")
+        
+        // 验证文件存在
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            debugLog("[performFileUploadWithoutTask] File does not exist: \(sourceURL.path)")
+            return false
+        }
+        
+        // 获取文件大小
+        guard let fileAttributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
+              let fileSize = fileAttributes[.size] as? UInt64 else {
+            debugLog("[performFileUploadWithoutTask] Could not get file size")
+            return false
+        }
+        
+        // 验证设备存储空间
+        if let storage = device.storageInfo.first(where: { $0.storageId == storageId }) {
+            if fileSize > storage.freeSpace {
+                debugLog("[performFileUploadWithoutTask] Not enough space")
+                return false
+            }
+        }
+        
+        // 创建临时任务 ID（不添加到任务列表）
+        let taskId = UUID().uuidString
+        
+        // 创建 C 字符串
+        let sourceCStringArray = sourceURL.path.utf8CString
+        let taskCStringArray = taskId.utf8CString
+        
+        let mutableSource: UnsafeMutablePointer<CChar> = UnsafeMutablePointer.allocate(capacity: sourceCStringArray.count)
+        let mutableTask: UnsafeMutablePointer<CChar> = UnsafeMutablePointer.allocate(capacity: taskCStringArray.count)
+        
+        defer {
+            mutableSource.deallocate()
+            mutableTask.deallocate()
+        }
+        
+        sourceCStringArray.withUnsafeBufferPointer { buffer in
+            _ = strcpy(mutableSource, buffer.baseAddress!)
+        }
+        taskCStringArray.withUnsafeBufferPointer { buffer in
+            _ = strcpy(mutableTask, buffer.baseAddress!)
+        }
+        
+        // 调用底层 C API 上传
+        let uploadResult = Kalam_UploadFile(storageId, parentId, mutableSource, mutableTask)
+        
+        debugLog("[performFileUploadWithoutTask] Upload result: \(uploadResult)")
+        
+        return uploadResult > 0
+    }
 }

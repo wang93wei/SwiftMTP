@@ -305,3 +305,14 @@
 "scanCancelled" = "Scan cancelled";
 "noDevicesFound" = "No devices found";
 "maxRetriesExceeded" = "Maximum retries exceeded (%d attempts)";
+
+/* Directory Upload */
+"uploadFolder" = "Upload Folder";
+"uploadingDirectory" = "Uploading directory...";
+"uploadDirectorySuccess" = "Directory upload successful! Uploaded %1$d files to '%2$@'";
+"uploadDirectoryFailed" = "Directory upload failed! %1$d files failed to upload. Error: %2$@";
+"uploadDirectoryPartial" = "Directory upload partially complete. %1$d of %2$d files uploaded successfully";
+
+/* Directory Delete */
+"deleteFolder" = "Delete Folder";
+"confirmDeleteFolderWithName" = "Are you sure you want to delete \"%1$@\"? This action will recursively delete the folder and all its contents and cannot be undone.";

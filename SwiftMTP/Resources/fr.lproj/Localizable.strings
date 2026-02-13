@@ -305,3 +305,14 @@
 "scanCancelled" = "Scan annulé";
 "noDevicesFound" = "Aucun appareil trouvé";
 "maxRetriesExceeded" = "Nombre maximum de tentatives dépassé (%d)";
+
+/* Téléchargement de répertoire */
+"uploadFolder" = "Télécharger le dossier";
+"uploadingDirectory" = "Téléchargement du dossier en cours...";
+"uploadDirectorySuccess" = "Téléchargement du dossier réussi ! %1$d fichiers téléchargés vers '%2$@'";
+"uploadDirectoryFailed" = "Échec du téléchargement du dossier ! %1$d fichiers n'ont pas pu être téléchargés. Erreur : %2$@";
+"uploadDirectoryPartial" = "Téléchargement du dossier partiellement terminé. %1$d sur %2$d fichiers téléchargés avec succès";
+
+/* Suppression de répertoire */
+"deleteFolder" = "Supprimer le dossier";
+"confirmDeleteFolderWithName" = "Êtes-vous sûr de vouloir supprimer \"%1$@\" ? Cette action supprimera récursivement le dossier et tout son contenu et ne pourra pas être annulée.";

@@ -305,3 +305,14 @@
 "scanCancelled" = "スキャンがキャンセルされました";
 "noDevicesFound" = "デバイスが見つかりません";
 "maxRetriesExceeded" = "最大再試行回数を超えました (%d 回)";
+
+/* ディレクトリアップロード */
+"uploadFolder" = "フォルダをアップロード";
+"uploadingDirectory" = "フォルダをアップロード中...";
+"uploadDirectorySuccess" = "フォルダのアップロードに成功しました！%1$d 個のファイルを '%2$@' にアップロードしました";
+"uploadDirectoryFailed" = "フォルダのアップロードに失敗しました！%1$d 個のファイルのアップロードに失敗しました。エラー：%2$@";
+"uploadDirectoryPartial" = "フォルダのアップロードが部分的に完了しました。%1$d / %2$d 個のファイルが正常にアップロードされました";
+
+/* ディレクトリ削除 */
+"deleteFolder" = "フォルダを削除";
+"confirmDeleteFolderWithName" = "\"%1$@\" を削除してもよろしいですか？この操作はフォルダとそのすべてのコンテンツを再帰的に削除し、元に戻すことはできません。";
