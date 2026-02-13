@@ -145,14 +145,24 @@ SwiftMTP/
 │   │   ├── Device.swift           # Gerät-Modell
 │   │   ├── FileItem.swift         # Datei-Modell
 │   │   ├── TransferTask.swift     # Übertragungsaufgaben-Modell
-│   │   └── AppLanguage.swift      # Sprach-Modell
+│   │   ├── AppLanguage.swift      # Sprach-Modell
+│   │   ├── AppError.swift         # Fehlertypdefinitionen
+│   │   └── UpdateInfo.swift       # Update-Informationen Modell
 │   ├── Services/                  # Service-Schicht
 │   │   ├── MTP/                   # MTP-Services
 │   │   │   ├── DeviceManager.swift    # Geräteverwaltung
 │   │   │   ├── FileSystemManager.swift# Dateisystem
 │   │   │   └── FileTransferManager.swift # Übertragungsverwaltung
+│   │   ├── Protocols/             # Protokolldefinitionen
+│   │   │   ├── DeviceManaging.swift
+│   │   │   ├── FileSystemManaging.swift
+│   │   │   ├── FileTransferManaging.swift
+│   │   │   └── LanguageManaging.swift
 │   │   ├── LanguageManager.swift  # Sprach-Manager
-│   │   └── LocalizationManager.swift # Lokalisierungs-Manager
+│   │   ├── LocalizationManager.swift # Lokalisierungs-Manager
+│   │   └── UpdateChecker.swift    # Update-Prüfer
+│   ├── Config/                    # Konfigurationsverwaltung
+│   │   └── AppConfiguration.swift # Anwendungskonfigurationskonstanten
 │   ├── Views/                     # SwiftUI-Ansichten
 │   │   ├── MainWindowView.swift   # Hauptfenster
 │   │   ├── DeviceListView.swift   # Geräteliste
@@ -214,7 +224,7 @@ SwiftMTP/
 
 ### Technologiestack
 
-- **Sprachen**: Swift 6+, Go 1.22+
+- **Sprachen**: Swift 6+, Go 1.23+
 - **UI-Framework**: SwiftUI
 - **MTP-Bibliothek**: go-mtpx (basierend auf libusb-1.0)
 - **Architektur-Muster**: MVVM

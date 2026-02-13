@@ -145,14 +145,24 @@ SwiftMTP/
 │   │   ├── Device.swift           # Модель устройства
 │   │   ├── FileItem.swift         # Модель файла
 │   │   ├── TransferTask.swift     # Модель задачи передачи
-│   │   └── AppLanguage.swift      # Модель языка
+│   │   ├── AppLanguage.swift      # Модель языка
+│   │   ├── AppError.swift         # Определения типов ошибок
+│   │   └── UpdateInfo.swift       # Модель информации об обновлении
 │   ├── Services/                  # Слой сервисов
 │   │   ├── MTP/                   # Сервисы MTP
 │   │   │   ├── DeviceManager.swift    # Управление устройствами
 │   │   │   ├── FileSystemManager.swift# Файловая система
 │   │   │   └── FileTransferManager.swift # Управление передачей
+│   │   ├── Protocols/             # Определения протоколов
+│   │   │   ├── DeviceManaging.swift
+│   │   │   ├── FileSystemManaging.swift
+│   │   │   ├── FileTransferManaging.swift
+│   │   │   └── LanguageManaging.swift
 │   │   ├── LanguageManager.swift  # Менеджер языка
-│   │   └── LocalizationManager.swift # Менеджер локализации
+│   │   ├── LocalizationManager.swift # Менеджер локализации
+│   │   └── UpdateChecker.swift    # Проверка обновлений
+│   ├── Config/                    # Управление конфигурацией
+│   │   └── AppConfiguration.swift # Константы конфигурации приложения
 │   ├── Views/                     # Представления SwiftUI
 │   │   ├── MainWindowView.swift   # Главное окно
 │   │   ├── DeviceListView.swift   # Список устройств
@@ -214,7 +224,7 @@ SwiftMTP/
 
 ### Технологический стек
 
-- **Языки**: Swift 6+, Go 1.22+
+- **Языки**: Swift 6+, Go 1.23+
 - **UI-фреймворк**: SwiftUI
 - **Библиотека MTP**: go-mtpx (на основе libusb-1.0)
 - **Архитектурный шаблон**: MVVM

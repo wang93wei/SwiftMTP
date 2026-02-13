@@ -145,14 +145,24 @@ SwiftMTP/
 │   │   ├── Device.swift           # Device model
 │   │   ├── FileItem.swift         # File model
 │   │   ├── TransferTask.swift     # Transfer task model
-│   │   └── AppLanguage.swift      # Language model
+│   │   ├── AppLanguage.swift      # Language model
+│   │   ├── AppError.swift         # Error type definitions
+│   │   └── UpdateInfo.swift       # Update information model
 │   ├── Services/                  # Service layer
 │   │   ├── MTP/                   # MTP services
 │   │   │   ├── DeviceManager.swift    # Device management
 │   │   │   ├── FileSystemManager.swift# File system
 │   │   │   └── FileTransferManager.swift # Transfer management
+│   │   ├── Protocols/             # Protocol definitions
+│   │   │   ├── DeviceManaging.swift
+│   │   │   ├── FileSystemManaging.swift
+│   │   │   ├── FileTransferManaging.swift
+│   │   │   └── LanguageManaging.swift
 │   │   ├── LanguageManager.swift  # Language manager
-│   │   └── LocalizationManager.swift # Localization manager
+│   │   ├── LocalizationManager.swift # Localization manager
+│   │   └── UpdateChecker.swift    # Update checker
+│   ├── Config/                    # Configuration
+│   │   └── AppConfiguration.swift # App configuration constants
 │   ├── Views/                     # SwiftUI views
 │   │   ├── MainWindowView.swift   # Main window
 │   │   ├── DeviceListView.swift   # Device list
@@ -214,7 +224,7 @@ SwiftMTP/
 
 ### Tech Stack
 
-- **Languages**: Swift 6+, Go 1.22+
+- **Languages**: Swift 6+, Go 1.23+
 - **UI Framework**: SwiftUI
 - **MTP Library**: go-mtpx (based on libusb-1.0)
 - **Architecture Pattern**: MVVM

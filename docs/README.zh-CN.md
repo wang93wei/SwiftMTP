@@ -145,14 +145,24 @@ SwiftMTP/
 │   │   ├── Device.swift           # 设备模型
 │   │   ├── FileItem.swift         # 文件模型
 │   │   ├── TransferTask.swift     # 传输任务模型
-│   │   └── AppLanguage.swift      # 语言模型
+│   │   ├── AppLanguage.swift      # 语言模型
+│   │   ├── AppError.swift         # 错误类型定义
+│   │   └── UpdateInfo.swift       # 更新信息模型
 │   ├── Services/                  # 服务层
 │   │   ├── MTP/                   # MTP 服务
 │   │   │   ├── DeviceManager.swift    # 设备管理
 │   │   │   ├── FileSystemManager.swift# 文件系统
 │   │   │   └── FileTransferManager.swift # 传输管理
+│   │   ├── Protocols/             # 协议定义
+│   │   │   ├── DeviceManaging.swift
+│   │   │   ├── FileSystemManaging.swift
+│   │   │   ├── FileTransferManaging.swift
+│   │   │   └── LanguageManaging.swift
 │   │   ├── LanguageManager.swift  # 语言管理器
-│   │   └── LocalizationManager.swift # 本地化管理器
+│   │   ├── LocalizationManager.swift # 本地化管理器
+│   │   └── UpdateChecker.swift    # 更新检查器
+│   ├── Config/                    # 配置管理
+│   │   └── AppConfiguration.swift # 应用配置常量
 │   ├── Views/                     # SwiftUI 视图
 │   │   ├── MainWindowView.swift   # 主窗口
 │   │   ├── DeviceListView.swift   # 设备列表
@@ -214,7 +224,7 @@ SwiftMTP/
 
 ### 技术栈
 
-- **语言**: Swift 6+, Go 1.22+
+- **语言**: Swift 6+, Go 1.23+
 - **UI 框架**: SwiftUI
 - **MTP 库**: go-mtpx (基于 libusb-1.0)
 - **架构模式**: MVVM

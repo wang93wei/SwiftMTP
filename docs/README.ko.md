@@ -145,14 +145,24 @@ SwiftMTP/
 │   │   ├── Device.swift           # 장치 모델
 │   │   ├── FileItem.swift         # 파일 모델
 │   │   ├── TransferTask.swift     # 전송 작업 모델
-│   │   └── AppLanguage.swift      # 언어 모델
+│   │   ├── AppLanguage.swift      # 언어 모델
+│   │   ├── AppError.swift         # 오류 유형 정의
+│   │   └── UpdateInfo.swift       # 업데이트 정보 모델
 │   ├── Services/                  # 서비스 레이어
 │   │   ├── MTP/                   # MTP 서비스
 │   │   │   ├── DeviceManager.swift    # 장치 관리
 │   │   │   ├── FileSystemManager.swift# 파일 시스템
 │   │   │   └── FileTransferManager.swift # 전송 관리
+│   │   ├── Protocols/             # 프로토콜 정의
+│   │   │   ├── DeviceManaging.swift
+│   │   │   ├── FileSystemManaging.swift
+│   │   │   ├── FileTransferManaging.swift
+│   │   │   └── LanguageManaging.swift
 │   │   ├── LanguageManager.swift  # 언어 관리자
-│   │   └── LocalizationManager.swift # 현지화 관리자
+│   │   ├── LocalizationManager.swift # 현지화 관리자
+│   │   └── UpdateChecker.swift    # 업데이트 확인기
+│   ├── Config/                    # 구성 관리
+│   │   └── AppConfiguration.swift # 앱 구성 상수
 │   ├── Views/                     # SwiftUI 뷰
 │   │   ├── MainWindowView.swift   # 메인 창
 │   │   ├── DeviceListView.swift   # 장치 목록
@@ -214,7 +224,7 @@ SwiftMTP/
 
 ### 기술 스택
 
-- **언어**: Swift 6+, Go 1.22+
+- **언어**: Swift 6+, Go 1.23+
 - **UI 프레임워크**: SwiftUI
 - **MTP 라이브러리**: go-mtpx (libusb-1.0 기반)
 - **아키텍처 패턴**: MVVM
