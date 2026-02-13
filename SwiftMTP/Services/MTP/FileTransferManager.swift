@@ -306,10 +306,11 @@ class FileTransferManager: ObservableObject {
         }
 
         // 6. 验证路径是否在允许的目录范围内
+        // 允许用户主目录下的常用文件夹以及外置硬盘（/Volumes）
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
         let allowedDirectories = [
-            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads").path,
-            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop").path,
-            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents").path
+            homeDir, // 允许整个用户主目录
+            "/Volumes" // 允许外置硬盘
         ]
         debugLog("validatePathSecurity: Step 6 - Checking allowed directories...")
         debugLog("validatePathSecurity:   Allowed directories:")
@@ -319,7 +320,7 @@ class FileTransferManager: ObservableObject {
 
         var isInAllowedDirectory = false
         for allowedDir in allowedDirectories {
-            if standardizedPath.hasPrefix(allowedDir) {
+            if standardizedPath.hasPrefix(allowedDir + "/") || standardizedPath == allowedDir {
                 isInAllowedDirectory = true
                 debugLog("validatePathSecurity:   Path matches allowed directory: \(allowedDir)")
                 break
