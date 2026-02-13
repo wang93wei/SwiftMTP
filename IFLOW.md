@@ -60,10 +60,10 @@ SwiftMTP/
 
 ## 构建命令
 ```bash
-# 构建桥接 --检查 go 编译是否报错强制使用
+# 构建桥接 --每次 go 代码变更后都需要检查，是否报错，强制使用
 ./Scripts/build_kalam.sh
 
-# Xcode编译 --检查是否报错强制使用
+# Xcode编译 --每次 Swift 代码变更后都需要编译，检查是否报错，强制使用
 xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP build
 ```
 
