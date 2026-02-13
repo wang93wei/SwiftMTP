@@ -95,9 +95,12 @@ struct FileItem: Identifiable, Hashable, Comparable, Sendable {
             return "--"
         }
 
-        // Use Calendar to avoid MainActor isolation
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        guard let utcTimeZone = TimeZone(secondsFromGMT: 0) else {
+            return "--"
+        }
+        var utcCalendar = Calendar.current
+        utcCalendar.timeZone = utcTimeZone
+        let components = utcCalendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
 
         guard let year = components.year,
               let month = components.month,

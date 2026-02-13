@@ -214,7 +214,9 @@ func decodeTime(r io.Reader, f reflect.Value) error {
 		// Jolla Sailfish has trailing "Z".
 		s = strings.TrimRight(s, "Z")
 
-		t, err = time.Parse(timeFormat, s)
+		// Parse with UTC location to ensure consistent timestamp
+		// MTP devices typically return times in UTC
+		t, err = time.ParseInLocation(timeFormat, s, time.UTC)
 		if err != nil {
 			// Nokia lumia has numTZ
 			t, err = time.Parse(timeFormatNumTZ, s)
