@@ -305,45 +305,15 @@ class FileTransferManager: ObservableObject {
             return false
         }
 
-        // 6. 验证路径是否在允许的目录范围内
-        // 允许用户主目录下的常用文件夹以及外置硬盘（/Volumes）
-        let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
-        let allowedDirectories = [
-            homeDir, // 允许整个用户主目录
-            "/Volumes" // 允许外置硬盘
-        ]
-        debugLog("validatePathSecurity: Step 6 - Checking allowed directories...")
-        debugLog("validatePathSecurity:   Allowed directories:")
-        for dir in allowedDirectories {
-            debugLog("validatePathSecurity:     - \(dir)")
-        }
-
-        var isInAllowedDirectory = false
-        for allowedDir in allowedDirectories {
-            if standardizedPath.hasPrefix(allowedDir + "/") || standardizedPath == allowedDir {
-                isInAllowedDirectory = true
-                debugLog("validatePathSecurity:   Path matches allowed directory: \(allowedDir)")
-                break
-            }
-        }
-
-        if !isInAllowedDirectory {
-            debugLog("[FileTransferManager] Upload failed: Path is not in allowed directories")
-            debugLog("[FileTransferManager] Allowed directories: \(allowedDirectories)")
-            debugLog("[FileTransferManager] Actual path: \(standardizedPath)")
-            return false
-        }
-        debugLog("validatePathSecurity: Step 6 - Path is in allowed directory")
-
-        // 7. 验证标准化后的路径是否与原始路径一致
-        debugLog("validatePathSecurity: Step 7 - Comparing original and standardized paths...")
+        // 6. 验证标准化后的路径是否与原始路径一致
+        debugLog("validatePathSecurity: Step 6 - Comparing original and standardized paths...")
         if standardizedPath != url.path {
             debugLog("[FileTransferManager] Upload failed: Path contains relative references or symbolic links")
             debugLog("validatePathSecurity:   Original: \(url.path)")
             debugLog("validatePathSecurity:   Standardized: \(standardizedPath)")
             return false
         }
-        debugLog("validatePathSecurity: Step 7 - Paths match")
+        debugLog("validatePathSecurity: Step 6 - Paths match")
 
         debugLog("validatePathSecurity: All security checks passed ✓")
         return true

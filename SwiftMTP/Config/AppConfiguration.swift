@@ -79,13 +79,12 @@ struct AppConfiguration {
     static let maxPathLength: Int = 4096
     
     /// Allowed directories for file upload
-    /// Includes user home directory and external drives (/Volumes)
+    /// No directory restrictions - users can upload from any location
+    /// Security is maintained through path traversal checks and symbolic link blocking
     static var allowedUploadDirectories: [URL] {
-        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
-        return [
-            homeDirectory, // Allow entire user home directory
-            URL(fileURLWithPath: "/Volumes") // Allow external drives
-        ]
+        // No restrictions - allow all paths
+        // Security is enforced by validatePathSecurity() in FileTransferManager
+        return []
     }
     
     // MARK: - UI Configuration
