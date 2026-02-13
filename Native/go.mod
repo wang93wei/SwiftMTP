@@ -1,6 +1,6 @@
 module kalam-bridge
 
-go 1.25.5
+go 1.26.0
 
 require (
 	github.com/ganeshrvel/go-mtpfs v1.0.4-0.20240426083057-1c3302b3c476
