@@ -32,8 +32,11 @@
 | 📊 **Speicherinformationen** | Zeigt die Speichernutzung des Geräts an |
 | 🌍 **Mehrsprachig** | Unterstützt vereinfachtes Chinesisch, Englisch, Japanisch, Koreanisch, Russisch, Französisch, Deutsch, folgt der Systemsprache |
 
-## 📸 App-Screenshot
-![SwiftMTP Logo](cap_2025-12-24%2005.29.36.png)
+## 📸 App-Screenshots
+
+| Hauptoberfläche | Dateiübertragung |
+|:---:|:---:|
+| ![Hauptoberfläche](cap_2025-12-24%2005.29.36.png) | ![Dateiübertragung](cap_2026-02-21%2023.30.24.png) |
 
 ## 🚀 Schnellstart
 

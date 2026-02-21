@@ -32,8 +32,11 @@
 | 📊 **Storage Info** | Display device storage usage |
 | 🌍 **Multi-language Support** | Support English, Simplified Chinese, Japanese, Korean, Russian, French, German, follows system language |
 
-## 📸 App Screenshot
-![SwiftMTP Logo](docs/cap_2025-12-24%2005.29.36.png)
+## 📸 App Screenshots
+
+| Main Interface | File Transfer |
+|:---:|:---:|
+| ![Main Interface](docs/cap_2025-12-24%2005.29.36.png) | ![File Transfer](docs/cap_2026-02-21%2023.30.24.png) |
 
 ## 🚀 Quick Start
 
