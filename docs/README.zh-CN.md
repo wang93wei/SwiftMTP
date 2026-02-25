@@ -155,7 +155,8 @@ SwiftMTP/
 │   │   ├── MTP/                   # MTP 服务
 │   │   │   ├── DeviceManager.swift    # 设备管理
 │   │   │   ├── FileSystemManager.swift# 文件系统
-│   │   │   └── FileTransferManager.swift # 传输管理
+│   │   │   ├── FileTransferManager.swift # 传输管理
+│   │   │   └── FileTransferManager+DirectoryUpload.swift # 目录上传扩展
 │   │   ├── Protocols/             # 协议定义
 │   │   │   ├── DeviceManaging.swift
 │   │   │   ├── FileSystemManaging.swift
@@ -170,6 +171,9 @@ SwiftMTP/
 │   │   ├── MainWindowView.swift   # 主窗口
 │   │   ├── DeviceListView.swift   # 设备列表
 │   │   ├── FileBrowserView.swift  # 文件浏览器
+│   │   ├── FileBrowserView+Actions.swift # 文件浏览器操作
+│   │   ├── FileBrowserView+ToolbarDrop.swift # 文件浏览器工具栏与拖拽
+│   │   ├── TableDoubleClickModifier.swift # 表格双击桥接
 │   │   ├── FileTransferView.swift # 传输视图
 │   │   ├── SettingsView.swift     # 设置窗口
 │   │   └── Components/            # 可复用组件

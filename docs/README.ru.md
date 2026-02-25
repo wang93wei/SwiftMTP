@@ -155,7 +155,8 @@ SwiftMTP/
 │   │   ├── MTP/                   # Сервисы MTP
 │   │   │   ├── DeviceManager.swift    # Управление устройствами
 │   │   │   ├── FileSystemManager.swift# Файловая система
-│   │   │   └── FileTransferManager.swift # Управление передачей
+│   │   │   ├── FileTransferManager.swift # Управление передачей
+│   │   │   └── FileTransferManager+DirectoryUpload.swift # Расширение загрузки папок
 │   │   ├── Protocols/             # Определения протоколов
 │   │   │   ├── DeviceManaging.swift
 │   │   │   ├── FileSystemManaging.swift
@@ -170,6 +171,9 @@ SwiftMTP/
 │   │   ├── MainWindowView.swift   # Главное окно
 │   │   ├── DeviceListView.swift   # Список устройств
 │   │   ├── FileBrowserView.swift  # Браузер файлов
+│   │   ├── FileBrowserView+Actions.swift # Действия браузера файлов
+│   │   ├── FileBrowserView+ToolbarDrop.swift # Панель инструментов и drag-and-drop браузера файлов
+│   │   ├── TableDoubleClickModifier.swift # Мост двойного клика таблицы
 │   │   ├── FileTransferView.swift # Представление передачи
 │   │   ├── SettingsView.swift     # Окно настроек
 │   │   └── Components/            # Повторно используемые компоненты

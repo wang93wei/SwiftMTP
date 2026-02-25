@@ -35,6 +35,9 @@
 ## 核心原则
 增量开发 → 编译验证 → 测试通过 → 提交
 
+## 提交前检查（强制）
+- 每次 `git push` 前，必须在仓库根目录执行 `desloppify scan --path .`，并确保 `Open: 0`（若确需保留问题，必须按规范使用 `wontfix` 并附 `note` 与 `attest`）。
+
 ## 项目结构
 ```
 SwiftMTP/

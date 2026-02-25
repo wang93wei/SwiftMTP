@@ -155,7 +155,8 @@ SwiftMTP/
 │   │   ├── MTP/                   # MTP services
 │   │   │   ├── DeviceManager.swift    # Device management
 │   │   │   ├── FileSystemManager.swift# File system
-│   │   │   └── FileTransferManager.swift # Transfer management
+│   │   │   ├── FileTransferManager.swift # Transfer management
+│   │   │   └── FileTransferManager+DirectoryUpload.swift # Directory upload extension
 │   │   ├── Protocols/             # Protocol definitions
 │   │   │   ├── DeviceManaging.swift
 │   │   │   ├── FileSystemManaging.swift
@@ -170,6 +171,9 @@ SwiftMTP/
 │   │   ├── MainWindowView.swift   # Main window
 │   │   ├── DeviceListView.swift   # Device list
 │   │   ├── FileBrowserView.swift  # File browser
+│   │   ├── FileBrowserView+Actions.swift # File browser actions
+│   │   ├── FileBrowserView+ToolbarDrop.swift # File browser toolbar & drag-drop
+│   │   ├── TableDoubleClickModifier.swift # Table double-click bridge
 │   │   ├── FileTransferView.swift # Transfer view
 │   │   ├── SettingsView.swift     # Settings window
 │   │   └── Components/            # Reusable components

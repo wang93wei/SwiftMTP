@@ -155,7 +155,8 @@ SwiftMTP/
 │   │   ├── MTP/                   # MTP 서비스
 │   │   │   ├── DeviceManager.swift    # 장치 관리
 │   │   │   ├── FileSystemManager.swift# 파일 시스템
-│   │   │   └── FileTransferManager.swift # 전송 관리
+│   │   │   ├── FileTransferManager.swift # 전송 관리
+│   │   │   └── FileTransferManager+DirectoryUpload.swift # 디렉터리 업로드 확장
 │   │   ├── Protocols/             # 프로토콜 정의
 │   │   │   ├── DeviceManaging.swift
 │   │   │   ├── FileSystemManaging.swift
@@ -170,6 +171,9 @@ SwiftMTP/
 │   │   ├── MainWindowView.swift   # 메인 창
 │   │   ├── DeviceListView.swift   # 장치 목록
 │   │   ├── FileBrowserView.swift  # 파일 브라우저
+│   │   ├── FileBrowserView+Actions.swift # 파일 브라우저 작업
+│   │   ├── FileBrowserView+ToolbarDrop.swift # 파일 브라우저 툴바 및 드래그 앤 드롭
+│   │   ├── TableDoubleClickModifier.swift # 테이블 더블클릭 브리지
 │   │   ├── FileTransferView.swift # 전송 뷰
 │   │   ├── SettingsView.swift     # 설정 창
 │   │   └── Components/            # 재사용 가능한 컴포넌트
