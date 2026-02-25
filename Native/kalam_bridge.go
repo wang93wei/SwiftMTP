@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 	"unsafe"
-    
+
 	"github.com/ganeshrvel/go-mtpfs/mtp"
 	"github.com/ganeshrvel/go-mtpx"
 )
@@ -127,7 +127,7 @@ type mtpDeviceManager struct {
 // Scan scans for connected MTP devices
 func (m *mtpDeviceManager) Scan() ([]DeviceJSON, error) {
 	var result string
-	
+
 	err := withDeviceQuick(func(dev *mtp.Device) error {
 		info, err := mtpx.FetchDeviceInfo(dev)
 		if err != nil {
@@ -183,11 +183,11 @@ func (m *mtpDeviceManager) Scan() ([]DeviceJSON, error) {
 		if err != nil {
 			return fmt.Errorf("JSON marshal failed: %w", err)
 		}
-		
+
 		result = string(jsonData)
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func (m *mtpDeviceManager) Dispose() error {
 // GetDeviceInfo retrieves device information
 func (m *mtpDeviceManager) GetDeviceInfo() (*mtp.DeviceInfo, error) {
 	var info *mtp.DeviceInfo
-	
+
 	err := withDeviceQuick(func(dev *mtp.Device) error {
 		var devInfo mtp.DeviceInfo
 		if err := dev.GetDeviceInfo(&devInfo); err != nil {
@@ -256,7 +256,7 @@ func (m *mtpDeviceManager) GetDeviceInfo() (*mtp.DeviceInfo, error) {
 // GetStorages retrieves storage information
 func (m *mtpDeviceManager) GetStorages() ([]mtpx.StorageData, error) {
 	var storages []mtpx.StorageData
-	
+
 	err := withDeviceQuick(func(dev *mtp.Device) error {
 		var s []mtpx.StorageData
 		var err error
@@ -278,7 +278,7 @@ type fileSystemManager struct{}
 // ListFiles lists files in a directory
 func (m *fileSystemManager) ListFiles(storageID StorageID, parentID ParentID) ([]FileJSON, error) {
 	var result string
-	
+
 	err := withDevice(func(dev *mtp.Device) error {
 		var handles mtp.Uint32Array
 		if err := dev.GetObjectHandles(uint32(storageID), 0, uint32(parentID), &handles); err != nil {
@@ -303,7 +303,7 @@ func (m *fileSystemManager) ListFiles(storageID StorageID, parentID ParentID) ([
 				ModTime:   info.ModificationDate.Unix(),
 			})
 		}
-		
+
 		if files == nil {
 			files = []FileJSON{}
 		}
@@ -312,11 +312,11 @@ func (m *fileSystemManager) ListFiles(storageID StorageID, parentID ParentID) ([
 		if err != nil {
 			return fmt.Errorf("JSON marshal failed: %w", err)
 		}
-		
+
 		result = string(jsonData)
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
@@ -334,13 +334,13 @@ func (m *fileSystemManager) CreateFolder(storageID StorageID, parentID ParentID,
 	if name == "" {
 		return 0, fmt.Errorf("folder name cannot be empty")
 	}
-	
+
 	if len(name) > cfg.Security.MaxFolderNameLength {
 		return 0, fmt.Errorf("folder name too long (%d chars)", len(name))
 	}
-	
+
 	var newHandle uint32
-	
+
 	err := withDevice(func(dev *mtp.Device) error {
 		var objInfo mtp.ObjectInfo
 		objInfo.StorageID = uint32(storageID)
@@ -353,15 +353,15 @@ func (m *fileSystemManager) CreateFolder(storageID StorageID, parentID ParentID,
 		if err != nil {
 			return fmt.Errorf("SendObjectInfo failed: %w", err)
 		}
-		
+
 		newHandle = handle
 		return nil
 	})
-	
+
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return ObjectID(newHandle), nil
 }
 
@@ -408,16 +408,16 @@ var fileSystemMgr FileSystemManager = &fileSystemManager{}
 type Config struct {
 	// Timeout settings (milliseconds)
 	Timeouts struct {
-		QuickScan           time.Duration
-		NormalOperation     time.Duration
-		LargeFileDownload   time.Duration
+		QuickScan         time.Duration
+		NormalOperation   time.Duration
+		LargeFileDownload time.Duration
 	}
 
 	// Retry settings
 	Retries struct {
-		QuickScan        int
-		NormalOperation  int
-		Download         int
+		QuickScan       int
+		NormalOperation int
+		Download        int
 	}
 
 	// Backoff settings
@@ -428,8 +428,8 @@ type Config struct {
 
 	// Security settings
 	Security struct {
-		MaxPathLength    int
-		MaxCStringSize   int
+		MaxPathLength       int
+		MaxCStringSize      int
 		MaxFolderNameLength int
 	}
 
@@ -487,7 +487,7 @@ func DefaultConfig() *Config {
 
 	// File size limits
 	cfg.FileSize.LargeThreshold = 100 * 1024 * 1024 // 100MB
-	cfg.FileSize.MaxSize = 10 * 1024 * 1024 * 1024 // 10GB
+	cfg.FileSize.MaxSize = 10 * 1024 * 1024 * 1024  // 10GB
 
 	// Download settings
 	cfg.Download.DefaultDir = getDefaultDownloadDir()
@@ -543,7 +543,7 @@ func validateAndCleanPath(path string, allowedBaseDir string) (string, error) {
 	if len(path) > cfg.Security.MaxPathLength {
 		return "", fmt.Errorf("path exceeds maximum length of %d", cfg.Security.MaxPathLength)
 	}
-	
+
 	// 2. Check for dangerous characters
 	dangerousChars := []string{"\x00", "\n", "\r", "\t"}
 	for _, char := range dangerousChars {
@@ -551,37 +551,37 @@ func validateAndCleanPath(path string, allowedBaseDir string) (string, error) {
 			return "", fmt.Errorf("path contains invalid character")
 		}
 	}
-	
+
 	// 3. Clean the path
 	cleanPath := filepath.Clean(path)
-	
+
 	// 4. Resolve to absolute path
 	absPath, err := filepath.Abs(cleanPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to get absolute path: %w", err)
 	}
-	
+
 	// 5. Check if path is within allowed directory
 	allowedAbs, err := filepath.Abs(allowedBaseDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to get allowed base dir: %w", err)
 	}
-	
+
 	relPath, err := filepath.Rel(allowedAbs, absPath)
 	if err != nil {
 		return "", fmt.Errorf("path is not relative to allowed dir: %w", err)
 	}
-	
+
 	// 6. Check if path contains ".."
 	if strings.Contains(relPath, "..") {
 		return "", fmt.Errorf("path contains parent directory references")
 	}
-	
+
 	// 7. Check if path starts with ".."
 	if strings.HasPrefix(relPath, "..") {
 		return "", fmt.Errorf("path starts with parent directory reference")
 	}
-	
+
 	return absPath, nil
 }
 
@@ -611,20 +611,20 @@ var (
 	cancelledTasks sync.Map
 	// Allocated C strings tracking (for memory leak detection)
 	allocatedStrings = make(map[*C.char]time.Time)
-	stringMu sync.Mutex
+	stringMu         sync.Mutex
 )
 
 // Device connection pool to avoid frequent initialization/disposal
 // This prevents TLS key exhaustion in libusb
 type devicePoolEntry struct {
-	device     *mtp.Device
-	lastUsed   time.Time
-	inUse      bool
+	device   *mtp.Device
+	lastUsed time.Time
+	inUse    bool
 }
 
 var (
-	devicePool      []*devicePoolEntry
-	devicePoolMu    sync.RWMutex
+	devicePool   []*devicePoolEntry
+	devicePoolMu sync.RWMutex
 )
 
 // Initialize device pool cleanup routine
@@ -632,7 +632,7 @@ func init() {
 	go func() {
 		ticker := time.NewTicker(cfg.Pool.CleanupTick)
 		defer ticker.Stop()
-		
+
 		for range ticker.C {
 			cleanupDevicePool()
 		}
@@ -659,7 +659,7 @@ func cleanupDevicePool() {
 			mtpx.Dispose(entry.device)
 		}
 	}
-	
+
 	devicePool = activePool
 }
 
@@ -667,7 +667,7 @@ func cleanupDevicePool() {
 func getDeviceFromPool() *devicePoolEntry {
 	devicePoolMu.Lock()
 	defer devicePoolMu.Unlock()
-	
+
 	// Iterate backwards to safely remove elements
 	for i := len(devicePool) - 1; i >= 0; i-- {
 		entry := devicePool[i]
@@ -675,7 +675,7 @@ func getDeviceFromPool() *devicePoolEntry {
 			// Test if device is still open by trying to get device info
 			var testInfo mtp.DeviceInfo
 			err := entry.device.GetDeviceInfo(&testInfo)
-			
+
 			if err != nil {
 				// Device is closed or invalid, remove from pool
 				// Only log in debug mode to avoid log spam
@@ -685,13 +685,13 @@ func getDeviceFromPool() *devicePoolEntry {
 				devicePool = append(devicePool[:i], devicePool[i+1:]...)
 				continue
 			}
-			
+
 			entry.inUse = true
 			entry.lastUsed = time.Now()
 			return entry
 		}
 	}
-	
+
 	return nil
 }
 
@@ -711,20 +711,20 @@ func returnDeviceToPool(entry *devicePoolEntry) {
 	if len(devicePool) >= cfg.Pool.MaxSize {
 		var oldestIndex = -1
 		var oldestTime time.Time
-		
+
 		for i, e := range devicePool {
 			if !e.inUse && (oldestIndex == -1 || e.lastUsed.Before(oldestTime)) {
 				oldestIndex = i
 				oldestTime = e.lastUsed
 			}
 		}
-		
+
 		if oldestIndex >= 0 {
 			mtpx.Dispose(devicePool[oldestIndex].device)
 			devicePool = append(devicePool[:oldestIndex], devicePool[oldestIndex+1:]...)
 		}
 	}
-	
+
 	devicePool = append(devicePool, entry)
 }
 
@@ -733,10 +733,10 @@ func removeClosedDeviceFromPool(entry *devicePoolEntry) {
 	if entry == nil || entry.device == nil {
 		return
 	}
-	
+
 	devicePoolMu.Lock()
 	defer devicePoolMu.Unlock()
-	
+
 	// Find and remove the entry
 	for i, e := range devicePool {
 		if e == entry {
@@ -756,13 +756,13 @@ func createNewDevice() (*devicePoolEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize device: %w", err)
 	}
-	
+
 	entry := &devicePoolEntry{
 		device:   dev,
 		lastUsed: time.Now(),
 		inUse:    true,
 	}
-	
+
 	return entry, nil
 }
 
@@ -781,12 +781,12 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 			// Quick scan uses short backoff time
 			time.Sleep(cfg.Backoff.QuickScanDuration)
 		}
-		
+
 		// Try to get device from pool first
 		poolEntry := getDeviceFromPool()
 		var dev *mtp.Device
 		var deviceFromPool bool
-		
+
 		if poolEntry != nil {
 			dev = poolEntry.device
 			deviceFromPool = true
@@ -804,7 +804,7 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 			deviceFromPool = false
 			fmt.Printf("withDeviceQuick: Created new device connection\n")
 		}
-		
+
 		// Ensure device is properly handled with panic recovery
 		func() {
 			defer func() {
@@ -814,18 +814,19 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 				// Return device to pool instead of disposing
 				returnDeviceToPool(poolEntry)
 			}()
-			
-						// Configure device with shorter timeout for quick scans
-						dev.Timeout = int(cfg.Timeouts.QuickScan.Milliseconds())
-			
-						// Execute the function with panic recovery
-						func() {				defer func() {
+
+			// Configure device with shorter timeout for quick scans
+			dev.Timeout = int(cfg.Timeouts.QuickScan.Milliseconds())
+
+			// Execute the function with panic recovery
+			func() {
+				defer func() {
 					if r := recover(); r != nil {
 						lastError = fmt.Errorf("panic in quick device operation: %v", r)
 						fmt.Printf("withDeviceQuick: Panic in device operation: %v\n", r)
 					}
 				}()
-				
+
 				err = fn(dev)
 				if err != nil {
 					lastError = err
@@ -833,17 +834,17 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 				}
 			}()
 		}()
-		
+
 		// If operation succeeded, return immediately
 		if err == nil {
 			return nil
 		}
-		
+
 		// Check if error is due to device being closed
 		errorStr := strings.ToLower(lastError.Error())
 		isDeviceClosed := strings.Contains(errorStr, "device is not open") ||
-		                  strings.Contains(errorStr, "device closed")
-		
+			strings.Contains(errorStr, "device closed")
+
 		if isDeviceClosed && deviceFromPool {
 			// Device from pool was closed, remove it and retry with new connection
 			fmt.Printf("withDeviceQuick: Pooled device was closed, will retry with new connection\n")
@@ -851,22 +852,22 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 			removeClosedDeviceFromPool(poolEntry)
 			continue
 		}
-		
+
 		// For quick scans, be less aggressive about retries
 		isRecoverable := strings.Contains(errorStr, "timeout") ||
-		                 strings.Contains(errorStr, "busy") ||
-		                 strings.Contains(errorStr, "LIBUSB_ERROR_TIMEOUT")
-		
+			strings.Contains(errorStr, "busy") ||
+			strings.Contains(errorStr, "LIBUSB_ERROR_TIMEOUT")
+
 		if !isRecoverable {
 			// Non-recoverable error, don't retry
 			fmt.Printf("withDeviceQuick: Non-recoverable error, stopping retries: %v\n", lastError)
 			break
 		}
-		
+
 		// For recoverable errors, continue to next retry
 		fmt.Printf("withDeviceQuick: Recoverable error, will retry: %v\n", lastError)
 	}
-	
+
 	return lastError
 }
 
@@ -888,16 +889,16 @@ func withDevice(fn func(*mtp.Device) error) error {
 				backoffDuration = cfg.Backoff.MaxDuration
 			}
 			time.Sleep(backoffDuration)
-			
+
 			// Force garbage collection before retry to free up resources
 			runtime.GC()
 		}
-		
+
 		// Try to get device from pool first
 		poolEntry := getDeviceFromPool()
 		var dev *mtp.Device
 		var deviceFromPool bool
-		
+
 		if poolEntry != nil {
 			dev = poolEntry.device
 			deviceFromPool = true
@@ -908,7 +909,7 @@ func withDevice(fn func(*mtp.Device) error) error {
 			if createErr != nil {
 				lastError = fmt.Errorf("failed to initialize device: %w", createErr)
 				fmt.Printf("withDevice: %v\n", lastError)
-				
+
 				// Check if initialization error is recoverable
 				if strings.Contains(createErr.Error(), "not found") && attempt == cfg.Retries.NormalOperation-1 {
 					// Device disconnected, don't retry further
@@ -921,7 +922,7 @@ func withDevice(fn func(*mtp.Device) error) error {
 			deviceFromPool = false
 			fmt.Printf("withDevice: Created new device connection\n")
 		}
-		
+
 		// Ensure device is properly handled with panic recovery
 		func() {
 			defer func() {
@@ -931,17 +932,18 @@ func withDevice(fn func(*mtp.Device) error) error {
 				// Return device to pool instead of disposing
 				returnDeviceToPool(poolEntry)
 			}()
-			
-						// Configure device with longer timeout for better stability
-						dev.Timeout = int(cfg.Timeouts.NormalOperation.Milliseconds())
-			
-						// Test device connection before executing function
-						var testInfo mtp.DeviceInfo
-						if testErr := dev.GetDeviceInfo(&testInfo); testErr != nil {				lastError = fmt.Errorf("device connection test failed: %w", testErr)
+
+			// Configure device with longer timeout for better stability
+			dev.Timeout = int(cfg.Timeouts.NormalOperation.Milliseconds())
+
+			// Test device connection before executing function
+			var testInfo mtp.DeviceInfo
+			if testErr := dev.GetDeviceInfo(&testInfo); testErr != nil {
+				lastError = fmt.Errorf("device connection test failed: %w", testErr)
 				fmt.Printf("withDevice: Device connection test failed: %v\n", testErr)
 				return
 			}
-			
+
 			// Execute the function with additional panic recovery
 			func() {
 				defer func() {
@@ -950,7 +952,7 @@ func withDevice(fn func(*mtp.Device) error) error {
 						fmt.Printf("withDevice: Panic in device operation: %v\n", r)
 					}
 				}()
-				
+
 				err = fn(dev)
 				if err != nil {
 					lastError = err
@@ -958,17 +960,17 @@ func withDevice(fn func(*mtp.Device) error) error {
 				}
 			}()
 		}()
-		
+
 		// If operation succeeded, return immediately
 		if err == nil {
 			return nil
 		}
-		
+
 		// Check if error is due to device being closed
 		errorStr := strings.ToLower(lastError.Error())
 		isDeviceClosed := strings.Contains(errorStr, "device is not open") ||
-		                  strings.Contains(errorStr, "device closed")
-		
+			strings.Contains(errorStr, "device closed")
+
 		if isDeviceClosed && deviceFromPool {
 			// Device from pool was closed, remove it and retry with new connection
 			fmt.Printf("withDevice: Pooled device was closed, will retry with new connection\n")
@@ -976,24 +978,24 @@ func withDevice(fn func(*mtp.Device) error) error {
 			removeClosedDeviceFromPool(poolEntry)
 			continue
 		}
-		
+
 		// Check if error is recoverable
 		isRecoverable := strings.Contains(errorStr, "timeout") ||
-		                 strings.Contains(errorStr, "device") ||
-		                 strings.Contains(errorStr, "connection") ||
-		                 strings.Contains(errorStr, "busy") ||
-		                 strings.Contains(errorStr, "LIBUSB_ERROR_TIMEOUT")
-		
+			strings.Contains(errorStr, "device") ||
+			strings.Contains(errorStr, "connection") ||
+			strings.Contains(errorStr, "busy") ||
+			strings.Contains(errorStr, "LIBUSB_ERROR_TIMEOUT")
+
 		if !isRecoverable {
 			// Non-recoverable error, don't retry
 			fmt.Printf("withDevice: Non-recoverable error, stopping retries: %v\n", lastError)
 			break
 		}
-		
+
 		// For recoverable errors, continue to next retry
 		fmt.Printf("withDevice: Recoverable error, will retry: %v\n", lastError)
 	}
-	
+
 	return lastError
 }
 
@@ -1006,13 +1008,13 @@ type MTPSupportJSON struct {
 }
 
 type DeviceJSON struct {
-	ID           int             `json:"id"`
-	Name         string          `json:"name"`
-	Manufacturer string          `json:"manufacturer"`
-	Model        string          `json:"model"`
-	SerialNumber string          `json:"serialNumber"`
-	Storage      []StorageJSON   `json:"storage"`
-	MTPSupport   MTPSupportJSON  `json:"mtpSupport"`
+	ID           int            `json:"id"`
+	Name         string         `json:"name"`
+	Manufacturer string         `json:"manufacturer"`
+	Model        string         `json:"model"`
+	SerialNumber string         `json:"serialNumber"`
+	Storage      []StorageJSON  `json:"storage"`
+	MTPSupport   MTPSupportJSON `json:"mtpSupport"`
 }
 
 type StorageJSON struct {
@@ -1042,7 +1044,7 @@ func Kalam_Init() {
 //export Kalam_Scan
 func Kalam_Scan() *C.char {
 	var result string
-	
+
 	// Use a faster, more lightweight scan for device detection
 	err := withDeviceQuick(func(dev *mtp.Device) error {
 		// First try just getting device info for quick detection
@@ -1101,11 +1103,11 @@ func Kalam_Scan() *C.char {
 		if err != nil {
 			return fmt.Errorf("JSON marshal failed: %w", err)
 		}
-		
+
 		result = string(jsonData)
 		return nil
 	})
-	
+
 	if err != nil {
 		fmt.Printf("Kalam_Scan: %v\n", err)
 		// Return nil instead of empty array to indicate no devices found
@@ -1117,12 +1119,12 @@ func Kalam_Scan() *C.char {
 		fmt.Printf("Kalam_Scan: Failed to allocate C string for result\n")
 		return nil
 	}
-	
+
 	// Track allocated string
 	stringMu.Lock()
 	allocatedStrings[cStr] = time.Now()
 	stringMu.Unlock()
-	
+
 	return cStr
 }
 
@@ -1170,7 +1172,7 @@ func Kalam_ListFiles(storageID uint32, parentID uint32) *C.char {
 				ModTime:   info.ModificationDate.Unix(),
 			})
 		}
-		
+
 		if files == nil {
 			files = []FileJSON{}
 		}
@@ -1179,11 +1181,11 @@ func Kalam_ListFiles(storageID uint32, parentID uint32) *C.char {
 		if err != nil {
 			return fmt.Errorf("JSON marshal failed: %w", err)
 		}
-		
+
 		result = string(jsonData)
 		return nil
 	})
-	
+
 	if err != nil {
 		fmt.Printf("Kalam_ListFiles: %v\n", err)
 		// Unified error handling: return nil to indicate error
@@ -1195,27 +1197,27 @@ func Kalam_ListFiles(storageID uint32, parentID uint32) *C.char {
 		fmt.Printf("Kalam_ListFiles: Failed to allocate C string for result\n")
 		return nil
 	}
-	
+
 	// Track allocated string
 	stringMu.Lock()
 	allocatedStrings[cStr] = time.Now()
 	stringMu.Unlock()
-	
+
 	return cStr
 }
 
 //export Kalam_FreeString
 func Kalam_FreeString(str *C.char) {
-    if str == nil {
-        return
-    }
-    
-    // Remove from tracking
-    stringMu.Lock()
-    delete(allocatedStrings, str)
-    stringMu.Unlock()
-    
-    C.free(unsafe.Pointer(str))
+	if str == nil {
+		return
+	}
+
+	// Remove from tracking
+	stringMu.Lock()
+	delete(allocatedStrings, str)
+	stringMu.Unlock()
+
+	C.free(unsafe.Pointer(str))
 }
 
 //export Kalam_CreateFolder
@@ -1278,12 +1280,12 @@ func Kalam_CreateFolder(storageID uint32, parentID uint32, folderName *C.char) u
 		newHandle = handle
 		return nil
 	})
-	
+
 	if err != nil {
 		fmt.Printf("Kalam_CreateFolder: %v\n", err)
 		return 0
 	}
-	
+
 	return newHandle
 }
 
@@ -1304,12 +1306,12 @@ func Kalam_DeleteObject(objectID uint32) int32 {
 		}
 		return nil
 	})
-	
+
 	if err != nil {
 		fmt.Printf("Kalam_DeleteObject: %v\n", err)
 		return 0
 	}
-	
+
 	return 1
 }
 
@@ -1404,7 +1406,7 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 			}
 			fmt.Printf("Kalam_DownloadFile: Waiting %v before retry...\n", backoffDuration)
 			time.Sleep(backoffDuration)
-			
+
 			// Force garbage collection to free up USB resources
 			runtime.GC()
 		}
@@ -1415,18 +1417,18 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 			lastError = err
 			continue
 		}
-		
+
 		// Use defer to ensure file is always closed, even if panic occurs
 		defer file.Close()
-		
+
 		// Track file size for validation
 		var writtenBytes int64
 		var downloadCompleted bool
-		
+
 		// Simplified progress callback to avoid cross-language crashes
 		progressCb := func(sent int64) error {
 			writtenBytes = sent
-			
+
 			// Check for cancellation during download
 			if isTaskCancelled(taskIDStr) {
 				fmt.Printf("Kalam_DownloadFile: Task %s cancelled during download (received %d bytes)\n", taskIDStr, sent)
@@ -1434,25 +1436,25 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 			}
 			return nil
 		}
-		
+
 		// Use withDevice for downloads with custom timeout for large files
-				downloadErr := withDevice(func(dev *mtp.Device) error {
-					// Set very long timeout for large file downloads
-					dev.Timeout = int(cfg.Timeouts.LargeFileDownload.Milliseconds())
-		
-					// Validate object exists before download
-					var objInfo mtp.ObjectInfo
-					if err := dev.GetObjectInfo(uint32(objectIDTyped), &objInfo); err != nil {
-						return fmt.Errorf("failed to get object info: %w", err)
-					}
-		
-					fmt.Printf("Kalam_DownloadFile: Starting download of %s (%d bytes)\n", objInfo.Filename, objInfo.CompressedSize)
-		
-					// For large files, warn about potential timeouts
-								if int64(objInfo.CompressedSize) > cfg.FileSize.LargeThreshold {
-									fmt.Printf("Kalam_DownloadFile: Large file detected (%.1f MB), download may take time\n", float64(objInfo.CompressedSize)/1024/1024)
-								}			// Progress monitoring disabled for stability
-			
+		downloadErr := withDevice(func(dev *mtp.Device) error {
+			// Set very long timeout for large file downloads
+			dev.Timeout = int(cfg.Timeouts.LargeFileDownload.Milliseconds())
+
+			// Validate object exists before download
+			var objInfo mtp.ObjectInfo
+			if err := dev.GetObjectInfo(uint32(objectIDTyped), &objInfo); err != nil {
+				return fmt.Errorf("failed to get object info: %w", err)
+			}
+
+			fmt.Printf("Kalam_DownloadFile: Starting download of %s (%d bytes)\n", objInfo.Filename, objInfo.CompressedSize)
+
+			// For large files, warn about potential timeouts
+			if int64(objInfo.CompressedSize) > cfg.FileSize.LargeThreshold {
+				fmt.Printf("Kalam_DownloadFile: Large file detected (%.1f MB), download may take time\n", float64(objInfo.CompressedSize)/1024/1024)
+			} // Progress monitoring disabled for stability
+
 			// Perform the download with comprehensive error recovery
 			func() {
 				defer func() {
@@ -1478,7 +1480,7 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 					err := dev.GetObject(uint32(objectIDTyped), file, progressCb)
 					downloadChan <- err
 				}()
-				
+
 				// Wait for download completion or timeout
 				select {
 				case err := <-downloadChan:
@@ -1493,16 +1495,16 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 					// Note: goroutine may still be running, but file will be closed
 				}
 			}()
-			
+
 			// No progress monitoring to stop
-			
+
 			if lastError != nil {
 				return lastError
 			}
-			
+
 			return nil
 		})
-		
+
 		// Ensure file is closed properly and synced to disk
 		if syncErr := file.Sync(); syncErr != nil {
 			fmt.Printf("Kalam_DownloadFile: Error syncing file %s: %v\n", validatedPath, syncErr)
@@ -1510,26 +1512,26 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 		if cerr := file.Close(); cerr != nil {
 			fmt.Printf("Kalam_DownloadFile: Error closing file %s: %v\n", validatedPath, cerr)
 		}
-		
+
 		if downloadErr != nil || lastError != nil {
 			fmt.Printf("Kalam_DownloadFile: Download attempt %d failed: %v\n", attempt+1, downloadErr)
 			if lastError != nil {
 				fmt.Printf("Kalam_DownloadFile: Additional error: %v\n", lastError)
 			}
-			
+
 			// Remove partial file
 			if removeErr := os.Remove(validatedPath); removeErr != nil {
 				fmt.Printf("Kalam_DownloadFile: Warning - failed to remove partial file %s: %v\n", validatedPath, removeErr)
 			}
-			
+
 			// Check if error is recoverable
 			errorStr := strings.ToLower(downloadErr.Error())
-			if strings.Contains(errorStr, "device") || 
-			   strings.Contains(errorStr, "connection") ||
-			   strings.Contains(errorStr, "timeout") ||
-			   strings.Contains(errorStr, "not found") ||
-			   strings.Contains(errorStr, "no device") ||
-			   strings.Contains(errorStr, "LIBUSB_ERROR") {
+			if strings.Contains(errorStr, "device") ||
+				strings.Contains(errorStr, "connection") ||
+				strings.Contains(errorStr, "timeout") ||
+				strings.Contains(errorStr, "not found") ||
+				strings.Contains(errorStr, "no device") ||
+				strings.Contains(errorStr, "LIBUSB_ERROR") {
 				// These errors might be recoverable with retry
 				fmt.Printf("Kalam_DownloadFile: Recoverable error detected, will retry\n")
 				continue
@@ -1538,7 +1540,7 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 			fmt.Printf("Kalam_DownloadFile: Non-recoverable error, stopping retries\n")
 			break
 		}
-		
+
 		// Download succeeded, validate the file
 		if downloadCompleted {
 			if stat, err := os.Stat(validatedPath); err == nil {
@@ -1556,7 +1558,7 @@ func Kalam_DownloadFile(objectID uint32, destinationPath *C.char, taskID *C.char
 			}
 		}
 	}
-	
+
 	// All retries failed
 	fmt.Printf("Kalam_DownloadFile: All retry attempts failed. Last error: %v\n", lastError)
 	return 0
@@ -1587,13 +1589,13 @@ func Kalam_CancelTask(taskID *C.char) {
 		fmt.Printf("Kalam_CancelTask: taskID is nil\n")
 		return
 	}
-	
+
 	id := C.GoString(taskID)
 	if id == "" {
 		fmt.Printf("Kalam_CancelTask: taskID is empty\n")
 		return
 	}
-	
+
 	cancelledTasks.Store(id, true)
 	fmt.Printf("Kalam_CancelTask: Task %s marked for cancellation\n", id)
 }
@@ -1650,7 +1652,7 @@ func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char, tas
 
 	fileSize := fileInfo.Size()
 	fileName := filepath.Base(path)
-	
+
 	fmt.Printf("Kalam_UploadFile: Starting upload of %s (%d bytes)\n", fileName, fileSize)
 
 	var result int32 = 0
@@ -1690,7 +1692,7 @@ func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char, tas
 
 		// Step 3: Send file data using the correct SendObject signature
 		fmt.Printf("Kalam_UploadFile: Starting data transfer for %s\n", fileName)
-		
+
 		// SendObject expects: (io.Reader, int64, mtp.ProgressFunc)
 		// We need to seek back to beginning of file and provide size
 		if _, err := file.Seek(0, 0); err != nil {
@@ -1698,7 +1700,7 @@ func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char, tas
 			fmt.Printf("Kalam_UploadFile: Failed to seek file: %v\n", err)
 			return fmt.Errorf("failed to seek file: %w", err)
 		}
-		
+
 		// Create progress callback to check cancellation during transfer
 		progressCb := func(sent int64) error {
 			if isTaskCancelled(taskIDStr) {
@@ -1707,21 +1709,21 @@ func Kalam_UploadFile(storageID uint32, parentID uint32, sourcePath *C.char, tas
 			}
 			return nil
 		}
-		
+
 		// Try to send the object with cancellation checking
 		err = dev.SendObject(file, fileSize, progressCb)
 		file.Close() // Close file immediately after SendObject
-		
+
 		if err != nil {
 			fmt.Printf("Kalam_UploadFile: SendObject failed: %v\n", err)
 			return fmt.Errorf("SendObject failed: %w", err)
 		}
 
 		fmt.Printf("Kalam_UploadFile: Successfully uploaded %s (%d bytes)\n", fileName, fileSize)
-		
+
 		// Add a small delay to ensure the operation completes
 		time.Sleep(100 * time.Millisecond)
-		
+
 		result = 1
 		return nil
 	})
@@ -1756,23 +1758,23 @@ func Kalam_RefreshStorage(storageID uint32) int32 {
 			fmt.Printf("Kalam_RefreshStorage: GetStorageInfo failed: %v\n", err)
 			return err
 		}
-		
+
 		fmt.Printf("Kalam_RefreshStorage: Storage refreshed successfully\n")
 		return nil
 	})
-	
+
 	if err != nil {
 		fmt.Printf("Kalam_RefreshStorage: %v\n", err)
 		return 0
 	}
-	
+
 	return 1
 }
 
 //export Kalam_ResetDeviceCache
 func Kalam_ResetDeviceCache() int32 {
 	fmt.Printf("Kalam_ResetDeviceCache: Attempting to reset device cache\n")
-	
+
 	// Force a device reset by closing and reopening
 	// This is more aggressive but should clear all caches
 	err := withDevice(func(dev *mtp.Device) error {
@@ -1782,16 +1784,16 @@ func Kalam_ResetDeviceCache() int32 {
 			fmt.Printf("Kalam_ResetDeviceCache: GetDeviceInfo failed: %v\n", err)
 			return err
 		}
-		
+
 		fmt.Printf("Kalam_ResetDeviceCache: Device cache reset successfully\n")
 		return nil
 	})
-	
+
 	if err != nil {
 		fmt.Printf("Kalam_ResetDeviceCache: %v\n", err)
 		return 0
 	}
-	
+
 	return 1
 }
 
@@ -1805,10 +1807,10 @@ func containsIgnoreCase(s, substr string) bool {
 func cleanupLeakedStrings() {
 	stringMu.Lock()
 	defer stringMu.Unlock()
-	
+
 	now := time.Now()
 	const maxAge = 5 * time.Minute // Consider leaked after 5 minutes
-	
+
 	for str, allocTime := range allocatedStrings {
 		if now.Sub(allocTime) > maxAge {
 			fmt.Printf("Cleaning up leaked string allocated at %v\n", allocTime)
@@ -1826,17 +1828,17 @@ func Kalam_CleanupLeakedStrings() {
 //export Kalam_CleanupDevicePool
 func Kalam_CleanupDevicePool() {
 	fmt.Printf("Kalam_CleanupDevicePool: Cleaning up all device connections\n")
-	
+
 	devicePoolMu.Lock()
 	defer devicePoolMu.Unlock()
-	
+
 	for _, entry := range devicePool {
 		if entry.device != nil {
 			fmt.Printf("Kalam_CleanupDevicePool: Disposing device connection\n")
 			mtpx.Dispose(entry.device)
 		}
 	}
-	
+
 	devicePool = nil
 	fmt.Printf("Kalam_CleanupDevicePool: Device pool cleanup completed\n")
 }
