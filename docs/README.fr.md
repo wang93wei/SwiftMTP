@@ -209,16 +209,6 @@ SwiftMTP/
 │   ├── libkalam.dylib             # Bibliothèque dynamique Go
 │   ├── libkalam.h                 # Fichier d'en-tête C
 │   └── SwiftMTP-Bridging-Header.h # En-tête de pont Swift-C
-├── SwiftMTPTests/                 # Tests unitaires Swift
-│   ├── AppLanguageTests.swift
-│   ├── DeviceTests.swift
-│   ├── FileBrowserViewTests.swift
-│   ├── FileItemTests.swift
-│   ├── FileSystemManagerTests.swift
-│   ├── FileTransferManagerTests.swift
-│   ├── LanguageManagerTests.swift
-│   ├── SwiftMTPTests.swift
-│   └── TransferTaskTests.swift
 ├── docs/                          # Documentation du projet
 │   ├── sequence-diagrams.md       # Documentation des diagrammes de séquence
 │   ├── TESTING.md                 # Documentation des tests
@@ -243,9 +233,8 @@ SwiftMTP/
 1. Le bac à sable doit être désactivé pour accéder aux appareils USB
 2. La vitesse de transfert est limitée par le protocole MTP
 3. Actuellement, seul le téléchargement de fichiers uniques est supporté (le téléchargement de dossiers n'est pas supporté)
-4. Les tests unitaires Swift sont incomplets et nécessitent un développement ultérieur
-5. L'implémentation de Liquid Glass UI est incomplète et contient des bugs qui doivent être corrigés
-6. Nous accueillons plus de contributeurs pour aider à améliorer la base de code
+4. L'implémentation de Liquid Glass UI est incomplète et contient des bugs qui doivent être corrigés
+5. Nous accueillons plus de contributeurs pour aider à améliorer la base de code
 
 ## 🔧 Dépannage
 

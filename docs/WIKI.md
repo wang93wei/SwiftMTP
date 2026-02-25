@@ -21,7 +21,6 @@
   - [开发环境搭建](#开发环境搭建)
   - [构建流程](#构建流程)
   - [代码规范](#代码规范)
-  - [测试指南](#测试指南)
   - [调试技巧](#调试技巧)
 - [API 文档](#api-文档)
   - [CGO 桥接 API](#cgo-桥接-api)
@@ -282,15 +281,6 @@ SwiftMTP/
 │   ├── libkalam.dylib             # Go 动态库
 │   ├── libkalam.h                 # C 桥接头文件
 │   └── SwiftMTP-Bridging-Header.h # Swift-C 桥接头文件
-│
-├── SwiftMTPTests/                 # Swift 单元测试
-│   ├── DeviceTests.swift
-│   ├── FileItemTests.swift
-│   ├── TransferTaskTests.swift
-│   ├── AppLanguageTests.swift
-│   ├── LanguageManagerTests.swift
-│   ├── FileSystemManagerTests.swift
-│   └── FileTransferManagerTests.swift
 │
 ├── SwiftMTP.xcodeproj/            # Xcode 项目
 ├── build/                         # 构建输出
@@ -891,62 +881,6 @@ go fmt ./...
 
 # 检查代码
 go vet ./...
-```
-
-### 测试指南
-
-#### 运行测试
-
-```bash
-# 运行所有测试
-./Scripts/run_tests.sh
-
-# 仅运行 Swift 测试
-./Scripts/run_tests.sh --swift-only
-
-# 仅运行 Go 测试
-./Scripts/run_tests.sh --go-only
-
-# 生成覆盖率报告
-./Scripts/run_tests.sh --coverage
-```
-
-#### 编写测试
-
-**Swift 测试示例**:
-```swift
-import XCTest
-@testable import SwiftMTP
-
-class DeviceTests: XCTestCase {
-    func testDeviceInitialization() {
-        let device = Device(
-            id: UUID(),
-            deviceIndex: 1,
-            name: "Test Device",
-            manufacturer: "Test Manufacturer",
-            model: "Test Model",
-            serialNumber: "123456"
-        )
-        
-        XCTAssertEqual(device.name, "Test Device")
-        XCTAssertEqual(device.manufacturer, "Test Manufacturer")
-    }
-}
-```
-
-**Go 测试示例**:
-```go
-package main
-
-import "testing"
-
-func TestKalamScan(t *testing.T) {
-    result := Kalam_Scan()
-    if result == nil {
-        t.Error("Expected non-nil result")
-    }
-}
 ```
 
 ### 调试技巧

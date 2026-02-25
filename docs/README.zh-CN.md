@@ -209,16 +209,6 @@ SwiftMTP/
 │   ├── libkalam.dylib             # Go 动态库
 │   ├── libkalam.h                 # C 头文件
 │   └── SwiftMTP-Bridging-Header.h # Swift-C 桥接头文件
-├── SwiftMTPTests/                 # Swift 单元测试
-│   ├── AppLanguageTests.swift
-│   ├── DeviceTests.swift
-│   ├── FileBrowserViewTests.swift
-│   ├── FileItemTests.swift
-│   ├── FileSystemManagerTests.swift
-│   ├── FileTransferManagerTests.swift
-│   ├── LanguageManagerTests.swift
-│   ├── SwiftMTPTests.swift
-│   └── TransferTaskTests.swift
 ├── docs/                          # 项目文档
 │   ├── sequence-diagrams.md       # 序列图文档
 │   ├── TESTING.md                 # 测试文档
@@ -243,9 +233,8 @@ SwiftMTP/
 1. 需要禁用沙盒才能访问 USB 设备
 2. 传输速度受 MTP 协议限制
 3. 目前仅支持单个文件上传（不支持文件夹）
-4. Swift 单元测试不完善，需要进一步开发
-5. 液态玻璃（Liquid Glass）UI 代码不完善，还存在 BUG 需要修复
-6. 欢迎更多热心的人一起完善代码
+4. 液态玻璃（Liquid Glass）UI 代码不完善，还存在 BUG 需要修复
+5. 欢迎更多热心的人一起完善代码
 
 ## 🔧 故障排除
 

@@ -209,17 +209,7 @@ SwiftMTP/
 │   ├── libkalam.dylib             # Go-Dynamic-Library
 │   ├── libkalam.h                 # C-Header-Datei
 │   └── SwiftMTP-Bridging-Header.h # Swift-C-Brücken-Header
-├── SwiftMTPTests/                 // Swift-Unit-Tests
-│   ├── AppLanguageTests.swift
-│   ├── DeviceTests.swift
-│   ├── FileBrowserViewTests.swift
-│   ├── FileItemTests.swift
-│   ├── FileSystemManagerTests.swift
-│   ├── FileTransferManagerTests.swift
-│   ├── LanguageManagerTests.swift
-│   ├── SwiftMTPTests.swift
-│   └── TransferTaskTests.swift
-├── docs/                          // Projektdokumentation
+├── docs/                          # Projektdokumentation
 │   ├── sequence-diagrams.md       // Sequenzdiagramm-Dokumentation
 │   ├── TESTING.md                 // Test-Dokumentation
 │   └── WIKI.md                    // Projekt-Wiki
@@ -243,9 +233,8 @@ SwiftMTP/
 1. Sandbox muss deaktiviert sein, um auf USB-Geräte zuzugreifen
 2. Übertragungsgeschwindigkeit ist durch MTP-Protokoll begrenzt
 3. Derzeit wird nur der Upload einzelner Dateien unterstützt (Ordner-Upload wird nicht unterstützt)
-4. Swift-Unit-Tests sind unvollständig und benötigen weitere Entwicklung
-5. Die Liquid Glass UI-Implementierung ist unvollständig und enthält Fehler, die behoben werden müssen
-6. Wir begrüßen mehr Mitwirkende, die helfen, die Codebasis zu verbessern
+4. Die Liquid Glass UI-Implementierung ist unvollständig und enthält Fehler, die behoben werden müssen
+5. Wir begrüßen mehr Mitwirkende, die helfen, die Codebasis zu verbessern
 
 ## 🔧 Fehlerbehebung
 

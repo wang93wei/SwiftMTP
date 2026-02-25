@@ -209,16 +209,6 @@ SwiftMTP/
 │   ├── libkalam.dylib             # Go 動的ライブラリ
 │   ├── libkalam.h                 # C ヘッダーファイル
 │   └── SwiftMTP-Bridging-Header.h # Swift-C ブリッジヘッダー
-├── SwiftMTPTests/                 # Swift ユニットテスト
-│   ├── AppLanguageTests.swift
-│   ├── DeviceTests.swift
-│   ├── FileBrowserViewTests.swift
-│   ├── FileItemTests.swift
-│   ├── FileSystemManagerTests.swift
-│   ├── FileTransferManagerTests.swift
-│   ├── LanguageManagerTests.swift
-│   ├── SwiftMTPTests.swift
-│   └── TransferTaskTests.swift
 ├── docs/                          # プロジェクトドキュメント
 │   ├── sequence-diagrams.md       # シーケンス図ドキュメント
 │   ├── TESTING.md                 # テストドキュメント
@@ -243,9 +233,8 @@ SwiftMTP/
 1. USB デバイスにアクセスするにはサンドボックスを無効にする必要があります
 2. 転送速度は MTP プロトコルの制限を受けます
 3. 現在、単一ファイルのアップロードのみをサポートしています（フォルダーアップロードは未サポート）
-4. Swift ユニットテストは不完全であり、さらなる開発が必要です
-5. Liquid Glass UI の実装は不完全であり、バグが含まれており修正が必要です
-6. コードベースの改善を支援してくれる多くの貢献者を歓迎します
+4. Liquid Glass UI の実装は不完全であり、バグが含まれており修正が必要です
+5. コードベースの改善を支援してくれる多くの貢献者を歓迎します
 
 ## 🔧 トラブルシューティング
 

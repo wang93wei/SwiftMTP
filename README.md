@@ -209,16 +209,6 @@ SwiftMTP/
 │   ├── libkalam.dylib             # Go dynamic library
 │   ├── libkalam.h                 # C header file
 │   └── SwiftMTP-Bridging-Header.h # Swift-C bridging header
-├── SwiftMTPTests/                 # Swift unit tests
-│   ├── AppLanguageTests.swift
-│   ├── DeviceTests.swift
-│   ├── FileBrowserViewTests.swift
-│   ├── FileItemTests.swift
-│   ├── FileSystemManagerTests.swift
-│   ├── FileTransferManagerTests.swift
-│   ├── LanguageManagerTests.swift
-│   ├── SwiftMTPTests.swift
-│   └── TransferTaskTests.swift
 ├── docs/                          # Project documentation
 │   ├── sequence-diagrams.md       # Sequence diagram documentation
 │   ├── TESTING.md                 # Testing documentation
@@ -243,9 +233,8 @@ SwiftMTP/
 1. Sandbox must be disabled to access USB devices
 2. Transfer speed is limited by MTP protocol
 3. Currently only supports single file upload (folder upload not supported)
-4. Swift unit tests are incomplete and need further development
-5. Liquid Glass UI implementation is incomplete and contains bugs that need fixing
-6. We welcome more contributors to help improve the codebase
+4. Liquid Glass UI implementation is incomplete and contains bugs that need fixing
+5. We welcome more contributors to help improve the codebase
 
 ## 🔧 Troubleshooting
 
