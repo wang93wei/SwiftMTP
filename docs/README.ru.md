@@ -125,7 +125,8 @@ DMG-файл будет создан в каталоге `build/`.
 ```
 SwiftMTP/
 ├── Native/                         # Мост Go (Kalam Kernel)
-│   ├── kalam_bridge.go            # Основная реализация моста (CGO)
+│   ├── kalam_*.go                 # Разделенные модули моста (CGO)
+│   ├── *_test.go                  # Go unit-тесты по модулям
 │   ├── libkalam.h                 # Заголовок C (мост Swift)
 │   ├── go.mod / go.sum            # Зависимости модулей Go
 │   └── vendor/                    # Зависимости Go (go-mtpx, usb)

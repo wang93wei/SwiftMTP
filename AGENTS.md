@@ -37,6 +37,7 @@
 
 ## 提交前检查（强制）
 - 每次 `git push` 前，必须在仓库根目录执行 `desloppify scan --path .`，并确保 `Open: 0`（若确需保留问题，必须按规范使用 `wontfix` 并附 `note` 与 `attest`）。
+- 若本次涉及 Go/Native 变更，额外执行 `desloppify --lang go scan --path Native`，并确保 `desloppify --lang go next` 显示 `Nothing to do`。
 
 ## 项目结构
 ```

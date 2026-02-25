@@ -214,8 +214,8 @@ SwiftMTP 采用 **MVVM (Model-View-ViewModel)** 架构模式，结合 **Combine*
 ```
 SwiftMTP/
 ├── Native/                         # Go 桥接层
-│   ├── kalam_bridge.go            # CGO 桥接实现
-│   ├── kalam_bridge_test.go       # Go 单元测试
+│   ├── kalam_*.go                 # 分模块 CGO 桥接实现
+│   ├── *_test.go                  # 按模块划分的 Go 单元测试
 │   ├── libkalam.h                 # C 头文件
 │   ├── go.mod                     # Go 模块定义
 │   ├── go.sum                     # Go 依赖锁定
@@ -1443,7 +1443,7 @@ cd Native
 go mod verify
 
 # 尝试手动构建
-go build -buildmode=c-shared -o ../SwiftMTP/libkalam.dylib
+go build -buildmode=c-shared -o ../SwiftMTP/libkalam.dylib .
 ```
 
 **解决方案**:
