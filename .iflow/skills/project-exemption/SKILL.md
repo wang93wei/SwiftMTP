@@ -7,7 +7,7 @@ description: 项目豁免规则。文件传输模块必须使用传统并发模�
 
 ## 适用范围
 
-**文件传输模块** (`FileTransferManager.swift`)
+**文件传输模块**（`Services/MTP/FileTransferManager*.swift`，包括 `FileTransferManager.swift` 与 `FileTransferManager+DirectoryUpload.swift`）
 
 ## 豁免原因
 
@@ -15,7 +15,7 @@ description: 项目豁免规则。文件传输模块必须使用传统并发模�
 
 ## 强制要求
 
-- 禁止将 `FileTransferManager.swift` 迁移到 Swift 6 并发模型
+- 禁止将 `Services/MTP/FileTransferManager*.swift` 迁移到 Swift 6 并发模型
 - 保持 `DispatchQueue` + `NSLock` 的实现方式
 - CGO 桥接代码必须使用传统指针操作
 
