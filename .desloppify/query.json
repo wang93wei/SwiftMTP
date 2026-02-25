@@ -1,0 +1,252 @@
+{
+  "command": "show",
+  "query": "structural",
+  "status_filter": "auto_resolved",
+  "total": 3,
+  "summary": {
+    "by_tier": {
+      "T3": 3
+    },
+    "by_detector": {
+      "structural": 3
+    },
+    "files": 3
+  },
+  "by_file": {
+    "SwiftMTP/Services/MTP/FileTransferManager.swift": [
+      {
+        "id": "structural::SwiftMTP/Services/MTP/FileTransferManager.swift",
+        "tier": 3,
+        "confidence": "medium",
+        "summary": "Needs decomposition: large (775 LOC)",
+        "detail": {
+          "loc": 775
+        }
+      }
+    ],
+    "SwiftMTP/Views/FileBrowserView+Actions.swift": [
+      {
+        "id": "structural::SwiftMTP/Views/FileBrowserView+Actions.swift",
+        "tier": 3,
+        "confidence": "medium",
+        "summary": "Needs decomposition: large (595 LOC)",
+        "detail": {
+          "loc": 595
+        }
+      }
+    ],
+    "SwiftMTP/Views/FileBrowserView.swift": [
+      {
+        "id": "structural::SwiftMTP/Views/FileBrowserView.swift",
+        "tier": 3,
+        "confidence": "medium",
+        "summary": "Needs decomposition: large (1058 LOC)",
+        "detail": {
+          "loc": 1058
+        }
+      }
+    ]
+  },
+  "total_matching": 3,
+  "noise_budget": 10,
+  "noise_global_budget": 0,
+  "narrative": {
+    "phase": "early_momentum",
+    "headline": "Zero open findings!",
+    "dimensions": {
+      "lowest_dimensions": [],
+      "biggest_gap_dimensions": [],
+      "stagnant_dimensions": [
+        {
+          "name": "Code quality",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Security",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Naming Quality",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Logic Clarity",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Type Safety",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Contracts",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Error Consistency",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Abstraction Fit",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "AI Generated Debt",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "High Elegance",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Mid Elegance",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Low Elegance",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Cross-Module Arch",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Init Coupling",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Convention Drift",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Dep Health",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Test Strategy",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "API Coherence",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Auth Consistency",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Stale Migration",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Structure Nav",
+          "strict": 100.0,
+          "stuck_scans": 4
+        },
+        {
+          "name": "Design Coherence",
+          "strict": 100.0,
+          "stuck_scans": 4
+        }
+      ]
+    },
+    "actions": [],
+    "strategy": {
+      "fixer_leverage": {
+        "auto_fixable_count": 0,
+        "total_count": 0,
+        "coverage": 0.0,
+        "impact_ratio": 0.0,
+        "recommendation": "none"
+      },
+      "lanes": {},
+      "can_parallelize": false,
+      "hint": "Work through actions in priority order. Rescan after each fix to track progress."
+    },
+    "tools": {
+      "fixers": [],
+      "move": {
+        "available": true,
+        "relevant": false,
+        "reason": null,
+        "usage": "desloppify move <source> <dest> [--dry-run]"
+      },
+      "plan": {
+        "command": "desloppify plan",
+        "description": "Generate prioritized markdown cleanup plan"
+      },
+      "badge": {
+        "generated": true,
+        "in_readme": false,
+        "path": "scorecard.png",
+        "recommendation": "Add to README: <img src=\"scorecard.png\" width=\"100%\">"
+      }
+    },
+    "debt": {
+      "overall_gap": 0.0,
+      "wontfix_count": 0,
+      "worst_dimension": null,
+      "worst_gap": 0.0,
+      "trend": "stable"
+    },
+    "milestone": "Zero open findings!",
+    "primary_action": null,
+    "why_now": "Work through actions in priority order. Rescan after each fix to track progress.",
+    "verification_step": {
+      "command": "desloppify scan",
+      "reason": "revalidate after changes"
+    },
+    "risk_flags": [],
+    "strict_target": {
+      "target": 95.0,
+      "current": 100.0,
+      "gap": -5.0,
+      "state": "above",
+      "warning": null
+    },
+    "reminders": [],
+    "reminder_history": {
+      "report_scores": 4,
+      "review_not_run": 3,
+      "badge_recommendation": 3,
+      "feedback_nudge": 3,
+      "stagnant_nudge": 23
+    }
+  },
+  "config": {
+    "target_strict_score": 95,
+    "review_max_age_days": 30,
+    "holistic_max_age_days": 30,
+    "generate_scorecard": true,
+    "badge_path": "scorecard.png",
+    "exclude": [],
+    "ignore": [],
+    "ignore_metadata": {},
+    "zone_overrides": {},
+    "review_dimensions": [],
+    "large_files_threshold": 0,
+    "props_threshold": 0,
+    "finding_noise_budget": 10,
+    "finding_noise_global_budget": 0,
+    "languages": {}
+  }
+}
