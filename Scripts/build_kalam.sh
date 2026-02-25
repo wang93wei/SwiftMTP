@@ -42,7 +42,7 @@ echo "Compiling libkalam.dylib..."
 export CGO_LDFLAGS="-L/opt/homebrew/opt/libusb/lib -lusb-1.0 -framework CoreFoundation -framework IOKit"
 export CGO_CFLAGS="-I/opt/homebrew/opt/libusb/include/libusb-1.0"
 
-go build -o "${TARGET_DIR}/libkalam.dylib" -buildmode=c-shared kalam_bridge.go
+go build -o "${TARGET_DIR}/libkalam.dylib" -buildmode=c-shared .
 
 # Check outputs
 if [ -f "${TARGET_DIR}/libkalam.dylib" ] && [ -f "${TARGET_DIR}/libkalam.h" ]; then
