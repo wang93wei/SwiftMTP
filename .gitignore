@@ -96,6 +96,7 @@ IFLOW.md
 .trae
 .desloppify/
 QWEN.md
+AGENTS.md
 
 # Code coverage
 *.profraw
