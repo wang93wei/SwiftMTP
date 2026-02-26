@@ -37,9 +37,9 @@ def validate(message: str) -> dict:
 
     subject = lines[0]
 
-    # Check format: type: description
+    # Check format: type(scope)!: description
     if ":" not in subject:
-        errors.append("Missing ':' separator (expected 'type: description')")
+        errors.append("Missing ':' separator (expected 'type(scope)!: description')")
     else:
         type_part, desc = subject.split(":", 1)
         type_part = type_part.strip().rstrip("!").split("(")[0]
