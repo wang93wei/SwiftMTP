@@ -91,11 +91,11 @@ iOSInjectionProject/
 
 # AI docs
 gemini.md
-IFLOW.md
+# IFLOW.md
 .kiro
 .trae
-.desloppify/
-.agents/
+.desloppify
+.agents
 QWEN.md
 AGENTS.md
 
