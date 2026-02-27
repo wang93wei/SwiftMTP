@@ -64,10 +64,10 @@ struct FileItem: Identifiable, Hashable, Comparable, Sendable {
         }
     }
     
-    // MARK: - Private Helper Methods
+    // MARK: - Public Helper Methods
     
     /// Format file size without using localized formatters
-    private static func formatFileSize(_ size: UInt64) -> String {
+    public static func formatFileSize(_ size: UInt64) -> String {
         let units = ["B", "KB", "MB", "GB", "TB"]
         var size = Double(size)
         var unitIndex = 0

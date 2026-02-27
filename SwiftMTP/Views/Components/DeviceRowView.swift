@@ -157,22 +157,7 @@ struct MtpSupportIndicatorView: View {
 
 #Preview {
     List {
-        DeviceRowView(device: Device(
-            deviceIndex: 0,
-            name: "Pixel 7",
-            manufacturer: "Google",
-            model: "Pixel 7",
-            serialNumber: "ABC123",
-            batteryLevel: nil,
-            storageInfo: [
-                StorageInfo(storageId: 1, maxCapacity: 128_000_000_000, freeSpace: 32_000_000_000, description: "内部存储")
-            ],
-            mtpSupportInfo: MTPSupportInfo(
-                mtpVersion: "1.0",
-                deviceVersion: "1.0",
-                vendorExtension: "Google"
-            )
-        ))
+        DeviceRowView(device: .preview)
     }
     .frame(width: 250)
 }

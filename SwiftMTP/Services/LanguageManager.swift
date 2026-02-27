@@ -226,27 +226,10 @@ class LanguageManager: ObservableObject {
     /// 确保 AppleLanguages 设置正确，以便文件选择器使用正确的语言
     static func ensureAppleLanguages() {
         let savedLanguage = UserDefaults.standard.string(forKey: "appLanguage")
-        var languages: [String]?
-
+        let languages: [String]?
+        
         if let savedLanguage = savedLanguage, let validLanguage = AppLanguage(rawValue: savedLanguage) {
-            switch validLanguage {
-            case .chinese:
-                languages = ["zh-Hans", "zh-CN", "zh"]
-            case .english:
-                languages = ["en", "en-US"]
-            case .japanese:
-                languages = ["ja", "ja-JP"]
-            case .korean:
-                languages = ["ko", "ko-KR"]
-            case .russian:
-                languages = ["ru", "ru-RU"]
-            case .french:
-                languages = ["fr", "fr-FR"]
-            case .german:
-                languages = ["de", "de-DE"]
-            case .system:
-                languages = nil
-            }
+            languages = validLanguage.appleLanguages
         } else {
             languages = nil
         }

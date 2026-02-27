@@ -119,41 +119,22 @@ struct SwiftMTPApp: App {
     
     private func setAppleLanguages() {
         let savedLanguage = UserDefaults.standard.string(forKey: "appLanguage")
-        var languages: [String]?
+        let languages: [String]?
         
         if let savedLanguage = savedLanguage, let validLanguage = AppLanguage(rawValue: savedLanguage) {
-            switch validLanguage {
-            case .chinese:
-                languages = ["zh-Hans", "zh-CN", "zh"]
-            case .english:
-                languages = ["en", "en-US"]
-            case .japanese:
-                languages = ["ja", "ja-JP"]
-            case .korean:
-                languages = ["ko", "ko-KR"]
-            case .russian:
-                languages = ["ru", "ru-RU"]
-            case .french:
-                languages = ["fr", "fr-FR"]
-            case .german:
-                languages = ["de", "de-DE"]
-            case .system:
-                // 系统默认：清除 AppleLanguages
+            languages = validLanguage.appleLanguages
+            if languages == nil {
                 logLanguageSetup("Using system default language")
-                languages = nil
             }
         } else {
-            // 默认使用系统语言，清除 AppleLanguages
-            logLanguageSetup("No saved language, using system default")
             languages = nil
+            logLanguageSetup("No saved language, using system default")
         }
         
         if let languages = languages {
-            // 设置 AppleLanguages
             UserDefaults.standard.set(languages, forKey: "AppleLanguages")
             logLanguageSetup("AppleLanguages set to: \(languages)")
         } else {
-            // 清除 AppleLanguages，使用系统默认
             UserDefaults.standard.removeObject(forKey: "AppleLanguages")
             logLanguageSetup("AppleLanguages cleared, using system default")
         }

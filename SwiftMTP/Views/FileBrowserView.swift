@@ -454,16 +454,6 @@ struct FileBrowserView: View {
 
 #Preview {
     NavigationStack {
-        FileBrowserView(device: Device(
-            deviceIndex: 0,
-            name: "Pixel 7",
-            manufacturer: "Google",
-            model: "Pixel 7",
-            serialNumber: "ABC123",
-            batteryLevel: nil,
-            storageInfo: [
-                StorageInfo(storageId: 1, maxCapacity: 128_000_000_000, freeSpace: 32_000_000_000, description: "内部存储")
-            ]
-        ))
+        FileBrowserView(device: .preview)
     }
 }

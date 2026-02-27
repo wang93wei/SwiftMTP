@@ -42,8 +42,8 @@ extension FileTransferManager {
         
         if let storage = device.storageInfo.first(where: { $0.storageId == storageId }) {
             if totalSize > storage.freeSpace {
-                let needed = FileTransferManager.formatFileSize(totalSize)
-                let available = FileTransferManager.formatFileSize(storage.freeSpace)
+                let needed = FileItem.formatFileSize(totalSize)
+                let available = FileItem.formatFileSize(storage.freeSpace)
                 return DirectoryUploadResult(
                     totalFiles: filesToUpload.count,
                     uploadedFiles: 0,
@@ -112,8 +112,8 @@ extension FileTransferManager {
             if let storage = device.storageInfo.first(where: { $0.storageId == storageId }) {
                 let remainingSpace = storage.freeSpace > totalTransferred ? storage.freeSpace - totalTransferred : 0
                 if fileSize > remainingSpace {
-                    let needed = FileTransferManager.formatFileSize(fileSize)
-                    let available = FileTransferManager.formatFileSize(remainingSpace)
+                    let needed = FileItem.formatFileSize(fileSize)
+                    let available = FileItem.formatFileSize(remainingSpace)
                     failedCount += 1
                     errors.append("Insufficient storage for \(fileURL.lastPathComponent): needed \(needed), available \(available)")
                     continue
@@ -195,19 +195,6 @@ extension FileTransferManager {
             skippedFiles: skippedCount,
             errors: errors
         )
-    }
-    
-    private static func formatFileSize(_ size: UInt64) -> String {
-        let units = ["B", "KB", "MB", "GB", "TB"]
-        var size = Double(size)
-        var unitIndex = 0
-        
-        while size >= 1024 && unitIndex < units.count - 1 {
-            size /= 1024
-            unitIndex += 1
-        }
-        
-        return String(format: "%.2f %@", size, units[unitIndex])
     }
     
     private func collectFilesInDirectory(_ directoryURL: URL) -> [URL] {

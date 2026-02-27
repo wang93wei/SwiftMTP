@@ -111,4 +111,22 @@ struct Device: Identifiable, Hashable, Sendable {
     var totalFreeSpace: UInt64 {
         storageInfo.reduce(0) { $0 + $1.freeSpace }
     }
+    
+    /// 用于 SwiftUI Preview 的示例设备
+    static let preview = Device(
+        deviceIndex: 0,
+        name: "Pixel 7",
+        manufacturer: "Google",
+        model: "Pixel 7",
+        serialNumber: "ABC123",
+        batteryLevel: nil,
+        storageInfo: [
+            StorageInfo(storageId: 1, maxCapacity: 128_000_000_000, freeSpace: 32_000_000_000, description: "内部存储")
+        ],
+        mtpSupportInfo: MTPSupportInfo(
+            mtpVersion: "1.0",
+            deviceVersion: "1.0",
+            vendorExtension: "Google"
+        )
+    )
 }

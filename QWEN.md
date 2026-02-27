@@ -38,6 +38,7 @@
 ## 提交前检查（强制）
 - 每次 `git push` 前，必须在仓库根目录执行 `desloppify scan --path .`，并确保 `Open: 0`（若确需保留问题，必须按规范使用 `wontfix` 并附 `note` 与 `attest`）。
 - 若本次涉及 Go/Native 变更，额外执行 `desloppify --lang go scan --path Native`，并确保 `desloppify --lang go next` 显示 `Nothing to do`。
+- git push 时，调用git-workflow技能，确保符合项目提交规范。
 
 ## 项目结构
 ```
@@ -67,7 +68,8 @@ SwiftMTP/
 # 构建桥接 --每次 go 代码变更后都需要检查，是否报错，强制使用
 ./Scripts/build_kalam.sh
 
-# Xcode编译 --每次 Swift 代码变更后都需要编译，检查是否报错，强制使用
+# Xcode编译 --每次 Swift 代码变更后都需要编译，检查是否报错，优先使用 Xcode MCP, 否则使用 xcodebuild
+# 如果 Xcode MCP 未启用, 则使用 xcodebuild 编译
 xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP build
 ```
 
@@ -299,3 +301,4 @@ This is the canonical Codex overlay used by the README install command.
 
 <!-- desloppify-overlay: codex -->
 <!-- desloppify-end -->
+

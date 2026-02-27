@@ -66,4 +66,26 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
             return "de"
         }
     }
+
+    /// 返回用于 AppleLanguages 设置的语言数组
+    var appleLanguages: [String]? {
+        switch self {
+        case .system:
+            return nil
+        case .chinese:
+            return ["zh-Hans", "zh-CN", "zh"]
+        case .english:
+            return ["en", "en-US"]
+        case .japanese:
+            return ["ja", "ja-JP"]
+        case .korean:
+            return ["ko", "ko-KR"]
+        case .russian:
+            return ["ru", "ru-RU"]
+        case .french:
+            return ["fr", "fr-FR"]
+        case .german:
+            return ["de", "de-DE"]
+        }
+    }
 }
