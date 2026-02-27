@@ -104,6 +104,11 @@ struct SwiftMTPApp: App {
             print("[SwiftMTPApp] Application will terminate, cleaning up resources")
             #endif
             
+            // Stop periodic/in-flight scan tasks before native bridge teardown.
+            MainActor.assumeIsolated {
+                DeviceManager.shared.prepareForTermination()
+            }
+            
             // 清理设备连接池
             Kalam_CleanupDevicePool()
             

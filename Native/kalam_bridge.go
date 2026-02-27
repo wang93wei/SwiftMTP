@@ -36,6 +36,7 @@ func safeCString(s string) *C.char {
 
 //export Kalam_Init
 func Kalam_Init() {
+	bridgeShutdownFlag.Store(false)
 	fmt.Println("Kalam Kernel Bridge Initialized")
 }
 
@@ -400,6 +401,11 @@ func Kalam_CleanupLeakedStrings() {
 //export Kalam_CleanupDevicePool
 func Kalam_CleanupDevicePool() {
 	fmt.Printf("Kalam_CleanupDevicePool: Cleaning up all device connections\n")
+	bridgeShutdownFlag.Store(true)
+
+	// Serialize teardown with all bridge operations that use pooled devices.
+	deviceMu.Lock()
+	defer deviceMu.Unlock()
 
 	devicePoolMu.Lock()
 	defer devicePoolMu.Unlock()

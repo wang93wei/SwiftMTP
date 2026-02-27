@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ganeshrvel/go-mtpfs/mtp"
@@ -22,8 +23,9 @@ type devicePoolEntry struct {
 }
 
 var (
-	devicePool   []*devicePoolEntry
-	devicePoolMu sync.RWMutex
+	devicePool         []*devicePoolEntry
+	devicePoolMu       sync.RWMutex
+	bridgeShutdownFlag atomic.Bool
 )
 
 // Initialize device pool cleanup routine
@@ -168,6 +170,10 @@ func createNewDevice() (*devicePoolEntry, error) {
 // withDeviceQuick executes a function with a device connection using faster settings for scanning
 // Uses connection pool to avoid frequent initialization/disposal
 func withDeviceQuick(fn func(*mtp.Device) error) error {
+	if bridgeShutdownFlag.Load() {
+		return fmt.Errorf("bridge is shutting down")
+	}
+
 	deviceMu.Lock()
 	defer deviceMu.Unlock()
 
@@ -273,6 +279,10 @@ func withDeviceQuick(fn func(*mtp.Device) error) error {
 // withDevice executes a function with a device connection using normal settings
 // Uses connection pool to avoid frequent initialization/disposal
 func withDevice(fn func(*mtp.Device) error) error {
+	if bridgeShutdownFlag.Load() {
+		return fmt.Errorf("bridge is shutting down")
+	}
+
 	deviceMu.Lock()
 	defer deviceMu.Unlock()
 

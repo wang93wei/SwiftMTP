@@ -86,6 +86,12 @@ class DeviceManager: ObservableObject, DeviceManaging {
     /// Scan task for AsyncStream-based periodic scanning
     private var scanTask: Task<Void, Never>?
     
+    /// In-flight detached scan operation task
+    private var scanOperationTask: Task<Void, Never>?
+    
+    /// Whether app termination cleanup has started
+    private var isShuttingDown: Bool = false
+    
     /// Device ID cache (using NSCache for automatic memory management)
     private let deviceIdCache = NSCache<NSNumber, UUIDWrapper>()
     
@@ -131,6 +137,7 @@ class DeviceManager: ObservableObject, DeviceManaging {
         // Task cleanup will be handled by automatic deallocation
         // Cancel the scan task to stop async operations
         scanTask?.cancel()
+        scanOperationTask?.cancel()
     }
     
     // MARK: - 公共方法
@@ -148,6 +155,9 @@ class DeviceManager: ObservableObject, DeviceManaging {
     /// Start scanning for devices
     /// Uses user configured scan interval with AsyncStream
     func startScanning() {
+        guard !isShuttingDown else { return }
+        guard scanTask == nil else { return }
+        
         let interval = TimeInterval(userScanInterval)
 
         // Create an AsyncStream that emits values at regular intervals
@@ -171,13 +181,23 @@ class DeviceManager: ObservableObject, DeviceManaging {
     func stopScanning() {
         scanTask?.cancel()
         scanTask = nil
+        scanOperationTask?.cancel()
+        scanOperationTask = nil
+    }
+    
+    /// Prepare manager for application termination.
+    /// Stops periodic and in-flight scans before native cleanup begins.
+    func prepareForTermination() {
+        isShuttingDown = true
+        stopScanning()
+        isScanning = false
     }
     
     /// Scan for devices
     /// Detects device connection and disconnection, uses exponential backoff strategy to reduce scan frequency on failures
     func scanDevices() {
         // Avoid concurrent scanning
-        guard !isScanning else { return }
+        guard !isScanning, !isShuttingDown else { return }
         
         // Stop automatic scanning after reaching max consecutive failures
         if consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
@@ -192,13 +212,26 @@ class DeviceManager: ObservableObject, DeviceManaging {
         // Set scanning flag on main thread
         isScanning = true
         
-        Task.detached(priority: .userInitiated) { [weak self] in
+        scanOperationTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
+            
+            defer {
+                Task { @MainActor [weak self] in
+                    self?.scanOperationTask = nil
+                }
+            }
+            
+            let shouldContinue = await MainActor.run { !self.isShuttingDown && !Task.isCancelled }
+            guard shouldContinue else { return }
             
             // Call Kalam_Scan through Go bridge
             guard let jsonPtr = Kalam_Scan() else {
                 print("[DeviceManager] Kalam_Scan returned nil - no devices found")
                 await MainActor.run {
+                    guard !self.isShuttingDown else {
+                        self.isScanning = false
+                        return
+                    }
                     self.handleDeviceDisconnection()
                     self.isScanning = false
                     self.hasScannedOnce = true
@@ -222,6 +255,10 @@ class DeviceManager: ObservableObject, DeviceManaging {
             guard let data = jsonString.data(using: .utf8) else {
                 print("[DeviceManager] Failed to convert device JSON string to data")
                 await MainActor.run {
+                    guard !self.isShuttingDown else {
+                        self.isScanning = false
+                        return
+                    }
                     self.handleDeviceDisconnection()
                     self.isScanning = false
                     self.hasScannedOnce = true
@@ -246,6 +283,10 @@ class DeviceManager: ObservableObject, DeviceManaging {
                 print("[DeviceManager] Successfully found \(newDevices.count) device(s)")
                 
                 await MainActor.run {
+                    guard !self.isShuttingDown else {
+                        self.isScanning = false
+                        return
+                    }
                     self.updateDevices(newDevices)
                     self.isScanning = false
                     self.hasScannedOnce = true
@@ -253,6 +294,10 @@ class DeviceManager: ObservableObject, DeviceManaging {
             } catch {
                 print("[DeviceManager] Failed to decode devices JSON: \(error)")
                 await MainActor.run {
+                    guard !self.isShuttingDown else {
+                        self.isScanning = false
+                        return
+                    }
                     self.handleDeviceDisconnection()
                     self.isScanning = false
                     self.hasScannedOnce = true
@@ -416,12 +461,16 @@ extension AsyncStream where Element == Void {
     /// - Returns: An AsyncStream that emits Void at the specified interval
     static func makeTimer(interval: TimeInterval) -> AsyncStream<Void> {
         return AsyncStream { continuation in
-            Task {
+            let timerTask = Task {
                 while !Task.isCancelled {
                     continuation.yield()
                     try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                 }
                 continuation.finish()
+            }
+            
+            continuation.onTermination = { _ in
+                timerTask.cancel()
             }
         }
     }
