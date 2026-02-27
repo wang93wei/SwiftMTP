@@ -68,7 +68,8 @@ SwiftMTP/
 # 构建桥接 --每次 go 代码变更后都需要检查，是否报错，强制使用
 ./Scripts/build_kalam.sh
 
-# Xcode编译 --每次 Swift 代码变更后都需要编译，检查是否报错，强制使用
+# Xcode编译 --每次 Swift 代码变更后都需要编译，检查是否报错，优先使用 Xcode MCP, 否则使用 xcodebuild
+# 如果 Xcode MCP 未启用, 则使用 xcodebuild 编译
 xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP build
 ```
 
