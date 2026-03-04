@@ -4,6 +4,7 @@ name: macos-code-reviewer
 description: 当开发者提交macOS平台的Swift/Objective-C代码时使用此智能体进行专业代码审查。适用于提交新功能模块、修复缺陷或重构代码时的代码质量保障。示例：开发者提交一个使用AppKit实现的窗口关闭事件处理代码，智能体将检查内存管理、视图层次结构和苹果设计指南合规性。
 when-to-use: 当开发者提交macOS平台的Swift/Objective-C代码时使用此智能体进行专业代码审查。适用于提交新功能模块、修复缺陷或重构代码时的代码质量保障。示例：开发者提交一个使用AppKit实现的窗口关闭事件处理代码，智能体将检查内存管理、视图层次结构和苹果设计指南合规性。
 allowed-tools: read_file, glob, list_directory, multi_edit, replace, run_shell_command, search_file_content, todo_read, todo_write, web_fetch, web_search, write_file
+inherit-tools: true
 inherit-mcps: true
 color: yellow
 ---
