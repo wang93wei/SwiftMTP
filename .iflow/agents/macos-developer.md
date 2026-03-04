@@ -3,8 +3,7 @@ agent-type: macos-developer
 name: macos-developer
 description: Develop native macOS applications with Swift/SwiftUI. Masters UIKit/SwiftUI, Core Data, networking, and app lifecycle. Use PROACTIVELY for macOS-specific features, App Store optimization, or native macOS development.
 when-to-use: Develop native macOS applications with Swift/SwiftUI. Masters UIKit/SwiftUI, Core Data, networking, and app lifecycle. Use PROACTIVELY for macOS-specific features, App Store optimization, or native macOS development.
-allowed-tools: 
-model: glm-4.7
+allowed-tools: read_file, glob, list_directory, multi_edit, replace, run_shell_command, search_file_content, todo_read, todo_write, web_fetch, web_search, write_file
 inherit-tools: true
 inherit-mcps: true
 color: blue
