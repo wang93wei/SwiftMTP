@@ -59,7 +59,8 @@ jobs:
             -configuration Release \
             MACOSX_DEPLOYMENT_TARGET=${{ env.MACOSX_DEPLOYMENT_TARGET }} \
             CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO \
+            SWIFT_VERSION=5.10
 
       - name: Run tests
         run: |
@@ -70,7 +71,8 @@ jobs:
             -configuration Debug \
             MACOSX_DEPLOYMENT_TARGET=${{ env.MACOSX_DEPLOYMENT_TARGET }} \
             CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO \
+            SWIFT_VERSION=5.10
 
       - name: Upload build artifacts
         if: success()
