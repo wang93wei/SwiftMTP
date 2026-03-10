@@ -27,7 +27,7 @@ struct FileTransferView: View {
             }
         }
         .frame(minWidth: 500, minHeight: 300)
-        .toolbarLiquidGlass()
+        .toolbarLiquidGlassCompat()
         .background(.ultraThinMaterial)
         .id(refreshID)
         .onReceive(NotificationCenter.default.publisher(for: .languageDidChange)) { _ in
@@ -53,16 +53,24 @@ struct FileTransferView: View {
         HStack {
             Text(L10n.FileTransfer.fileTransferTitle)
                 .font(.headline)
-                .glassEffect()
-            
+                .glassEffectCompat()
+
             Spacer()
-            
-            Button(L10n.FileTransfer.done) {
-                dismiss()
+
+            if #available(macOS 26, *) {
+                Button(L10n.FileTransfer.done) {
+                    dismiss()
+                }
+                .buttonStyle(.glass)
+                .help(L10n.FileTransfer.closeTransferWindow)
+            } else {
+                Button(L10n.FileTransfer.done) {
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+                .help(L10n.FileTransfer.closeTransferWindow)
             }
-            .buttonStyle(.glass)
-            .help(L10n.FileTransfer.closeTransferWindow)
-            
+
         }
         .padding()
     }
@@ -96,7 +104,6 @@ struct FileTransferView: View {
                 }
             }
             .padding()
-            .scrollEdgeEffectStyle(.soft, for: .all)
         }
     }
     

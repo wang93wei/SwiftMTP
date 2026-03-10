@@ -9,6 +9,19 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="${SCRIPT_DIR}/.."
 NATIVE_DIR="${PROJECT_ROOT}/Native"
 TARGET_DIR="${PROJECT_ROOT}/SwiftMTP"
+BUILD_DIR="${PROJECT_ROOT}/build"
+
+# Deployment target - read from environment or extract from Xcode project
+if [ -z "${MACOSX_DEPLOYMENT_TARGET}" ]; then
+    PROJECT_FILE="${PROJECT_ROOT}/SwiftMTP.xcodeproj/project.pbxproj"
+    if [ -f "${PROJECT_FILE}" ]; then
+        MACOSX_DEPLOYMENT_TARGET=$(grep -m1 "MACOSX_DEPLOYMENT_TARGET = " "${PROJECT_FILE}" | sed 's/.*MACOSX_DEPLOYMENT_TARGET = \([0-9.]*\);.*/\1/')
+    fi
+    if [ -z "${MACOSX_DEPLOYMENT_TARGET}" ]; then
+        MACOSX_DEPLOYMENT_TARGET=15.6
+    fi
+fi
+export MACOSX_DEPLOYMENT_TARGET
 
 echo "Building Kalam Kernel Bridge with bundled libusb..."
 
@@ -18,11 +31,41 @@ if ! command -v go &> /dev/null; then
     exit 1
 fi
 
-# Check for libusb
-if [ ! -f "/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib" ]; then
-    echo "Error: libusb not found. Please install it with 'brew install libusb'."
-    exit 1
+# Build libusb from source for compatibility
+echo "Building libusb from source for macOS ${MACOSX_DEPLOYMENT_TARGET}..."
+LIBUSB_VERSION="1.0.27"
+LIBUSB_SRC_URL="https://github.com/libusb/libusb/releases/download/v${LIBUSB_VERSION}/libusb-${LIBUSB_VERSION}.tar.bz2"
+LIBUSB_BUILD_DIR="${BUILD_DIR}/libusb-${LIBUSB_VERSION}"
+
+mkdir -p "${BUILD_DIR}"
+
+if [ ! -d "${LIBUSB_BUILD_DIR}" ]; then
+    echo "Downloading libusb ${LIBUSB_VERSION}..."
+    curl -L "${LIBUSB_SRC_URL}" | tar -xjf - -C "${BUILD_DIR}"
 fi
+
+cd "${LIBUSB_BUILD_DIR}"
+
+# Configure and build libusb with the correct deployment target
+echo "Configuring libusb..."
+./configure --prefix="${BUILD_DIR}/libusb-install" \
+    --disable-static \
+    --enable-shared \
+    CFLAGS="-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}" \
+    LDFLAGS="-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}"
+
+echo "Building libusb..."
+make -j$(sysctl -n hw.ncpu)
+make install
+
+# Copy the built libusb to target
+echo "📦 Copying libusb to target directory..."
+cp -f "${BUILD_DIR}/libusb-install/lib/libusb-1.0.dylib" "${TARGET_DIR}/libusb-1.0.dylib"
+
+# Set install name for libusb.dylib
+install_name_tool -id "@rpath/libusb-1.0.dylib" "${TARGET_DIR}/libusb-1.0.dylib"
+
+echo "✅ libusb built for macOS ${MACOSX_DEPLOYMENT_TARGET}"
 
 cd "${NATIVE_DIR}"
 
@@ -39,8 +82,8 @@ go mod tidy
 
 # Build libkalam.dylib
 echo "Compiling libkalam.dylib..."
-export CGO_LDFLAGS="-L/opt/homebrew/opt/libusb/lib -lusb-1.0 -framework CoreFoundation -framework IOKit"
-export CGO_CFLAGS="-I/opt/homebrew/opt/libusb/include/libusb-1.0"
+export CGO_LDFLAGS="-L${BUILD_DIR}/libusb-install/lib -lusb-1.0 -framework CoreFoundation -framework IOKit -mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}"
+export CGO_CFLAGS="-I${BUILD_DIR}/libusb-install/include/libusb-1.0 -mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}"
 
 go build -o "${TARGET_DIR}/libkalam.dylib" -buildmode=c-shared .
 
@@ -50,33 +93,14 @@ if [ -f "${TARGET_DIR}/libkalam.dylib" ] && [ -f "${TARGET_DIR}/libkalam.h" ]; t
     echo "   Library: ${TARGET_DIR}/libkalam.dylib"
     echo "   Header:  ${TARGET_DIR}/libkalam.h"
 
-    # Copy libusb.dylib to target directory for bundling
-    echo "📦 Bundling libusb.dylib..."
-    cp -f "/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib" "${TARGET_DIR}/libusb-1.0.dylib"
-
-    # Copy com.apple.provenance extended attribute from system libusb
-    echo "🔧 Copying extended attributes from system libusb..."
-    if xattr -p com.apple.provenance "/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib" > /dev/null 2>&1; then
-        chmod +w "${TARGET_DIR}/libusb-1.0.dylib"
-        xattr -w com.apple.provenance "$(xattr -p com.apple.provenance /opt/homebrew/opt/libusb/lib/libusb-1.0.dylib | xxd -p -r)" "${TARGET_DIR}/libusb-1.0.dylib"
-        chmod -w "${TARGET_DIR}/libusb-1.0.dylib"
-        echo "   ✅ Extended attributes copied"
-    else
-        echo "   ⚠️ No extended attributes found, skipping"
-    fi
-
     # Set install name for libkalam.dylib to be relative to @rpath
     echo "🔧 Setting install name for libkalam.dylib..."
     install_name_tool -id "@rpath/libkalam.dylib" "${TARGET_DIR}/libkalam.dylib"
 
     # Change libusb reference in libkalam.dylib to use @rpath
     echo "🔧 Updating libusb reference in libkalam.dylib..."
-    install_name_tool -change "/opt/homebrew/opt/libusb/lib/libusb-1.0.0.dylib" "@rpath/libusb-1.0.dylib" "${TARGET_DIR}/libkalam.dylib"
-    install_name_tool -change "/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib" "@rpath/libusb-1.0.dylib" "${TARGET_DIR}/libkalam.dylib" 2>/dev/null || true
-
-    # Set install name for libusb.dylib to be relative to @rpath
-    echo "🔧 Setting install name for libusb-1.0.dylib..."
-    install_name_tool -id "@rpath/libusb-1.0.dylib" "${TARGET_DIR}/libusb-1.0.dylib"
+    install_name_tool -change "${BUILD_DIR}/libusb-install/lib/libusb-1.0.0.dylib" "@rpath/libusb-1.0.dylib" "${TARGET_DIR}/libkalam.dylib" 2>/dev/null || true
+    install_name_tool -change "${BUILD_DIR}/libusb-install/lib/libusb-1.0.dylib" "@rpath/libusb-1.0.dylib" "${TARGET_DIR}/libkalam.dylib" 2>/dev/null || true
 
     # Display library dependencies
     echo "📦 Library dependencies:"
@@ -84,6 +108,13 @@ if [ -f "${TARGET_DIR}/libkalam.dylib" ] && [ -f "${TARGET_DIR}/libkalam.h" ]; t
     echo ""
     echo "📦 libusb dependencies:"
     otool -L "${TARGET_DIR}/libusb-1.0.dylib"
+    
+    echo ""
+    echo "📊 Deployment target info:"
+    echo "libkalam.dylib:"
+    otool -l "${TARGET_DIR}/libkalam.dylib" | grep -A 5 "LC_BUILD_VERSION" | head -6
+    echo "libusb-1.0.dylib:"
+    otool -l "${TARGET_DIR}/libusb-1.0.dylib" | grep -A 5 "LC_BUILD_VERSION" | head -6
 
     # Xcode Integration
     # If running in Xcode, copy to Frameworks and sign

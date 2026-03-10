@@ -113,26 +113,38 @@ struct FileBrowserView: View {
                     }
                     .help(L10n.FileBrowser.goBack)
                     .disabled(currentPath.isEmpty)
-                    .glassEffect()
+                    .glassEffectCompat()
                 }
 
                 ToolbarItem {
-                    GlassEffectContainer(spacing: 1) {
-                        HStack(spacing: 1) {
+                    if #available(macOS 26, *) {
+                        GlassEffectContainer(spacing: 1) {
+                            HStack(spacing: 1) {
+                                refreshButton
+                                    .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+                                sortMenu
+                                    .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+                                newFolderButton
+                                    .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+                                uploadFilesButton
+                                    .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+                                downloadButton
+                                    .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+                                deleteButton
+                                    .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+                                transferTasksButton
+                                    .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+                            }
+                        }
+                    } else {
+                        HStack(spacing: 8) {
                             refreshButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             sortMenu
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             newFolderButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             uploadFilesButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             downloadButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             deleteButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                             transferTasksButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
                         }
                     }
                 }
@@ -359,7 +371,6 @@ struct FileBrowserView: View {
                     .buttonStyle(.borderless)
                 }
             }
-            .scrollEdgeEffectStyle(.hard, for: .all)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }

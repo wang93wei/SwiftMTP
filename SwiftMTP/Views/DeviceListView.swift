@@ -33,18 +33,33 @@ struct DeviceListView: View {
                             description: Text(L10n.DeviceList.connectDeviceViaUSB)
                         )
                         
-                        Button(action: {
-                            deviceManager.manualRefresh()
-                        }){
-                           HStack(spacing: 4) {
-                                Image(systemName: "arrow.clockwise")
-                                Text(L10n.MainWindow.refresh) 
+                        if #available(macOS 26, *) {
+                            Button(action: {
+                                deviceManager.manualRefresh()
+                            }){
+                               HStack(spacing: 4) {
+                                    Image(systemName: "arrow.clockwise")
+                                    Text(L10n.MainWindow.refresh)
+                                }
                             }
+                            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 8))
+                            .scaleEffect(deviceManager.isScanning ? 0.95 : 1.0)
+                            .animation(.easeInOut(duration: 0.2), value: deviceManager.isScanning)
+                            .disabled(deviceManager.isScanning)
+                        } else {
+                            Button(action: {
+                                deviceManager.manualRefresh()
+                            }){
+                               HStack(spacing: 4) {
+                                    Image(systemName: "arrow.clockwise")
+                                    Text(L10n.MainWindow.refresh)
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .scaleEffect(deviceManager.isScanning ? 0.95 : 1.0)
+                            .animation(.easeInOut(duration: 0.2), value: deviceManager.isScanning)
+                            .disabled(deviceManager.isScanning)
                         }
-                        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 8))
-                        .scaleEffect(deviceManager.isScanning ? 0.95 : 1.0)
-                        .animation(.easeInOut(duration: 0.2), value: deviceManager.isScanning)
-                        .disabled(deviceManager.isScanning)
                     }
                     .padding()
                 } else {
