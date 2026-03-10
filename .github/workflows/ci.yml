@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [feature/lower-deployment-target]
+  pull_request:
+    branches: [feature/lower-deployment-target]
+
+env:
+  MACOSX_DEPLOYMENT_TARGET: "15.6"
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: Native/go.sum
+
+      - name: Cache libusb build
+        id: cache-libusb
+        uses: actions/cache@v4
+        with:
+          path: build/libusb-*
+          key: libusb-${{ runner.os }}-${{ env.MACOSX_DEPLOYMENT_TARGET }}-1.0.27
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build Go bridge (Kalam)
+        run: |
+          chmod +x ./Scripts/build_kalam.sh
+          ./Scripts/build_kalam.sh
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ env.MACOSX_DEPLOYMENT_TARGET }}
+
+      - name: Verify dylibs deployment target
+        run: |
+          echo "Checking libkalam.dylib:"
+          otool -l SwiftMTP/libkalam.dylib | grep -A 5 "LC_BUILD_VERSION" | head -6
+          echo ""
+          echo "Checking libusb-1.0.dylib:"
+          otool -l SwiftMTP/libusb-1.0.dylib | grep -A 5 "LC_BUILD_VERSION" | head -6
+
+      - name: Build SwiftMTP
+        run: |
+          xcodebuild build \
+            -project SwiftMTP.xcodeproj \
+            -scheme SwiftMTP \
+            -destination 'platform=macOS' \
+            -configuration Release \
+            MACOSX_DEPLOYMENT_TARGET=${{ env.MACOSX_DEPLOYMENT_TARGET }} \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project SwiftMTP.xcodeproj \
+            -scheme SwiftMTP \
+            -destination 'platform=macOS' \
+            -configuration Debug \
+            MACOSX_DEPLOYMENT_TARGET=${{ env.MACOSX_DEPLOYMENT_TARGET }} \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwiftMTP-app
+          path: |
+            build/Release/SwiftMTP.app
+          retention-days: 7
+          if-no-files-found: ignore
+
+  lint:
+    name: Code Quality
+    runs-on: macos-15
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Swift format check
+        run: |
+          if command -v swift-format &> /dev/null; then
+            find SwiftMTP -name "*.swift" -exec swift-format lint {} \;
+          else
+            echo "swift-format not installed, skipping format check"
+          fi
+        continue-on-error: true
+
+      - name: Setup Go for vet
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: Native/go.sum
+
+      - name: Go vet
+        working-directory: Native
+        run: |
+          go vet ./...
+        continue-on-error: true

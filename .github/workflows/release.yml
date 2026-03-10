@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  MACOSX_DEPLOYMENT_TARGET: "15.6"
+
+jobs:
+  build-release:
+    name: Build and Release
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: Native/go.sum
+
+      - name: Cache libusb build
+        id: cache-libusb
+        uses: actions/cache@v4
+        with:
+          path: build/libusb-*
+          key: libusb-${{ runner.os }}-${{ env.MACOSX_DEPLOYMENT_TARGET }}-1.0.27
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build Go bridge (Kalam)
+        run: |
+          chmod +x ./Scripts/build_kalam.sh
+          ./Scripts/build_kalam.sh
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ env.MACOSX_DEPLOYMENT_TARGET }}
+
+      - name: Create DMG
+        run: |
+          chmod +x ./Scripts/create_dmg_simple.sh
+          ./Scripts/create_dmg_simple.sh
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ env.MACOSX_DEPLOYMENT_TARGET }}
+
+      - name: Find DMG file
+        id: find-dmg
+        run: |
+          DMG_FILE=$(find build -name "*.dmg" -type f | head -n 1)
+          echo "dmg_path=$DMG_FILE" >> $GITHUB_OUTPUT
+          echo "dmg_name=$(basename $DMG_FILE)" >> $GITHUB_OUTPUT
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwiftMTP-DMG
+          path: |
+            build/*.dmg
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/*.dmg
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
