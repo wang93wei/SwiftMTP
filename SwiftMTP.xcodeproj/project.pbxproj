@@ -409,7 +409,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/SwiftMTP",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0.2;
 				OTHER_LDFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.AlanWang.SwiftMTP;
@@ -460,7 +460,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/SwiftMTP",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0.2;
 				OTHER_LDFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.AlanWang.SwiftMTP;
