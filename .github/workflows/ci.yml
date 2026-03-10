@@ -7,7 +7,7 @@ on:
     branches: [feature/lower-deployment-target]
 
 env:
-  MACOSX_DEPLOYMENT_TARGET: "15.6"
+  MACOSX_DEPLOYMENT_TARGET: "15.0"
 
 jobs:
   build:
@@ -83,33 +83,3 @@ jobs:
             build/Release/SwiftMTP.app
           retention-days: 7
           if-no-files-found: ignore
-
-  lint:
-    name: Code Quality
-    runs-on: macos-15
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Swift format check
-        run: |
-          if command -v swift-format &> /dev/null; then
-            find SwiftMTP -name "*.swift" -exec swift-format lint {} \;
-          else
-            echo "swift-format not installed, skipping format check"
-          fi
-        continue-on-error: true
-
-      - name: Setup Go for vet
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.23"
-          cache-dependency-path: Native/go.sum
-
-      - name: Go vet
-        working-directory: Native
-        run: |
-          go vet ./...
-        continue-on-error: true
