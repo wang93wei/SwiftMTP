@@ -186,7 +186,9 @@ class FileTransferManager: ObservableObject {
         let destinationPath = task.destinationPath
         
         currentDownloadTask = task
-        task.updateStatus(.transferring)
+        Task { @MainActor in
+            task.updateStatus(.transferring)
+        }
         
         let destinationURL = URL(fileURLWithPath: destinationPath)
         let destinationDir = destinationURL.deletingLastPathComponent()
@@ -194,7 +196,7 @@ class FileTransferManager: ObservableObject {
         do {
             try FileManager.default.createDirectory(at: destinationDir, withIntermediateDirectories: true)
         } catch {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 task.updateStatus(.failed(L10n.FileTransfer.cannotCreateDirectory.localized(error.localizedDescription)))
             }
             moveTaskToCompleted(task)
@@ -206,14 +208,14 @@ class FileTransferManager: ObservableObject {
                 do {
                     try FileManager.default.removeItem(atPath: destinationPath)
                 } catch {
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         task.updateStatus(.failed(L10n.FileTransfer.cannotReplaceExistingFile.localized(error.localizedDescription)))
                     }
                     moveTaskToCompleted(task)
                     return
                 }
             } else {
-                DispatchQueue.main.async {
+                Task { @MainActor in
                     task.updateStatus(.failed(L10n.FileTransfer.fileAlreadyExistsAtDestination))
                 }
                 moveTaskToCompleted(task)
@@ -222,7 +224,7 @@ class FileTransferManager: ObservableObject {
         }
         
         guard let testResult = Kalam_Scan() else {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 task.updateStatus(.failed(L10n.FileTransfer.deviceDisconnectedReconnect))
             }
             currentDownloadTask = nil
@@ -231,7 +233,7 @@ class FileTransferManager: ObservableObject {
         }
         
         if strlen(testResult) == 0 {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 task.updateStatus(.failed(L10n.FileTransfer.deviceDisconnectedReconnect))
             }
             currentDownloadTask = nil
@@ -269,23 +271,26 @@ class FileTransferManager: ObservableObject {
             if let attributes = try? FileManager.default.attributesOfItem(atPath: destinationPath),
                let fileSize = attributes[.size] as? UInt64,
                fileSize > 0 {
-                task.updateProgress(transferred: fileSize, speed: 0)
-                task.updateStatus(.completed)
+                Task { @MainActor in
+                    task.updateProgress(transferred: fileSize, speed: 0)
+                    task.updateStatus(.completed)
+                }
             } else {
                 if FileManager.default.fileExists(atPath: destinationPath) {
-                    do {
-                        try FileManager.default.removeItem(atPath: destinationPath)
-                    } catch {
-                    }
+                    try? FileManager.default.removeItem(atPath: destinationPath)
                 }
-                task.updateStatus(.failed(L10n.FileTransfer.downloadedFileInvalidOrCorrupted))
+                Task { @MainActor in
+                    task.updateStatus(.failed(L10n.FileTransfer.downloadedFileInvalidOrCorrupted))
+                }
             }
         } else {
             var errorMessage = L10n.FileTransfer.downloadFailed
             
             guard let testResult2 = Kalam_Scan() else {
                 errorMessage = L10n.FileTransfer.deviceDisconnectedCheckUSB
-                task.updateStatus(.failed(errorMessage))
+                Task { @MainActor in
+                    task.updateStatus(.failed(errorMessage))
+                }
                 return
             }
             
@@ -295,7 +300,9 @@ class FileTransferManager: ObservableObject {
                 errorMessage = L10n.FileTransfer.checkConnectionAndStorage
             }
             
-            task.updateStatus(.failed(errorMessage))
+            Task { @MainActor in
+                task.updateStatus(.failed(errorMessage))
+            }
         }
         
         currentDownloadTask = nil
@@ -320,7 +327,12 @@ class FileTransferManager: ObservableObject {
         if fileSize > 100 * 1024 * 1024 {
         }
 
-        if task.isCancelled {
+        var isTaskCancelled = false
+        Task { @MainActor in
+            isTaskCancelled = task.isCancelled
+        }
+        
+        if isTaskCancelled {
             Task { @MainActor in
                 task.updateStatus(.cancelled)
             }

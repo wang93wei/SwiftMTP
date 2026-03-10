@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 
+@MainActor
 class LanguageManager: ObservableObject {
     static let shared = LanguageManager()
     
@@ -23,7 +24,7 @@ class LanguageManager: ObservableObject {
     private var bundle: Bundle = .main
     private var cancellables = Set<AnyCancellable>()
     
-    private init() {
+    fileprivate init() {
         let savedLanguage = UserDefaults.standard.string(forKey: languageKey)
         
         // 验证保存的语言值是否有效
