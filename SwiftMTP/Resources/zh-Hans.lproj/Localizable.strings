@@ -325,3 +325,24 @@
 "deleteFolder" = "删除文件夹";
 "confirmDeleteFolderWithName" = "确定要删除 \"%1$@\" 吗？此操作将递归删除文件夹及其所有内容，无法撤销。";
 
+/* 导入首页 */
+"importHeroTitle" = "通过 USB 从 Android 导入";
+"importHeroSubtitle" = "先从常用文件夹开始，需要更多控制时再浏览全部文件。";
+"importUsbConnected" = "USB 已连接";
+"importItemsReady" = "已有 %1$d 个项目可导入";
+"importDcimTitle" = "DCIM";
+"importDcimSubtitle" = "相机照片和视频";
+"importPicturesTitle" = "图片";
+"importPicturesSubtitle" = "浏览图片和截图";
+"importMoviesTitle" = "视频";
+"importMoviesSubtitle" = "更快找到视频文件";
+"importDownloadsTitle" = "下载";
+"importDownloadsSubtitle" = "从下载目录挑选最近文件";
+"importFallbackFolderSubtitle" = "快速打开常用文件夹";
+"importBrowseAllTitle" = "浏览全部文件";
+"importBrowseAllSubtitle" = "需要更多控制时，打开完整文件表格";
+"importOpenBrowser" = "打开浏览器";
+"importOpenFolder" = "打开文件夹";
+"importBrowseHintTitle" = "需要完整文件浏览器？";
+"importBrowseHintSubtitle" = "使用“浏览全部文件”即可回到现有表格视图，继续使用排序、拖拽上传、删除和下载功能。";
+

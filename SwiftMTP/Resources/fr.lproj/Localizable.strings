@@ -316,3 +316,24 @@
 /* Suppression de répertoire */
 "deleteFolder" = "Supprimer le dossier";
 "confirmDeleteFolderWithName" = "Êtes-vous sûr de vouloir supprimer \"%1$@\" ? Cette action supprimera récursivement le dossier et tout son contenu et ne pourra pas être annulée.";
+
+/* Accueil d'importation */
+"importHeroTitle" = "Importer depuis Android via USB";
+"importHeroSubtitle" = "Commencez par un dossier courant, ou parcourez tout lorsque vous avez besoin de plus de contrôle.";
+"importUsbConnected" = "USB connecté";
+"importItemsReady" = "%1$d éléments prêts";
+"importDcimTitle" = "DCIM";
+"importDcimSubtitle" = "Photos et vidéos de l'appareil photo";
+"importPicturesTitle" = "Images";
+"importPicturesSubtitle" = "Parcourir les images et captures d’écran";
+"importMoviesTitle" = "Vidéos";
+"importMoviesSubtitle" = "Trouver les vidéos plus rapidement";
+"importDownloadsTitle" = "Téléchargements";
+"importDownloadsSubtitle" = "Choisir des fichiers récents dans Téléchargements";
+"importFallbackFolderSubtitle" = "Ouvrir rapidement un dossier courant";
+"importBrowseAllTitle" = "Parcourir tous les fichiers";
+"importBrowseAllSubtitle" = "Ouvrir le tableau complet des fichiers lorsque vous avez besoin de plus de contrôle";
+"importOpenBrowser" = "Ouvrir le navigateur";
+"importOpenFolder" = "Ouvrir le dossier";
+"importBrowseHintTitle" = "Besoin du navigateur de fichiers complet ?";
+"importBrowseHintSubtitle" = "Utilisez « Parcourir tous les fichiers » pour revenir à la vue tableau existante, avec tri, glisser-déposer pour l’envoi, suppression et téléchargement.";

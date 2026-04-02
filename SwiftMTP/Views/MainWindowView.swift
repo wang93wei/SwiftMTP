@@ -23,11 +23,13 @@ struct MainWindowView: View {
             if let selectedDevice = deviceManager.selectedDevice {
                 FileBrowserView(device: selectedDevice)
             } else {
-                ContentUnavailableView(
-                    L10n.MainWindow.noDeviceSelected,
-                    systemImage: "iphone.slash",
-                    description: Text(L10n.MainWindow.selectDeviceFromList)
-                )
+                VStack(spacing: 16) {
+                    ContentUnavailableView(
+                        L10n.MainWindow.noDeviceSelected,
+                        systemImage: "iphone.slash",
+                        description: Text(L10n.MainWindow.selectDeviceFromList)
+                    )
+                }
             }
         }
         .id(refreshID)

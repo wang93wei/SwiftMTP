@@ -22,7 +22,12 @@ struct DeviceListView: View {
         .safeAreaPadding(.top,5)
         .overlay {
             if deviceManager.isScanning && !deviceManager.hasScannedOnce {
-                ProgressView(L10n.DeviceList.scanningDevices)
+                VStack(spacing: 12) {
+                    ProgressView(L10n.DeviceList.scanningDevices)
+                    Text(L10n.DeviceList.scanningDevicesUsbHint)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
 
             } else if deviceManager.devices.isEmpty {
                 if deviceManager.showManualRefreshButton {
@@ -32,13 +37,13 @@ struct DeviceListView: View {
                             systemImage: "iphone.slash",
                             description: Text(L10n.DeviceList.connectDeviceViaUSB)
                         )
-                        
+
                         Button(action: {
                             deviceManager.manualRefresh()
                         }){
                            HStack(spacing: 4) {
                                 Image(systemName: "arrow.clockwise")
-                                Text(L10n.MainWindow.refresh) 
+                                Text(L10n.MainWindow.refresh)
                             }
                         }
                         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 8))
@@ -48,11 +53,13 @@ struct DeviceListView: View {
                     }
                     .padding()
                 } else {
-                    ContentUnavailableView(
-                        L10n.DeviceList.noDevices,
-                        systemImage: "iphone.slash",
-                        description: Text(L10n.DeviceList.connectDeviceViaUSB)
-                    )
+                    VStack(spacing: 12) {
+                        ContentUnavailableView(
+                            L10n.DeviceList.noDevices,
+                            systemImage: "iphone.slash",
+                            description: Text(L10n.DeviceList.connectDeviceViaUSB)
+                        )
+                    }
                 }
             }
         }

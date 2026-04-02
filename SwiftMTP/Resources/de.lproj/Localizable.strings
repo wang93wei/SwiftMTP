@@ -316,3 +316,24 @@
 /* Verzeichnis löschen */
 "deleteFolder" = "Ordner löschen";
 "confirmDeleteFolderWithName" = "Sind Sie sicher, dass Sie \"%1$@\" löschen möchten? Diese Aktion löscht den Ordner und alle seine Inhalte rekursiv und kann nicht rückgängig gemacht werden.";
+
+/* Import-Startseite */
+"importHeroTitle" = "Per USB von Android importieren";
+"importHeroSubtitle" = "Beginnen Sie mit einem häufig genutzten Ordner oder durchsuchen Sie alles, wenn Sie mehr Kontrolle benötigen.";
+"importUsbConnected" = "USB verbunden";
+"importItemsReady" = "%1$d Elemente bereit";
+"importDcimTitle" = "DCIM";
+"importDcimSubtitle" = "Kamerafotos und Videos";
+"importPicturesTitle" = "Bilder";
+"importPicturesSubtitle" = "Bilder und Screenshots durchsuchen";
+"importMoviesTitle" = "Videos";
+"importMoviesSubtitle" = "Videos schneller finden";
+"importDownloadsTitle" = "Downloads";
+"importDownloadsSubtitle" = "Aktuelle Dateien aus Downloads auswählen";
+"importFallbackFolderSubtitle" = "Einen häufig genutzten Ordner schnell öffnen";
+"importBrowseAllTitle" = "Alle Dateien durchsuchen";
+"importBrowseAllSubtitle" = "Öffnen Sie die vollständige Dateitabelle, wenn Sie mehr Kontrolle benötigen";
+"importOpenBrowser" = "Browser öffnen";
+"importOpenFolder" = "Ordner öffnen";
+"importBrowseHintTitle" = "Benötigen Sie den vollständigen Dateibrowser?";
+"importBrowseHintSubtitle" = "Verwenden Sie „Alle Dateien durchsuchen“, um zur bestehenden Tabellenansicht mit Sortieren, Drag-and-Drop-Upload, Löschen und Download zurückzukehren.";

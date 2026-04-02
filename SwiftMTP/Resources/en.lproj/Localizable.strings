@@ -11,12 +11,15 @@
 "ok" = "OK";
 "deviceDisconnectedMessage" = "Android device disconnected, please reconnect the device.";
 "androidDevice" = "Android Device";
+"usbImportHomeHint" = "Pick a connected Android device to open the USB import home.";
 
 /* Device List */
 "devices" = "Devices";
 "scanningDevices" = "Scanning for devices...";
+"scanningDevicesUsbHint" = "Looking for your Android device over USB";
 "noDevices" = "No Devices";
 "connectDeviceViaUSB" = "Please connect an Android device via USB\nand ensure file transfer mode is enabled";
+"usbImportHint" = "Connect with USB to start importing photos, videos, and files.";
 
 /* File Browser */
 "deleteFile" = "Delete File";
@@ -324,3 +327,24 @@
 /* Directory Delete */
 "deleteFolder" = "Delete Folder";
 "confirmDeleteFolderWithName" = "Are you sure you want to delete \"%1$@\"? This action will recursively delete the folder and all its contents and cannot be undone.";
+
+/* Import Home */
+"importHeroTitle" = "Import from Android over USB";
+"importHeroSubtitle" = "Start with a common folder, or browse everything when you need more control.";
+"importUsbConnected" = "USB connected";
+"importItemsReady" = "%1$d items ready";
+"importDcimTitle" = "DCIM";
+"importDcimSubtitle" = "Camera photos and videos";
+"importPicturesTitle" = "Pictures";
+"importPicturesSubtitle" = "Browse images and screenshots";
+"importMoviesTitle" = "Movies";
+"importMoviesSubtitle" = "Find videos faster";
+"importDownloadsTitle" = "Downloads";
+"importDownloadsSubtitle" = "Pick recent files from downloads";
+"importFallbackFolderSubtitle" = "Open a common folder quickly";
+"importBrowseAllTitle" = "Browse all files";
+"importBrowseAllSubtitle" = "Open the full file table when you need more control";
+"importOpenBrowser" = "Open browser";
+"importOpenFolder" = "Open folder";
+"importBrowseHintTitle" = "Need the full file browser?";
+"importBrowseHintSubtitle" = "Use Browse all files to fall back to the existing table view, with sorting, drag-and-drop upload, delete, and download actions intact.";

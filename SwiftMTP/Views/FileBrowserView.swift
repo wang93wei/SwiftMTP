@@ -36,6 +36,27 @@ struct FileBrowserView: View {
     
     @State var showingCreateFolderDialog = false
     @State var newFolderName = ""
+    @State private var isShowingRootBrowser = false
+
+    enum SortOption: CaseIterable {
+        case name
+        case size
+        case type
+        case modifiedDate
+
+        var displayName: String {
+            switch self {
+            case .name:
+                return L10n.FileBrowser.name
+            case .size:
+                return L10n.FileBrowser.size
+            case .type:
+                return L10n.FileBrowser.type
+            case .modifiedDate:
+                return L10n.FileBrowser.modifiedDate
+            }
+        }
+    }
 
     
     
@@ -53,20 +74,89 @@ struct FileBrowserView: View {
     }
     
     
-    enum SortOption: String, CaseIterable {
-        case name
-        case size
-        case type
-        case modifiedDate
-        
-        var displayName: String {
-            switch self {
-            case .name: return L10n.FileBrowser.name
-            case .size: return L10n.FileBrowser.size
-            case .type: return L10n.FileBrowser.type
-            case .modifiedDate: return L10n.FileBrowser.modifiedDate
+
+    private struct EntryPoint: Identifiable, Hashable {
+        enum Kind: Hashable {
+            case recommended
+            case browseAll
+        }
+
+        let id: String
+        let title: String
+        let subtitle: String
+        let systemImage: String
+        let kind: Kind
+        let folder: FileItem?
+    }
+
+    private let recommendedDirectoryNames: [(key: String, title: String, subtitle: String, systemImage: String)] = [
+        ("dcim", L10n.FileBrowser.importDcimTitle, L10n.FileBrowser.importDcimSubtitle, "photo.stack.fill"),
+        ("pictures", L10n.FileBrowser.importPicturesTitle, L10n.FileBrowser.importPicturesSubtitle, "photo.fill.on.rectangle.fill"),
+        ("movies", L10n.FileBrowser.importMoviesTitle, L10n.FileBrowser.importMoviesSubtitle, "film.stack.fill"),
+        ("download", L10n.FileBrowser.importDownloadsTitle, L10n.FileBrowser.importDownloadsSubtitle, "arrow.down.circle.fill")
+    ]
+
+    private var isAtRoot: Bool {
+        currentPath.isEmpty
+    }
+
+    private var rootEntryPoints: [EntryPoint] {
+        guard isAtRoot else { return [] }
+
+        var entries: [EntryPoint] = []
+        var usedFolders = Set<FileItem.ID>()
+
+        for item in currentFiles where item.isDirectory {
+            let normalizedName = item.name.lowercased()
+            if let match = recommendedDirectoryNames.first(where: { normalizedName.contains($0.key) || $0.key.contains(normalizedName) }) {
+                usedFolders.insert(item.id)
+                entries.append(
+                    EntryPoint(
+                        id: item.id.uuidString,
+                        title: match.title,
+                        subtitle: match.subtitle,
+                        systemImage: match.systemImage,
+                        kind: .recommended,
+                        folder: item
+                    )
+                )
             }
         }
+
+        if entries.isEmpty {
+            let fallbackFolders = currentFiles
+                .filter(\.isDirectory)
+                .prefix(3)
+
+            entries.append(contentsOf: fallbackFolders.map { folder in
+                usedFolders.insert(folder.id)
+                return EntryPoint(
+                    id: folder.id.uuidString,
+                    title: folder.name,
+                    subtitle: L10n.FileBrowser.importFallbackFolderSubtitle,
+                    systemImage: "folder.fill",
+                    kind: .recommended,
+                    folder: folder
+                )
+            })
+        }
+
+        entries.append(
+            EntryPoint(
+                id: "browse-all",
+                title: L10n.FileBrowser.importBrowseAllTitle,
+                subtitle: L10n.FileBrowser.importBrowseAllSubtitle,
+                systemImage: "tablecells.fill",
+                kind: .browseAll,
+                folder: nil
+            )
+        )
+
+        return entries
+    }
+
+    var shouldShowImportHome: Bool {
+        isAtRoot && !isShowingRootBrowser && !isLoading && !currentFiles.isEmpty
     }
     
     var body: some View {
@@ -84,6 +174,7 @@ struct FileBrowserView: View {
                 currentPath.removeAll()
                 currentFiles.removeAll()
                 selectedFiles.removeAll()
+                isShowingRootBrowser = false
                 isLoading = false
             }
             .alert(deleteAlertTitle, isPresented: $showingDeleteAlert) {
@@ -119,24 +210,16 @@ struct FileBrowserView: View {
                 ToolbarItem {
                     GlassEffectContainer(spacing: 1) {
                         HStack(spacing: 1) {
-                            refreshButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
-                            sortMenu
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
-                            newFolderButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
-                            uploadFilesButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
-                            downloadButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
-                            deleteButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
-                            transferTasksButton
-                                .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+                            primaryToolbarContent
+
+                            if shouldShowBrowsingToolbarActions {
+                                browsingToolbarContent
+                            }
                         }
                     }
                 }
             }
+
             .sheet(isPresented: $showTransferPanel) {
                 FileTransferView()
                     .environmentObject(transferManager)
@@ -144,25 +227,29 @@ struct FileBrowserView: View {
             }            .sheet(isPresented: $showingCreateFolderDialog) {
                 createFolderDialog
             }
-        
+
     }
     
     var contentView: some View {
         VStack(spacing: 0) {
-            breadcrumbBar
-                .background(.ultraThinMaterial)
-            Divider()
-                .opacity(0.15)
+            if !shouldShowImportHome {
+                breadcrumbBar
+                    .background(.ultraThinMaterial)
+                Divider()
+                    .opacity(0.15)
+            }
             fileContentView
         }
     }
-    
+
     @ViewBuilder
     var fileContentView: some View {
         let content: some View = Group {
             if isLoading {
                 ProgressView(L10n.FileBrowser.loadingFiles)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if shouldShowImportHome {
+                importHomeView
             } else if currentFiles.isEmpty {
                 emptyFolderView
             } else {
@@ -185,26 +272,124 @@ struct FileBrowserView: View {
             .animation(.easeInOut(duration: 0.2), value: isDropTargeted)
     }
     
+    var importHomeView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                importHeroCard
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 16)], spacing: 16) {
+                    ForEach(rootEntryPoints) { entry in
+                        importEntryCard(for: entry)
+                    }
+                }
+
+                browseHintView
+            }
+            .padding(24)
+        }
+        .scrollEdgeEffectStyle(.soft, for: .all)
+    }
+
+    var importHeroCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(L10n.FileBrowser.importHeroTitle, systemImage: "cable.connector")
+                .font(.title2.weight(.semibold))
+
+            Text(L10n.FileBrowser.importHeroSubtitle)
+                .font(.body)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                Label(L10n.FileBrowser.importUsbConnected, systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Label(L10n.FileBrowser.importItemsReady.localized(currentFiles.count), systemImage: "externaldrive.fill.badge.checkmark")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.subheadline)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private func importEntryCard(for entry: EntryPoint) -> some View {
+        Button {
+            handleEntrySelection(entry)
+        } label: {
+            VStack(alignment: .leading, spacing: 12) {
+                Image(systemName: entry.systemImage)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(entry.kind == .browseAll ? AnyShapeStyle(.secondary) : AnyShapeStyle(.blue))
+
+                Text(entry.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+
+                Text(entry.subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 6) {
+                    Text(entry.kind == .browseAll ? L10n.FileBrowser.importOpenBrowser : L10n.FileBrowser.importOpenFolder)
+                    Image(systemName: "arrow.right")
+                }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.blue)
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, minHeight: 170, alignment: .leading)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        }
+        .buttonStyle(.plain)
+    }
+
+    var browseHintView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.FileBrowser.importBrowseHintTitle)
+                .font(.headline)
+
+            Text(L10n.FileBrowser.importBrowseHintSubtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private func handleEntrySelection(_ entry: EntryPoint) {
+        switch entry.kind {
+        case .browseAll:
+            isShowingRootBrowser = true
+        case .recommended:
+            guard let folder = entry.folder else { return }
+            navigateInto(folder)
+        }
+    }
+
+    
     var emptyFolderView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             emptyFolderIconView
             emptyFolderMessageView
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
-    
+
     var emptyFolderIconView: some View {
         ZStack {
             Circle()
                 .fill(.ultraThinMaterial)
                 .frame(width: 80, height: 80)
-            
+
             Image(systemName: "folder")
                 .font(.system(size: 40))
                 .foregroundColor(.blue)
         }
     }
+
     
     var emptyFolderMessageView: some View {
         VStack(spacing: 8) {
@@ -439,6 +624,7 @@ struct FileBrowserView: View {
     func navigateToRoot() {
         Task {
             currentPath.removeAll()
+            isShowingRootBrowser = false
             await loadFiles()
         }
     }

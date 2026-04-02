@@ -316,3 +316,24 @@
 /* Удаление каталога */
 "deleteFolder" = "Удалить папку";
 "confirmDeleteFolderWithName" = "Вы уверены, что хотите удалить \"%1$@\"? Это действие рекурсивно удалит папку и все её содержимое и не может быть отменено.";
+
+/* Экран импорта */
+"importHeroTitle" = "Импорт с Android через USB";
+"importHeroSubtitle" = "Начните с часто используемой папки или откройте все файлы, если нужен больший контроль.";
+"importUsbConnected" = "USB подключён";
+"importItemsReady" = "%1$d элементов готово";
+"importDcimTitle" = "DCIM";
+"importDcimSubtitle" = "Фото и видео с камеры";
+"importPicturesTitle" = "Изображения";
+"importPicturesSubtitle" = "Просмотр изображений и снимков экрана";
+"importMoviesTitle" = "Видео";
+"importMoviesSubtitle" = "Быстрее находить видео";
+"importDownloadsTitle" = "Загрузки";
+"importDownloadsSubtitle" = "Выбрать недавние файлы из папки загрузок";
+"importFallbackFolderSubtitle" = "Быстро открыть часто используемую папку";
+"importBrowseAllTitle" = "Просмотреть все файлы";
+"importBrowseAllSubtitle" = "Открыть полную таблицу файлов, когда нужен больший контроль";
+"importOpenBrowser" = "Открыть браузер";
+"importOpenFolder" = "Открыть папку";
+"importBrowseHintTitle" = "Нужен полный файловый браузер?";
+"importBrowseHintSubtitle" = "Используйте «Просмотреть все файлы», чтобы вернуться к существующему табличному виду с сортировкой, загрузкой перетаскиванием, удалением и скачиванием.";

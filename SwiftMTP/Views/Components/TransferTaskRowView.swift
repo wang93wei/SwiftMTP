@@ -9,51 +9,79 @@ import SwiftUI
 
 struct TransferTaskRowView: View {
     @ObservedObject var task: TransferTask
-    
+
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: task.type == .download ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
-                .foregroundStyle(task.type == .download ? .blue : .green)
-                .font(.title2)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(task.fileName)
-                    .font(.headline)
-                    .lineLimit(1)
-                
-                Text(task.type.rawValue)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: task.type == .download ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
+                    .foregroundStyle(task.type == .download ? .blue : .green)
+                    .font(.title2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(task.fileName)
+                        .font(.headline)
+                        .lineLimit(1)
+
+                    Text(task.type.displayName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                statusBadge
+            }
+
+            if task.status.isActive {
+                VStack(alignment: .leading, spacing: 8) {
+                    ProgressView(value: task.progress)
+                        .tint(task.type == .download ? .blue : .green)
+
+                    HStack {
+                        Text(task.formattedProgress)
+                        Spacer()
+                        Text(task.formattedSpeed)
+                    }
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
-            Spacer()
-            
-            // Status text on the right
-            HStack(spacing: 8) {
-                if task.status.isActive {
-                    // For active transfers, show simple status
-                    Text(task.status.displayName)
-                        .font(.caption)
-                        .foregroundStyle(.blue)
-                    
-                    Button {
-                        FileTransferManager.shared.cancelTask(task)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.borderless)
-                } else {
-                    // For completed/failed tasks, show status with appropriate color
-                    Text(task.status.displayName)
-                        .font(.caption)
-                        .foregroundStyle(statusColor)
                 }
+            } else if case .failed(let message) = task.status {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
         }
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
-    
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        if task.status.isActive {
+            HStack(spacing: 8) {
+                Text(task.status.displayName)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.blue)
+
+                Button {
+                    FileTransferManager.shared.cancelTask(task)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+            }
+        } else {
+            Text(task.status.displayName)
+                .font(.caption.weight(.medium))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(statusColor.opacity(0.14), in: Capsule())
+                .foregroundStyle(statusColor)
+        }
+    }
+
     private var statusColor: Color {
         switch task.status {
         case .completed:
@@ -79,9 +107,10 @@ struct TransferTaskRowView: View {
                 totalSize: 5_000_000
             )
             task.updateStatus(.transferring)
+            task.updateProgress(transferred: 2_500_000, speed: 512_000)
             return task
         }())
-        
+
         TransferTaskRowView(task: {
             let task = TransferTask(
                 type: .upload,
@@ -93,7 +122,7 @@ struct TransferTaskRowView: View {
             task.updateStatus(.completed)
             return task
         }())
-        
+
         TransferTaskRowView(task: {
             let task = TransferTask(
                 type: .download,

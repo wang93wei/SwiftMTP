@@ -113,6 +113,33 @@ extension FileBrowserView {
     }
 
     
+
+    @ViewBuilder
+    var primaryToolbarContent: some View {
+        refreshButton
+            .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+        uploadFilesButton
+            .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+        transferTasksButton
+            .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+    }
+
+    @ViewBuilder
+    var browsingToolbarContent: some View {
+        sortMenu
+            .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+        newFolderButton
+            .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+        downloadButton
+            .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+        deleteButton
+            .glassEffectUnion(id: "group1", namespace: toolbarNamespace)
+    }
+
+    var shouldShowBrowsingToolbarActions: Bool {
+        !shouldShowImportHome
+    }
+
     var createFolderDialog: some View {
         VStack(spacing: 16) {
             Text(L10n.FileBrowser.createNewFolderDialog)

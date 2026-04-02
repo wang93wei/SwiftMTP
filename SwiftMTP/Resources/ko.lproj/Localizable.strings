@@ -316,3 +316,24 @@
 /* 디렉토리 삭제 */
 "deleteFolder" = "폼더 삭제";
 "confirmDeleteFolderWithName" = "\"%1$@\"을(를) 삭제하시겠습니까? 이 작업은 폼더와 모든 콘텐츠를 재귀적으로 삭제하며 취소할 수 없습니다.";
+
+/* 가져오기 홈 */
+"importHeroTitle" = "USB로 Android에서 가져오기";
+"importHeroSubtitle" = "자주 쓰는 폴더부터 시작하고, 더 많은 제어가 필요하면 전체 파일을 둘러보세요.";
+"importUsbConnected" = "USB 연결됨";
+"importItemsReady" = "%1$d개 항목 준비됨";
+"importDcimTitle" = "DCIM";
+"importDcimSubtitle" = "카메라 사진 및 동영상";
+"importPicturesTitle" = "사진";
+"importPicturesSubtitle" = "이미지와 스크린샷 찾아보기";
+"importMoviesTitle" = "동영상";
+"importMoviesSubtitle" = "동영상을 더 빠르게 찾기";
+"importDownloadsTitle" = "다운로드";
+"importDownloadsSubtitle" = "다운로드 폴더에서 최근 파일 선택";
+"importFallbackFolderSubtitle" = "자주 쓰는 폴더 빠르게 열기";
+"importBrowseAllTitle" = "모든 파일 찾아보기";
+"importBrowseAllSubtitle" = "더 많은 제어가 필요할 때 전체 파일 표 열기";
+"importOpenBrowser" = "브라우저 열기";
+"importOpenFolder" = "폴더 열기";
+"importBrowseHintTitle" = "전체 파일 브라우저가 필요하신가요?";
+"importBrowseHintSubtitle" = "\"모든 파일 찾아보기\"를 사용하면 정렬, 드래그 앤 드롭 업로드, 삭제, 다운로드 기능이 있는 기존 표 보기로 돌아갈 수 있습니다.";

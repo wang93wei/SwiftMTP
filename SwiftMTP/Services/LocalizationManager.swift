@@ -21,6 +21,7 @@ enum L10n {
         static var ok: String { LanguageManager.shared.localizedString(for: "ok") }
         static var deviceDisconnectedMessage: String { LanguageManager.shared.localizedString(for: "deviceDisconnectedMessage") }
         static var androidDevice: String { LanguageManager.shared.localizedString(for: "androidDevice") }
+        static var usbImportHomeHint: String { LanguageManager.shared.localizedString(for: "usbImportHomeHint") }
     }
 
     enum DeviceList {
@@ -28,6 +29,8 @@ enum L10n {
         static var scanningDevices: String { LanguageManager.shared.localizedString(for: "scanningDevices") }
         static var noDevices: String { LanguageManager.shared.localizedString(for: "noDevices") }
         static var connectDeviceViaUSB: String { LanguageManager.shared.localizedString(for: "connectDeviceViaUSB") }
+        static var scanningDevicesUsbHint: String { LanguageManager.shared.localizedString(for: "scanningDevicesUsbHint") }
+        static var usbImportHint: String { LanguageManager.shared.localizedString(for: "usbImportHint") }
     }
 
     enum FileBrowser {
@@ -123,6 +126,25 @@ enum L10n {
         static var uploadDirectoryPartial: String { LanguageManager.shared.localizedString(for: "uploadDirectoryPartial") }
         static var deleteFolder: String { LanguageManager.shared.localizedString(for: "deleteFolder") }
         static var confirmDeleteFolderWithName: String { LanguageManager.shared.localizedString(for: "confirmDeleteFolderWithName") }
+        static var importHeroTitle: String { LanguageManager.shared.localizedString(for: "importHeroTitle") }
+        static var importHeroSubtitle: String { LanguageManager.shared.localizedString(for: "importHeroSubtitle") }
+        static var importUsbConnected: String { LanguageManager.shared.localizedString(for: "importUsbConnected") }
+        static var importItemsReady: String { LanguageManager.shared.localizedString(for: "importItemsReady") }
+        static var importDcimTitle: String { LanguageManager.shared.localizedString(for: "importDcimTitle") }
+        static var importDcimSubtitle: String { LanguageManager.shared.localizedString(for: "importDcimSubtitle") }
+        static var importPicturesTitle: String { LanguageManager.shared.localizedString(for: "importPicturesTitle") }
+        static var importPicturesSubtitle: String { LanguageManager.shared.localizedString(for: "importPicturesSubtitle") }
+        static var importMoviesTitle: String { LanguageManager.shared.localizedString(for: "importMoviesTitle") }
+        static var importMoviesSubtitle: String { LanguageManager.shared.localizedString(for: "importMoviesSubtitle") }
+        static var importDownloadsTitle: String { LanguageManager.shared.localizedString(for: "importDownloadsTitle") }
+        static var importDownloadsSubtitle: String { LanguageManager.shared.localizedString(for: "importDownloadsSubtitle") }
+        static var importFallbackFolderSubtitle: String { LanguageManager.shared.localizedString(for: "importFallbackFolderSubtitle") }
+        static var importBrowseAllTitle: String { LanguageManager.shared.localizedString(for: "importBrowseAllTitle") }
+        static var importBrowseAllSubtitle: String { LanguageManager.shared.localizedString(for: "importBrowseAllSubtitle") }
+        static var importOpenBrowser: String { LanguageManager.shared.localizedString(for: "importOpenBrowser") }
+        static var importOpenFolder: String { LanguageManager.shared.localizedString(for: "importOpenFolder") }
+        static var importBrowseHintTitle: String { LanguageManager.shared.localizedString(for: "importBrowseHintTitle") }
+        static var importBrowseHintSubtitle: String { LanguageManager.shared.localizedString(for: "importBrowseHintSubtitle") }
     }
 
     enum FileTransfer {

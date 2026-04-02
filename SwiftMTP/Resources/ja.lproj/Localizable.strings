@@ -316,3 +316,24 @@
 /* ディレクトリ削除 */
 "deleteFolder" = "フォルダを削除";
 "confirmDeleteFolderWithName" = "\"%1$@\" を削除してもよろしいですか？この操作はフォルダとそのすべてのコンテンツを再帰的に削除し、元に戻すことはできません。";
+
+/* インポートホーム */
+"importHeroTitle" = "USB 経由で Android からインポート";
+"importHeroSubtitle" = "まずはよく使うフォルダから始め、より細かく操作したい場合はすべてのファイルを参照します。";
+"importUsbConnected" = "USB 接続済み";
+"importItemsReady" = "%1$d 件の項目を取り込めます";
+"importDcimTitle" = "DCIM";
+"importDcimSubtitle" = "カメラの写真と動画";
+"importPicturesTitle" = "画像";
+"importPicturesSubtitle" = "画像やスクリーンショットを参照";
+"importMoviesTitle" = "動画";
+"importMoviesSubtitle" = "動画をすばやく見つける";
+"importDownloadsTitle" = "ダウンロード";
+"importDownloadsSubtitle" = "ダウンロード内の最近のファイルを選択";
+"importFallbackFolderSubtitle" = "よく使うフォルダをすばやく開く";
+"importBrowseAllTitle" = "すべてのファイルを参照";
+"importBrowseAllSubtitle" = "さらに細かく操作したいときは完全なファイルテーブルを開きます";
+"importOpenBrowser" = "ブラウザを開く";
+"importOpenFolder" = "フォルダを開く";
+"importBrowseHintTitle" = "完全なファイルブラウザが必要ですか？";
+"importBrowseHintSubtitle" = "「すべてのファイルを参照」を使うと、並べ替え、ドラッグ＆ドロップでのアップロード、削除、ダウンロードを備えた既存のテーブル表示に戻れます。";
