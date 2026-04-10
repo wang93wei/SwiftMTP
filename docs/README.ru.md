@@ -259,6 +259,10 @@ xcodebuild clean
 xcodebuild
 ```
 
+## 🙏 Благодарности
+
+Этот проект основан на бэкенде [OpenMTP](https://github.com/ganeshrvel/openmtp). Особая благодарность команде OpenMTP за отличную работу по реализации MTP для macOS.
+
 ## 🤝 Вклад
 
 Проблемы и Pull Requests приветствуются!

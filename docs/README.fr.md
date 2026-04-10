@@ -259,6 +259,10 @@ xcodebuild clean
 xcodebuild
 ```
 
+## 🙏 Remerciements
+
+Ce projet est basé sur le backend [OpenMTP](https://github.com/ganeshrvel/openmtp). Un remerciement spécial à l'équipe OpenMTP pour leur excellent travail sur l'implémentation MTP pour macOS.
+
 ## 🤝 Contribution
 
 Les problèmes et les Pull Requests sont les bienvenus!
