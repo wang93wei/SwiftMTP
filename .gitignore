@@ -99,6 +99,7 @@ gemini.md
 .claude
 QWEN.md
 AGENTS.md
+docs/superpowers/
 
 # Code coverage
 *.profraw
