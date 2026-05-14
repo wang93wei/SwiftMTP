@@ -1424,6 +1424,14 @@ struct MTPDeviceScanner {
 ```swift
 import Foundation
 @testable import SwiftMTP
+import CLibUSB
+
+struct USBError: Error {
+    let code: Int32
+    var localizedDescription: String {
+        String(cString: libusb_error_name(code))
+    }
+}
 
 final class MockUSBTransport: USBTransport, @unchecked Sendable {
     // @unchecked Sendable: mutable state (responses, writtenPackets, openCount, closeCount)
@@ -1435,10 +1443,13 @@ final class MockUSBTransport: USBTransport, @unchecked Sendable {
     private(set) var openCount: Int = 0
     private(set) var closeCount: Int = 0
     private(set) var resetCount: Int = 0
+    let errorSequence: [Int32?]
+    private var errorIndex: Int = 0
 
-    init(devices: [USBScannedDevice] = [], responses: [Data] = []) {
+    init(devices: [USBScannedDevice] = [], responses: [Data] = [], errorSequence: [Int32?] = []) {
         self.devices = devices
         self.responses = responses
+        self.errorSequence = errorSequence
     }
 
     func scanDevices() throws -> [USBScannedDevice] {
@@ -1476,6 +1487,15 @@ final class MockUSBTransport: USBTransport, @unchecked Sendable {
     }
 
     func readBulkPacket(handle: USBHandleRef, endpoint: UInt8, maxLength: Int, timeout: Int) throws -> Data {
+        // Check for simulated errors
+        if errorIndex < errorSequence.count {
+            let errorCode = errorSequence[errorIndex]
+            errorIndex += 1
+            if let code = errorCode {
+                throw USBError(code: code)
+            }
+        }
+        
         guard !responses.isEmpty else { return Data() }
         return responses.removeFirst()
     }
@@ -3475,14 +3495,21 @@ extension MTPDevicePool {
     /// Synchronous wrapper for use from DispatchQueue-based callers (FileTransferManager).
     ///
     /// **Deadlock prevention:** `DispatchSemaphore.wait()` blocks the calling
-    /// `transferQueue` thread, which is a GCD thread — NOT a Swift cooperative pool
+    /// `transferQueue` thread, which is a Gcd thread — NOT a Swift cooperative pool
     /// thread. Since `transferQueue` threads are not part of the cooperative pool,
     /// blocking them does not reduce the pool's capacity to execute the `Task` that
     /// drives `withDevice`. Multiple concurrent `withDeviceSync` calls each block
     /// their own `transferQueue` thread while the cooperative pool independently
     /// runs the async operations — no starvation, no deadlock.
+    ///
+    /// - Parameters:
+    ///   - identity: The device identity to operate on
+    ///   - pool: The MTPDevicePool instance to use. Defaults to `MTPDevicePool.shared` for production use.
+    ///           Tests can inject a mock pool here.
+    ///   - operation: The async operation to perform
     static func withDeviceSync<T: Sendable>(
         for identity: USBDeviceIdentity,
+        pool: MTPDevicePool = MTPDevicePool.shared,
         operation: @Sendable (MTPDeviceProtocol) async throws -> T
     ) throws -> T {
         let semaphore = DispatchSemaphore(value: 0)
@@ -3495,7 +3522,7 @@ extension MTPDevicePool {
         Task {
             defer { semaphore.signal() }
             do {
-                let value = try await MTPDevicePool.shared.withDevice(for: identity, operation: operation)
+                let value = try await pool.withDevice(for: identity, operation: operation)
                 resultBox.store(.success(value))
             } catch {
                 resultBox.store(.failure(error))
@@ -3905,7 +3932,55 @@ let items = entries.map {
 }
 ```
 
-- [ ] **Step 4: Re-run the service comparison test and a full app build**
+- [ ] **Step 4: Full compilation verification of async throws migration**
+
+Run a full build to verify **all** async throws call sites compile correctly. The `getFileList` / `getRootFiles` / `getChildrenFiles` signature change from synchronous to `async throws` affects more call sites than the table above lists explicitly. A full build catches any missed `try await` additions:
+
+```bash
+xcodebuild build -project SwiftMTP.xcodeproj -scheme SwiftMTP 2>&1 | grep -E "(error:|warning:)" | head -30
+```
+
+**Expected compiler errors to watch for:**
+- `expression is 'async' but is not marked with 'await'` → add `try await` at the call site
+- `call can throw but is not marked with 'try'` → add `try` at the call site
+- `invalid conversion from 'async' to 'sync'` → protocol method needs updating
+
+**Key call sites that must be updated** (beyond the table above):
+
+| File | Method | Required Change |
+|------|--------|----------------|
+| `Views/FileBrowserView.swift` | `loadFiles()` | Wrap body in `do { ... } catch { showErrorAlert(error) }`, change `await` to `try await` |
+| `Views/FileBrowserView.swift` | `navigateToFolder(_:)` | Add `try await` |
+| `Views/FileBrowserView.swift` | `refreshCurrentDirectory()` | Add `try await` |
+| `FileTransferManager+DirectoryUpload.swift` | `getOrCreateFolder(...)` | Add `try await`, map `MTPError` to transfer failure |
+
+**Error handling pattern for `loadFiles()`:**
+
+```swift
+// In FileBrowserView.swift
+@MainActor
+private func loadFiles() async {
+    guard let device = selectedDevice else { return }
+    isLoading = true
+    defer { isLoading = false }
+    do {
+        if currentPath.isEmpty {
+            files = try await FileSystemManager.shared.getRootFiles(for: device)
+        } else {
+            files = try await FileSystemManager.shared.getChildrenFiles(
+                for: device, parentId: currentParentId, storageId: currentStorageId
+            )
+        }
+    } catch {
+        self.errorMessage = error.localizedDescription
+        self.showError = true
+    }
+}
+```
+
+If any call site is missed, the build will fail. Fix all errors before proceeding.
+
+- [ ] **Step 5: Re-run the service comparison test and verify clean build**
 
 Run:
 
@@ -3914,9 +3989,9 @@ xcodebuild test -project SwiftMTP.xcodeproj -scheme SwiftMTP -destination 'platf
 xcodebuild build -project SwiftMTP.xcodeproj -scheme SwiftMTP
 ```
 
-Expected: the mapping test passes and the app still builds.
+Expected: the mapping test passes and the app still builds with zero errors and zero warnings.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add SwiftMTP/Models/Device.swift SwiftMTP/Services/MTP/DeviceManager.swift SwiftMTP/Services/MTP/FileSystemManager.swift SwiftMTP/Services/MTP/FileTransferManager+DirectoryUpload.swift SwiftMTP/Services/Protocols/DeviceManaging.swift SwiftMTP/Services/Protocols/FileSystemManaging.swift SwiftMTP/Views/FileBrowserView.swift SwiftMTPTests/MTPCore/ServiceComparisonTests.swift
