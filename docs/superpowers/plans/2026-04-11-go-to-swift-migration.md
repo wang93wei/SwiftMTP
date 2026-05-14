@@ -3426,7 +3426,7 @@ extension MTPError {
             assertionFailure("from(responseCode:) called with RC_OK — caller should have checked isOK first")
             return .invalidResponse
         case 0x201E: return .sessionAlreadyOpened
-        case 0x2009: return .nonRecoverable("MTP invalid object handle")
+        case 0x2009: return .deviceError("Invalid object handle")
         case 0x200C: return .storeFull
         case 0x200F: return .accessDenied
         default: return .nonRecoverable("MTP response code 0x\(String(responseCode, radix: 16))")
