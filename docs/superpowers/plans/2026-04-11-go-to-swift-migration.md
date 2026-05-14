@@ -3949,17 +3949,14 @@ xcodebuild build -project SwiftMTP.xcodeproj -scheme SwiftMTP 2>&1 | grep -E "(e
 
 | File | Method | Required Change |
 |------|--------|----------------|
-| `Views/FileBrowserView.swift` | `loadFiles()` | Wrap body in `do { ... } catch { showErrorAlert(error) }`, change `await` to `try await` |
-| `Views/FileBrowserView.swift` | `navigateToFolder(_:)` | Add `try await` |
-| `Views/FileBrowserView.swift` | `refreshCurrentDirectory()` | Add `try await` |
+| `Views/FileBrowserView.swift` | `loadFiles()` | Wrap body in `do { ... } catch { ... }`, change `await` to `try await` |
 | `FileTransferManager+DirectoryUpload.swift` | `getOrCreateFolder(...)` | Add `try await`, map `MTPError` to transfer failure |
 
 **Error handling pattern for `loadFiles()`:**
 
 ```swift
 // In FileBrowserView.swift
-@MainActor
-private func loadFiles() async {
+func loadFiles() async {
     guard let device = selectedDevice else { return }
     isLoading = true
     defer { isLoading = false }
@@ -3967,13 +3964,12 @@ private func loadFiles() async {
         if currentPath.isEmpty {
             files = try await FileSystemManager.shared.getRootFiles(for: device)
         } else {
-            files = try await FileSystemManager.shared.getChildrenFiles(
-                for: device, parentId: currentParentId, storageId: currentStorageId
-            )
+            let parent = FileItem(/* current folder */)
+            files = try await FileSystemManager.shared.getChildrenFiles(for: device, parent: parent)
         }
     } catch {
         self.errorMessage = error.localizedDescription
-        self.showError = true
+        self.showingErrorAlert = true
     }
 }
 ```
