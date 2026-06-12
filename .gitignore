@@ -104,3 +104,6 @@ docs/superpowers/
 # Code coverage
 *.profraw
 *.profdata
+
+.cursor/
+.codegraph/
