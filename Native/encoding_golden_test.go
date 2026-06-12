@@ -166,3 +166,116 @@ func TestGenerateFixtures(t *testing.T) {
 
 	fmt.Println("黄金 fixture 已生成到 Packages/MTPCore/Tests/MTPCoreTests/Fixtures/")
 }
+
+func loadFixture(t *testing.T, name string) fixtureJSON {
+	t.Helper()
+	path := filepath.Join(fixtureDir(t), name+".json")
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read fixture %s: %v", name, err)
+	}
+	var fx fixtureJSON
+	if err := json.Unmarshal(b, &fx); err != nil {
+		t.Fatalf("unmarshal fixture %s: %v", name, err)
+	}
+	return fx
+}
+
+// TestGoldenDecode 验证 Go mtp.Decode 对 fixture 解码正确(Go 侧黄金契约成立)。
+// Swift 侧将用同一 fixture 对齐(见 MTPCoreTests/EncodingGoldenTests.swift)。
+func TestGoldenDecode(t *testing.T) {
+	// ObjectInfo simple
+	fx := loadFixture(t, "objectinfo_simple")
+	raw, err := hex.DecodeString(fx.Hex)
+	if err != nil {
+		t.Fatalf("hex decode: %v", err)
+	}
+	var obj mtp.ObjectInfo
+	if err := mtp.Decode(bytes.NewReader(raw), &obj); err != nil {
+		t.Fatalf("decode ObjectInfo: %v", err)
+	}
+	var exp struct {
+		StorageID      uint32 `json:"storageID"`
+		ObjectFormat   uint16 `json:"objectFormat"`
+		CompressedSize uint32 `json:"compressedSize"`
+		ParentObject   uint32 `json:"parentObject"`
+		Filename       string `json:"filename"`
+	}
+	if err := json.Unmarshal(fx.Expected, &exp); err != nil {
+		t.Fatalf("unmarshal expected: %v", err)
+	}
+	if obj.StorageID != exp.StorageID || obj.Filename != exp.Filename ||
+		obj.CompressedSize != exp.CompressedSize || obj.ParentObject != exp.ParentObject ||
+		obj.ObjectFormat != exp.ObjectFormat {
+		t.Fatalf("ObjectInfo mismatch: got %+v, want %+v", obj, exp)
+	}
+
+	// ObjectInfo CJK + 时间
+	fx2 := loadFixture(t, "objectinfo_cjk")
+	raw2, _ := hex.DecodeString(fx2.Hex)
+	var obj2 mtp.ObjectInfo
+	if err := mtp.Decode(bytes.NewReader(raw2), &obj2); err != nil {
+		t.Fatalf("decode ObjectInfo2: %v", err)
+	}
+	var exp2 struct {
+		Filename         string  `json:"filename"`
+		CompressedSize   uint32  `json:"compressedSize"`
+		ModificationTime float64 `json:"modificationTime"`
+	}
+	_ = json.Unmarshal(fx2.Expected, &exp2)
+	if obj2.Filename != exp2.Filename {
+		t.Fatalf("CJK filename mismatch: got %q, want %q", obj2.Filename, exp2.Filename)
+	}
+	if obj2.ModificationDate.Unix() != int64(exp2.ModificationTime) {
+		t.Fatalf("modtime mismatch: got %v, want %v", obj2.ModificationDate.Unix(), int64(exp2.ModificationTime))
+	}
+
+	// StorageInfo
+	fx3 := loadFixture(t, "storageinfo_simple")
+	raw3, _ := hex.DecodeString(fx3.Hex)
+	var st mtp.StorageInfo
+	if err := mtp.Decode(bytes.NewReader(raw3), &st); err != nil {
+		t.Fatalf("decode StorageInfo: %v", err)
+	}
+	var exp3 struct {
+		MaxCapability    uint64 `json:"maxCapability"`
+		FreeSpaceInBytes uint64 `json:"freeSpaceInBytes"`
+		VolumeLabel      string `json:"volumeLabel"`
+	}
+	_ = json.Unmarshal(fx3.Expected, &exp3)
+	if st.MaxCapability != exp3.MaxCapability || st.FreeSpaceInBytes != exp3.FreeSpaceInBytes ||
+		st.VolumeLabel != exp3.VolumeLabel {
+		t.Fatalf("StorageInfo mismatch: got %+v", st)
+	}
+
+	// Uint32Array
+	fx4 := loadFixture(t, "uint32array_simple")
+	raw4, _ := hex.DecodeString(fx4.Hex)
+	var arr mtp.Uint32Array
+	if err := mtp.Decode(bytes.NewReader(raw4), &arr); err != nil {
+		t.Fatalf("decode Uint32Array: %v", err)
+	}
+	var exp4 struct {
+		Values []uint32 `json:"values"`
+	}
+	_ = json.Unmarshal(fx4.Expected, &exp4)
+	if len(arr.Values) != len(exp4.Values) {
+		t.Fatalf("Uint32Array len mismatch: got %d, want %d", len(arr.Values), len(exp4.Values))
+	}
+
+	// DeviceInfo
+	fx5 := loadFixture(t, "deviceinfo_simple")
+	raw5, _ := hex.DecodeString(fx5.Hex)
+	var di mtp.DeviceInfo
+	if err := mtp.Decode(bytes.NewReader(raw5), &di); err != nil {
+		t.Fatalf("decode DeviceInfo: %v", err)
+	}
+	var exp5 struct {
+		Manufacturer string `json:"manufacturer"`
+		Model        string `json:"model"`
+	}
+	_ = json.Unmarshal(fx5.Expected, &exp5)
+	if di.Manufacturer != exp5.Manufacturer || di.Model != exp5.Model {
+		t.Fatalf("DeviceInfo mismatch: got %s/%s", di.Manufacturer, di.Model)
+	}
+}
