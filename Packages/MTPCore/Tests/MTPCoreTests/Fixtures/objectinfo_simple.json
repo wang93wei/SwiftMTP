@@ -1,0 +1,11 @@
+{
+  "name": "objectinfo_simple",
+  "hex": "0100010000300000640000000000000000000000000000000000000000000000000000000000ffffffff000000000000000000000974006500730074002e007400780074000000000000",
+  "expected": {
+    "storageID": 65537,
+    "objectFormat": 12288,
+    "compressedSize": 100,
+    "parentObject": 4294967295,
+    "filename": "test.txt"
+  }
+}

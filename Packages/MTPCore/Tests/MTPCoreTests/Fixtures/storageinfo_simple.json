@@ -1,0 +1,12 @@
+{
+  "name": "storageinfo_simple",
+  "hex": "03000200000000000000100000000000000008000000000000001849006e007400650072006e0061006c0020007300680061007200650064002000730074006f007200610067006500000006500068006f006e0065000000",
+  "expected": {
+    "storageType": 3,
+    "filesystemType": 2,
+    "maxCapability": 68719476736,
+    "freeSpaceInBytes": 34359738368,
+    "storageDescription": "Internal shared storage",
+    "volumeLabel": "Phone"
+  }
+}
