@@ -1,6 +1,6 @@
 /// MTP/PTP Response Code。值对照 Go mtp/const.go。
 /// 注:Go const.go 无 RC_ObjectNotFound;对象未找到用 invalidObjectHandle(0x2009)。
-public enum ReturnCode: UInt16 {
+public enum ReturnCode: UInt16, Sendable {
     case ok = 0x2001
     case generalError = 0x2002
     case sessionNotOpen = 0x2003
