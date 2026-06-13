@@ -118,3 +118,43 @@ final class MTPDevice: @unchecked Sendable {
         throw MTPError.libusb(MTPUSBError(code: LIBUSB_ERROR_OTHER.rawValue))
     }
 }
+
+extension MTPDevice {
+    /// 枚举所有 MTP 候选设备(对应 Go select.go:52 FindDevices)。
+    /// 仅做端点拓扑判定(3 端点 + 三类齐全),未 open。
+    ///
+    /// 引用计数:libusb_get_device_list 返回的设备初始引用计数为 1;
+    /// `MTPDevice.init` 内立即 ref_device(+1),故 libusb_free_device_list(unref_devices=1)
+    /// 释放列表引用后,候选设备的 +1 仍被 MTPDevice 持有,deinit 时 unref 释放(对应 Go select.go:66-68)。
+    /// 非候选/构造失败的设备直接被 free list 回收。
+    ///
+    /// - Parameter context: 共享的 libusb context。
+    /// - Returns: 拓扑判定的 MTP 候选数组(调用方负责 close/deinit)。
+    static func findMTPDevices(in context: USBContext) throws -> [MTPDevice] {
+        try MTPGlobalLock.sync {
+            // libusb_device 是不透明结构体 typedef,Swift 不暴露为具名类型,
+            // 故 libusb_get_device_list 的 out 参数元素类型即 OpaquePointer。
+            var list: UnsafeMutablePointer<OpaquePointer?>?
+            let count = libusb_get_device_list(context.pointer, &list)
+            // count < 0 为 libusb 错误码。
+            try checkLibusb(Int32(count))
+            guard let list, count > 0 else {
+                if let list { libusb_free_device_list(list, 1) }
+                return []
+            }
+            // unref_devices=1:释放列表对每个设备的引用(MTPDevice.init 已单独 ref 持有候选)。
+            defer { libusb_free_device_list(list, 1) }
+
+            var devices: [MTPDevice] = []
+            for i in 0..<count {
+                guard let dev = list[i] else { continue }
+                // 读描述符 + 端点拓扑判定在 init 内完成。
+                // 非 3 端点 / 读描述符失败 → 抛错 → try? 跳过该设备(对应 Go select.go 过滤)。
+                if let mtp = try? MTPDevice(device: dev) {
+                    devices.append(mtp)
+                }
+            }
+            return devices
+        }
+    }
+}
