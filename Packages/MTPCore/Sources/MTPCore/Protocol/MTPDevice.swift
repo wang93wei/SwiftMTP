@@ -253,3 +253,70 @@ extension MTPDevice {
         }
     }
 }
+
+// MARK: - bulk 单包读写(Task 3)
+
+extension MTPDevice {
+    /// 发命令包。对照 Go mtp.go:291 sendReq。
+    /// 构造 usbBulkContainer(12B 小端 header + params 小端 u32)经 sendEP 发出。
+    /// Length = usbHeaderLength(12) + 4*params.count;Type=command;code/tid 由 request 填。
+    ///
+    /// ⚠️ buffer 生命周期:`withUnsafeMutableBufferPointer` 闭包限定,bulkTransfer 同步返回后即释放,
+    /// 绝不让指针逃逸。bulk 调用点局部 `MTPGlobalLock.sync`(在 bulkTransfer 内)。
+    func sendReq(_ request: MTPRequest) throws {
+        guard let h = handle else { throw MTPError.notOpen }
+        var buf: [UInt8] = []
+        let length = UInt32(MTPConstants.usbHeaderLength + 4 * request.params.count)
+        // 线序(小端):length u32 @0, type u16 @4, code u16 @6, tid u32 @8, 然后 params。
+        buf.appendContentsOfLE(length)
+        buf.appendContentsOfLE(ContainerType.command.rawValue)
+        buf.appendContentsOfLE(request.code.rawValue)
+        buf.appendContentsOfLE(request.transactionID)
+        for p in request.params { buf.appendContentsOfLE(p) }
+        try buf.withUnsafeMutableBufferPointer { ptr in
+            guard let base = ptr.baseAddress else { throw MTPError.libusb(MTPUSBError(code: -99)) }
+            _ = try bulkTransfer(h, endpoint: sendEP, buffer: base, length: ptr.count,
+                                 timeout: UInt32(timeout))
+        }
+    }
+
+    /// 读单包 + 解 header。对照 Go mtp.go:322 fetchPacket。
+    /// 返回 (rest=去 header 的 payload, bytesRead=本次实际读字节, header)。
+    ///
+    /// ⚠️ rest 拷成值类型(`Array(buf[...])`),buf 出闭包后失效,故不持有指针。
+    func fetchPacket() throws -> (rest: [UInt8], bytesRead: Int, header: MTPBulkHeaderParsed) {
+        guard let h = handle else { throw MTPError.notOpen }
+        var buf = [UInt8](repeating: 0, count: fetchMaxPacketSize())
+        let n = try buf.withUnsafeMutableBufferPointer { ptr -> Int in
+            guard let base = ptr.baseAddress else { throw MTPError.libusb(MTPUSBError(code: -99)) }
+            return try bulkTransfer(h, endpoint: fetchEP, buffer: base, length: ptr.count,
+                                    timeout: UInt32(timeout))
+        }
+        guard n >= MTPConstants.usbHeaderLength else {
+            throw MTPError.syncError("fetchPacket read \(n) bytes < header \(MTPConstants.usbHeaderLength)")
+        }
+        let header = try parseBulkHeader(Array(buf[0..<MTPConstants.usbHeaderLength]))
+        let rest = Array(buf[MTPConstants.usbHeaderLength..<n])
+        return (rest, n, header)
+    }
+
+    /// fetch 端点 max packet size(通常 512)。对照 Go fetchMaxPacketSize。
+    /// Plan 2c spike 用默认值;后续 plan 可从端点描述符 wMaxPacketSize 取(更精确)。
+    func fetchMaxPacketSize() -> Int { 512 }
+    /// send 端点 max packet size(Plan 2d bulkWrite/ZLP 判定用)。对照 Go sendMaxPacketSize。
+    func sendMaxPacketSize() -> Int { 512 }
+}
+
+/// 小端编码辅助(私有)。向 [UInt8] 追加 u32/u16 的小端字节序。
+private extension Array where Element == UInt8 {
+    mutating func appendContentsOfLE(_ v: UInt32) {
+        append(UInt8(v & 0xFF))
+        append(UInt8((v >> 8) & 0xFF))
+        append(UInt8((v >> 16) & 0xFF))
+        append(UInt8((v >> 24) & 0xFF))
+    }
+    mutating func appendContentsOfLE(_ v: UInt16) {
+        append(UInt8(v & 0xFF))
+        append(UInt8((v >> 8) & 0xFF))
+    }
+}
