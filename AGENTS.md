@@ -3,8 +3,10 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 项目概述
-macOS 原生 Android MTP 文件传输工具。Swift 前端通过 CGO 桥接调用 Go MTP 库操作 USB 设备。
+macOS 原生 Android MTP 文件传输工具。
 
+- **当前后端**: Swift 前端通过 CGO 桥接调用 Go MTP 库（`libkalam.dylib`）操作 USB 设备
+- **演进中**: `Packages/MTPCore` 是纯 Swift + 直调 libusb 的新 MTP 协议层，目标是**替代 Go/CGO 后端**统一技术栈。目前**独立开发、尚未接入主 app**，与 Go 路径并存（详见下文 [MTPCore](#mtpcore纯-swift-mtp-协议层开发中) 节）
 - **技术栈**: Swift 6+ / SwiftUI / Go 1.26 / libusb-1.0
 - **架构**: MVVM + 单例模式（`DeviceManager.shared`, `FileSystemManager.shared`, `FileTransferManager.shared`）
 - **平台**: macOS 26.0+，沙盒已禁用以访问 USB 设备
@@ -18,8 +20,19 @@ macOS 原生 Android MTP 文件传输工具。Swift 前端通过 CGO 桥接调�
 # Swift 编译（优先使用 Xcode MCP；未启用则用 xcodebuild）
 xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP build
 
-# Go 单元测试
+# MTPCore（Swift Package）单元测试 — 纯函数,无需 USB 设备
+cd Packages/MTPCore && swift test
+swift test --filter EncodingGoldenTests          # 跑单个测试套件
+
+# Go 单元测试（含黄金契约 generate + decode）
 cd Native && go test ./...
+go test -run TestGenerateFixtures                 # 重新生成 MTPCore 黄金 fixture
+
+# 校验 MTPCore 编码黄金 fixture 与 Go 实现一致（防漂移,CI 用）
+./Scripts/check_encoding_fixtures.sh
+
+# 全量测试（Swift 主 app + Go,可选 --coverage / --swift-only / --go-only）
+./Scripts/run_tests.sh
 
 # 打包 DMG（仅限项目根目录执行）
 ./Scripts/create_dmg_simple.sh
@@ -42,6 +55,45 @@ SwiftUI Views
 - **必须** 在使用完毕后调用 `Kalam_FreeString` 释放内存
 - 进度回调通过 `Kalam_SetProgressCallback` 注册 uintptr 函数指针
 
+## MTPCore：纯 Swift MTP 协议层（开发中，目标替代 Go 桥接）
+
+`Packages/MTPCore` 是独立 SwiftPM 包（swift-tools 6.0 / macOS 14+），用 Swift 直调 libusb 实现 MTP/PTP 协议，目标是替代上面的 Go/CGO 路径。**当前尚未接入主 app**（主 app 仍全走 `Kalam_*`），与 Go 后端并存，按 plan 分阶段实现（spike 阶段，写路径 sendObject/bulkWrite 尚未完成）。可独立 `swift test`。
+
+### 分层（单向依赖：Protocol → Models → Encoding → Constants）
+
+| 层 | 职责 | 关键文件 |
+|----|------|----------|
+| `Constants` | 纯数值常量表（对齐 Go `mtp/const.go`） | `OperationCode` / `ReturnCode`（Sendable） / `MTPConstants`（ContainerType、端点位、超时、buffer=0x4000） |
+| `Encoding` | 小端字节流解码（对应 Go `encoding.go` 的 reflect-Decode，Swift 改为**显式逐字段**，线序一处维护） | `MTPReader`（readU8/16/32/64 + readU32Array/readU16Array 带 count 上限保护） / `MTPStrings`（UCS-2） / `MTPTime`（MTP 三变体时间） / `MTPDecodable` |
+| `Models` | MTP 结构体（`MTPDecodable, Equatable`，字段序=线序，对齐 Go `types.go`） | `DeviceInfo` / `StorageInfo` / `ObjectInfo` / `Uint32Array` |
+| `Protocol` | libusb 调用 + MTP 事务编排（最重，~1200 行） | `MTPDevice` / `MTPOperations` / `MTPTransactionPure` / `USBContext` / `MTPGlobalLock` / `MTPUSBTransfer` / `DeviceRecognition` / `EndpointClassification` |
+
+### 黄金契约（与 Go 交叉验证）
+
+Go `Native/encoding_golden_test.go` 的 `TestGenerateFixtures` 用 `mtp.Encode` 编码已知结构体生成 `Tests/.../Fixtures/*.json`（**真理源**）；Go `TestGoldenDecode` 与 Swift `EncodingGoldenTests` 都 decode 同一 JSON 断言，任一端回归立即被捕获。**改 fixture 流程**：改 Go 输入 → `go test -run TestGenerateFixtures` 重新生成 → `git add` → 两端 decode 自动校验。`Scripts/check_encoding_fixtures.sh` 防漂移。
+
+### 并发与锁（关键约束）
+
+- **禁止 actor/async/Task** —— 传统 `DispatchQueue` + 闭包并发（`project-exemption` 文件传输豁免：Swift 6 actor/async 会导致崩溃）。`MTPDevice` 是 `final class ... @unchecked Sendable`。
+- **`MTPGlobalLock`**：进程级全局串行锁，对齐 Go `deviceMu`。所有 libusb 同步调用必须经此串行，**不得降级为 per-device 锁**。
+- **局部加锁，禁止整事务加锁**：`bulkTransfer` 每次调用局部加锁；`runTransaction` 整体**绝不**进单把 `MTPGlobalLock.sync` 闭包 —— 否则 open 阶段的 P4（需调 getDeviceInfo→runTransaction→bulkTransfer）会重入串行队列死锁。
+
+### MTP 事务流程（runTransaction，当前仅只读路径完成）
+
+session 注入（锁外）→ COMMAND（`sendReq`）→ 读首包（`fetchPacket`+`parseBulkHeader`）→ 按 type 分派：DATA 则写 sink + `bulkRead` 循环至 short packet（**P1** SeparateHeader 探测 / **P2** XHCI 末包捎带 RESPONSE 复用）→ RESPONSE（`decodeRep` 校验 code）→ tid 校验。
+
+### 设备厂商适配（对应 Go `mtp.go` 补丁）
+
+- **P3 主路径**：接口串（iInterface）含 `MTP`/`CDC`/`ACM`（大小写敏感）→ 三星等。
+- **P4 兜底**：iInterface==0 时读 `DeviceInfo.mtpExtension`，含 `microsoft/WindowsPhone` 或 `fujifilm.co.jp` → 微软/富士。
+- **P5** SessionAlreadyOpened 恢复（close→open→reset+sleep+重开）。纯函数判定集中在 `MTPTransactionPure.swift`。
+
+### 错误处理
+
+`MTPError` enum（notOpen / alreadyOpen / noMTPInInterface / libusb(MTPUSBError) / rcError(ReturnCode) / syncError）。所有 libusb 调用经 `checkLibusb`（返回码<0 抛 libusb）；MTP 响应非 OK 抛 rcError；type/tid 失同步抛 syncError。解码侧独立 `MTPDecodeError`。
+
+> 设计依据：`docs/superpowers/specs/2026-06-12-go-to-swift-mtp-backend-design.md` + `docs/superpowers/plans/`（本地设计文档，不入库）。
+
 ## 线程模型
 
 | 组件 | 并发机制 | 说明 |
@@ -62,6 +114,11 @@ SwiftMTP/
 │   ├── kalam_pool.go                # 设备连接池
 │   ├── *_test.go                    # Go 单元测试
 │   └── vendor/                      # Go 依赖
+├── Packages/
+│   └── MTPCore/                     # 纯 Swift MTP 协议层（开发中,目标替代 Go 桥接）
+│       ├── Sources/MTPCore/         # Constants/Encoding/Models/Protocol 四层
+│       ├── Tests/MTPCoreTests/      # 纯函数测试 + Fixtures/（黄金契约 JSON）
+│       └── README.md                # 黄金契约 + 线序依据 + 测试说明
 ├── SwiftMTP/                        # Swift 应用主体
 │   ├── App/                         # 入口 (SwiftMTPApp.swift)
 │   ├── Models/                      # Device, FileItem, TransferTask, AppError 等
@@ -90,8 +147,10 @@ SwiftMTP/
 │   ├── create_dmg_simple.sh         # DMG 打包
 │   └── run_tests.sh                 # 测试脚本
 └── docs/
-    ├── TESTING.md                   # 测试文档（当前待补充）
-    └── sequence-diagrams.md         # 时序图
+    ├── TESTING.md                   # 测试文档
+    ├── sequence-diagrams.md         # 时序图
+    ├── architecture-diagrams.md     # 架构图
+    └── superpowers/                 # spec/plan（本地设计文档,不入库）
 ```
 
 ## 禁止 / 必须
@@ -101,12 +160,14 @@ SwiftMTP/
 - 使用 `[unowned self]`（用 `[weak self]` 替代）
 - 忘记调用 `Kalam_FreeString` 释放 Go 返回的字符串
 - 在 `FileSystemManager`（actor）外部直接访问其属性（必须 `await`）
+- 在 `MTPCore` 使用 actor/async/Task（用传统 DispatchQueue;Swift 6 actor 会导致传输崩溃）
 
 **必须**:
 - Go 代码变更后执行 `./Scripts/build_kalam.sh`
 - Swift 代码变更后编译验证
 - 遵循 `DeviceManager` 的 `@MainActor` 线程分离模式
 - 新增配置常量放入 `AppConfiguration.swift`
+- 改 `MTPCore` Encoding 结构体线序时,同步改 Go `types.go` 并重新生成黄金 fixture（`go test -run TestGenerateFixtures`）
 - 编写代码前调用相关技能：`project-exemption`（检查豁免规则）、`moai-lang-swift`（Swift 6 规范）、`build-macos-apps`（macOS 开发规范）、`go-best-practices`（Go 规范）
 
 ## 提交前检查（强制）
@@ -121,6 +182,10 @@ SwiftMTP/
 - **无向后兼容负担**: 允许破坏旧格式以换取更干净的设计
 - **重构熔断器**: 如果理想结构需要大规模重写，先说明范围和风险
 - **避免静默失败**: 使用错误状态属性，不要吞掉错误
+
+## 代码导航（CodeGraph MCP）
+
+本项目已配置 CodeGraph MCP（`codegraph_*` 工具），对所有符号建立了知识图谱。查符号定义/调用关系/改动影响面/架构流程时，**优先用 `codegraph_explore`**（一次调用返回相关符号源码，Read 等价），不要 grep+read 循环。详见 `.cursor/rules/codegraph.mdc`。
 
 <!-- desloppify-begin -->
 <!-- desloppify-skill-version: 1 -->
