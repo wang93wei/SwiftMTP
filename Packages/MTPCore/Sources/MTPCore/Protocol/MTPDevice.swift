@@ -444,6 +444,70 @@ extension MTPDevice {
     }
 }
 
+// MARK: - session 管理(open/close/Configure + P5 恢复链)(Task 5)
+
+extension MTPDevice {
+    /// 开 session。对照 Go ops.go:19 OpenSession。
+    /// sid 随机奇数(避开 0/0xFFFFFFFF 通配值);OpenSession 无 dest(命令型,走 response 分支)。
+    /// 成功后 session.tid 从 1 开始(对照 mtp.go:36)。
+    func openSession() throws {
+        guard session == nil else { throw MTPError.syncError("session already open") }
+        let sid = randomSessionID()
+        var req = MTPRequest(code: .openSession, params: [sid])
+        _ = try runTransaction(request: &req)
+        session = SessionData(tid: 1, sid: sid)
+    }
+
+    /// 关 session。对照 Go ops.go:44 CloseSession。
+    /// 用 runTransaction(非包装);失败不致命(留给 Configure 处理)。无论成败清 session。
+    func closeSession() throws {
+        var req = MTPRequest(code: .closeSession)
+        _ = try? runTransaction(request: &req)
+        session = nil
+    }
+
+    /// 健壮开 session(P5 恢复链)。对照 Go mtp.go:661 Configure。
+    ///
+    /// ⚠️ 含 `Thread.sleep(forTimeInterval: 1.0)`,**必须后台调用**(不在主线程,否则卡 UI)。
+    /// 调用方(DeviceManager,后续 plan)负责把本方法放到 DispatchQueue.global 调度。
+    ///
+    /// P5 恢复链:SessionAlreadyOpened → close 再 open;仍失败 → Reset + sleep1s + 重开。
+    func configureSession() throws {
+        if handle == nil { try open() }  // Plan 2b open
+        do {
+            try openSession()
+        } catch {
+            if isSessionAlreadyOpened(error) {
+                // P5:SessionAlreadyOpened → close 再 open(对照 mtp.go:669-673)。
+                try? closeSession()
+                try openSession()
+            } else {
+                // 仍失败 → Reset + sleep 1s + 重新 open + openSession(对照 mtp.go:676-691)。
+                try? resetAndReopen()
+            }
+        }
+    }
+
+    /// P5 兜底:Reset 设备 + sleep 1s + 重新 open + openSession。对照 mtp.go:676-691。
+    /// ⚠️ sleep 阻塞线程,须后台调用(configureSession 同约束)。
+    private func resetAndReopen() throws {
+        guard let h = handle else { throw MTPError.notOpen }
+        _ = try? MTPGlobalLock.sync { try checkLibusb(libusb_reset_device(h)) }
+        try close()  // Plan 2b close(release + libusb_close)
+        Thread.sleep(forTimeInterval: 1.0)  // ⚠️ 阻塞,须后台调用
+        try open()
+        try openSession()
+    }
+
+    /// 生成随机 session ID(奇数,避开通配值 0/0xFFFFFFFF)。对照 Go randomSessionID。
+    private func randomSessionID() -> UInt32 {
+        var sid = UInt32.random(in: 1...UInt32.max)
+        if sid % 2 == 0 { sid |= 1 }       // 强制奇数
+        if sid == 0xFFFFFFFF { sid = 1 }   // 避开通配值
+        return sid
+    }
+}
+
 /// 小端编码辅助(私有)。向 [UInt8] 追加 u32/u16 的小端字节序。
 private extension Array where Element == UInt8 {
     mutating func appendContentsOfLE(_ v: UInt32) {
