@@ -167,115 +167,100 @@ func TestGenerateFixtures(t *testing.T) {
 	fmt.Println("黄金 fixture 已生成到 Packages/MTPCore/Tests/MTPCoreTests/Fixtures/")
 }
 
-func loadFixture(t *testing.T, name string) fixtureJSON {
+// roundTrip 把 in 用 mtp.Encode 编码再用 mtp.Decode 解码到 out,验证 Go 编解码自洽。
+func roundTrip(t *testing.T, name string, in any, out any) {
 	t.Helper()
-	path := filepath.Join(fixtureDir(t), name+".json")
-	b, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read fixture %s: %v", name, err)
+	var buf bytes.Buffer
+	if err := mtp.Encode(&buf, in); err != nil {
+		t.Fatalf("%s: encode: %v", name, err)
 	}
-	var fx fixtureJSON
-	if err := json.Unmarshal(b, &fx); err != nil {
-		t.Fatalf("unmarshal fixture %s: %v", name, err)
+	if err := mtp.Decode(bytes.NewReader(buf.Bytes()), out); err != nil {
+		t.Fatalf("%s: decode: %v", name, err)
 	}
-	return fx
 }
 
-// TestGoldenDecode 验证 Go mtp.Decode 对 fixture 解码正确(Go 侧黄金契约成立)。
-// Swift 侧将用同一 fixture 对齐(见 MTPCoreTests/EncodingGoldenTests.swift)。
+// TestGoldenDecode 验证 Go mtp.Encode/Decode 自洽(纯内存 round-trip,
+// 不读写盘,与 TestGenerateFixtures 完全解耦)。这是 Go 侧黄金契约。
+// fixture 文件(由 TestGenerateFixtures 生成)供 Swift 对齐用(见 EncodingGoldenTests.swift)。
 func TestGoldenDecode(t *testing.T) {
-	// ObjectInfo simple
-	fx := loadFixture(t, "objectinfo_simple")
-	raw, err := hex.DecodeString(fx.Hex)
-	if err != nil {
-		t.Fatalf("hex decode: %v", err)
+	// 1. ObjectInfo(普通文件)
+	objIn := &mtp.ObjectInfo{
+		StorageID:      0x00010001,
+		ObjectFormat:   0x3000,
+		CompressedSize: 100,
+		ParentObject:   0xFFFFFFFF,
+		Filename:       "test.txt",
 	}
-	var obj mtp.ObjectInfo
-	if err := mtp.Decode(bytes.NewReader(raw), &obj); err != nil {
-		t.Fatalf("decode ObjectInfo: %v", err)
-	}
-	var exp struct {
-		StorageID      uint32 `json:"storageID"`
-		ObjectFormat   uint16 `json:"objectFormat"`
-		CompressedSize uint32 `json:"compressedSize"`
-		ParentObject   uint32 `json:"parentObject"`
-		Filename       string `json:"filename"`
-	}
-	if err := json.Unmarshal(fx.Expected, &exp); err != nil {
-		t.Fatalf("unmarshal expected: %v", err)
-	}
-	if obj.StorageID != exp.StorageID || obj.Filename != exp.Filename ||
-		obj.CompressedSize != exp.CompressedSize || obj.ParentObject != exp.ParentObject ||
-		obj.ObjectFormat != exp.ObjectFormat {
-		t.Fatalf("ObjectInfo mismatch: got %+v, want %+v", obj, exp)
+	var objOut mtp.ObjectInfo
+	roundTrip(t, "ObjectInfo", objIn, &objOut)
+	if objOut.StorageID != objIn.StorageID || objOut.Filename != objIn.Filename ||
+		objOut.CompressedSize != objIn.CompressedSize || objOut.ParentObject != objIn.ParentObject ||
+		objOut.ObjectFormat != objIn.ObjectFormat {
+		t.Fatalf("ObjectInfo round-trip mismatch: got %+v", objOut)
 	}
 
-	// ObjectInfo CJK + 时间
-	fx2 := loadFixture(t, "objectinfo_cjk")
-	raw2, _ := hex.DecodeString(fx2.Hex)
-	var obj2 mtp.ObjectInfo
-	if err := mtp.Decode(bytes.NewReader(raw2), &obj2); err != nil {
-		t.Fatalf("decode ObjectInfo2: %v", err)
+	// 2. ObjectInfo CJK + 时间
+	modTime := time.Date(2026, 6, 13, 14, 30, 0, 0, time.UTC)
+	obj2In := &mtp.ObjectInfo{
+		StorageID:        0x00010001,
+		CompressedSize:   4096,
+		ParentObject:     0xFFFFFFFF,
+		Filename:         "照片.jpg",
+		ModificationDate: modTime,
 	}
-	var exp2 struct {
-		Filename         string  `json:"filename"`
-		CompressedSize   uint32  `json:"compressedSize"`
-		ModificationTime float64 `json:"modificationTime"`
+	var obj2Out mtp.ObjectInfo
+	roundTrip(t, "ObjectInfo CJK", obj2In, &obj2Out)
+	if obj2Out.Filename != obj2In.Filename {
+		t.Fatalf("CJK filename round-trip mismatch: got %q, want %q", obj2Out.Filename, obj2In.Filename)
 	}
-	_ = json.Unmarshal(fx2.Expected, &exp2)
-	if obj2.Filename != exp2.Filename {
-		t.Fatalf("CJK filename mismatch: got %q, want %q", obj2.Filename, exp2.Filename)
-	}
-	if obj2.ModificationDate.Unix() != int64(exp2.ModificationTime) {
-		t.Fatalf("modtime mismatch: got %v, want %v", obj2.ModificationDate.Unix(), int64(exp2.ModificationTime))
+	if !obj2Out.ModificationDate.Equal(modTime) {
+		t.Fatalf("modtime round-trip mismatch: got %v, want %v", obj2Out.ModificationDate, modTime)
 	}
 
-	// StorageInfo
-	fx3 := loadFixture(t, "storageinfo_simple")
-	raw3, _ := hex.DecodeString(fx3.Hex)
-	var st mtp.StorageInfo
-	if err := mtp.Decode(bytes.NewReader(raw3), &st); err != nil {
-		t.Fatalf("decode StorageInfo: %v", err)
+	// 3. StorageInfo
+	stIn := &mtp.StorageInfo{
+		StorageType:        0x0003,
+		FilesystemType:     0x0002,
+		MaxCapability:      64 * 1024 * 1024 * 1024,
+		FreeSpaceInBytes:   32 * 1024 * 1024 * 1024,
+		StorageDescription: "Internal shared storage",
+		VolumeLabel:        "Phone",
 	}
-	var exp3 struct {
-		MaxCapability    uint64 `json:"maxCapability"`
-		FreeSpaceInBytes uint64 `json:"freeSpaceInBytes"`
-		VolumeLabel      string `json:"volumeLabel"`
-	}
-	_ = json.Unmarshal(fx3.Expected, &exp3)
-	if st.MaxCapability != exp3.MaxCapability || st.FreeSpaceInBytes != exp3.FreeSpaceInBytes ||
-		st.VolumeLabel != exp3.VolumeLabel {
-		t.Fatalf("StorageInfo mismatch: got %+v", st)
+	var stOut mtp.StorageInfo
+	roundTrip(t, "StorageInfo", stIn, &stOut)
+	if stOut.MaxCapability != stIn.MaxCapability || stOut.FreeSpaceInBytes != stIn.FreeSpaceInBytes ||
+		stOut.VolumeLabel != stIn.VolumeLabel {
+		t.Fatalf("StorageInfo round-trip mismatch: got %+v", stOut)
 	}
 
-	// Uint32Array
-	fx4 := loadFixture(t, "uint32array_simple")
-	raw4, _ := hex.DecodeString(fx4.Hex)
-	var arr mtp.Uint32Array
-	if err := mtp.Decode(bytes.NewReader(raw4), &arr); err != nil {
-		t.Fatalf("decode Uint32Array: %v", err)
+	// 4. Uint32Array
+	arrIn := &mtp.Uint32Array{Values: []uint32{0x00000001, 0x00000002, 0x00000003}}
+	var arrOut mtp.Uint32Array
+	roundTrip(t, "Uint32Array", arrIn, &arrOut)
+	if len(arrOut.Values) != len(arrIn.Values) {
+		t.Fatalf("Uint32Array round-trip len mismatch: got %d, want %d", len(arrOut.Values), len(arrIn.Values))
 	}
-	var exp4 struct {
-		Values []uint32 `json:"values"`
-	}
-	_ = json.Unmarshal(fx4.Expected, &exp4)
-	if len(arr.Values) != len(exp4.Values) {
-		t.Fatalf("Uint32Array len mismatch: got %d, want %d", len(arr.Values), len(exp4.Values))
+	for i := range arrIn.Values {
+		if arrOut.Values[i] != arrIn.Values[i] {
+			t.Fatalf("Uint32Array[%d] round-trip mismatch: got %d, want %d", i, arrOut.Values[i], arrIn.Values[i])
+		}
 	}
 
-	// DeviceInfo
-	fx5 := loadFixture(t, "deviceinfo_simple")
-	raw5, _ := hex.DecodeString(fx5.Hex)
-	var di mtp.DeviceInfo
-	if err := mtp.Decode(bytes.NewReader(raw5), &di); err != nil {
-		t.Fatalf("decode DeviceInfo: %v", err)
+	// 5. DeviceInfo
+	diIn := &mtp.DeviceInfo{
+		StandardVersion:      100,
+		MTPVendorExtensionID: 0x00000006,
+		MTPVersion:           100,
+		MTPExtension:         "microsoft.com: 1.0;",
+		Manufacturer:         "Google",
+		Model:                "Pixel 8",
+		DeviceVersion:        "1.0",
+		SerialNumber:         "SERIAL123",
 	}
-	var exp5 struct {
-		Manufacturer string `json:"manufacturer"`
-		Model        string `json:"model"`
-	}
-	_ = json.Unmarshal(fx5.Expected, &exp5)
-	if di.Manufacturer != exp5.Manufacturer || di.Model != exp5.Model {
-		t.Fatalf("DeviceInfo mismatch: got %s/%s", di.Manufacturer, di.Model)
+	var diOut mtp.DeviceInfo
+	roundTrip(t, "DeviceInfo", diIn, &diOut)
+	if diOut.Manufacturer != diIn.Manufacturer || diOut.Model != diIn.Model ||
+		diOut.SerialNumber != diIn.SerialNumber {
+		t.Fatalf("DeviceInfo round-trip mismatch: got %+v", diOut)
 	}
 }

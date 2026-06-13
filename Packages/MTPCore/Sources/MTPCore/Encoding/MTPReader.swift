@@ -1,11 +1,9 @@
 import Foundation
 
 /// MTP 二进制解码错误。
+/// 仅声明当前实际使用的 case(YAGNI);readMTPString/readMTPTime 引入时按需扩展。
 public enum MTPDecodeError: Error, Equatable {
     case endOfData
-    case invalidString
-    case invalidTime(String)
-    case underflow
 }
 
 /// 小端字节流读取器。对应 Go encoding.go 的 binary.LittleEndian + io.Reader 读取。
@@ -28,26 +26,30 @@ public struct MTPReader {
     }
 
     public mutating func readU8() throws -> UInt8 {
-        let s = try _read(1); return s[s.startIndex]
+        let s = try _read(1)
+        return s[s.startIndex]
     }
     public mutating func readU16() throws -> UInt16 {
         let s = try _read(2)
-        return UInt16(s[s.startIndex]) | (UInt16(s[s.startIndex + 1]) << 8)
+        var v: UInt16 = 0
+        for k in 0..<2 { v |= UInt16(s[s.startIndex + k]) << (8 * k) }
+        return v
     }
     public mutating func readU32() throws -> UInt32 {
         let s = try _read(4)
-        let i = s.startIndex
-        return UInt32(s[i]) | (UInt32(s[i + 1]) << 8) | (UInt32(s[i + 2]) << 16) | (UInt32(s[i + 3]) << 24)
+        var v: UInt32 = 0
+        for k in 0..<4 { v |= UInt32(s[s.startIndex + k]) << (8 * k) }
+        return v
     }
     public mutating func readU64() throws -> UInt64 {
         let s = try _read(8)
-        let i = s.startIndex
         var v: UInt64 = 0
-        for k in 0..<8 { v |= UInt64(s[i + k]) << (8 * k) }
+        for k in 0..<8 { v |= UInt64(s[s.startIndex + k]) << (8 * k) }
         return v
     }
     public mutating func readBytes(_ count: Int) throws -> [UInt8] {
-        guard count >= 0 else { throw MTPDecodeError.underflow }
+        // 负 count 是调用方契约违反(非数据问题),用 precondition 而非 throw。
+        precondition(count >= 0, "readBytes count must be non-negative")
         let s = try _read(count)
         return Array(s)
     }
