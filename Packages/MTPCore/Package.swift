@@ -8,23 +8,19 @@ let package = Package(
         .library(name: "MTPCore", targets: ["MTPCore"]),
     ],
     targets: [
-        // libusb 系统库 wrapper:modulemap 声明 header + link "usb-1.0"。
-        // 不加 pkgConfig(避免 pkg-config 缺失构建失败);绝对路径锁定 Homebrew。
+        // libusb 系统库 wrapper:modulemap 声明绝对路径 header + link "usb-1.0"。
+        // pkgConfig 让 SwiftPM 用 pkg-config 自动发现 -L(libusb-1.0.pc 随 brew 安装),
+        // 替代 unsafeFlags(unsafeFlags 在作为远程依赖发布时会被 SwiftPM 拒绝)。
         .systemLibrary(
             name: "Clibusb",
             path: "Sources/Clibusb",
+            pkgConfig: "libusb-1.0",
             providers: [.brew(["libusb"])]
         ),
         .target(
             name: "MTPCore",
             dependencies: ["Clibusb"],
-            path: "Sources/MTPCore",
-            // libusb 装在 Homebrew 非标准路径,modulemap 的 `link "usb-1.0"` 找不到库。
-            // 用 linkerSettings 显式提供 -L 路径 + -lusb-1.0。绝对路径锁定 Apple Silicon Homebrew。
-            linkerSettings: [
-                .unsafeFlags(["-L/opt/homebrew/opt/libusb/lib"]),
-                .linkedLibrary("usb-1.0"),
-            ]
+            path: "Sources/MTPCore"
         ),
         .testTarget(
             name: "MTPCoreTests",
