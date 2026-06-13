@@ -165,17 +165,18 @@ extension MTPDevice {
         }
     }
 
-    /// 打开设备:libusb_open + claim_interface + 接口串校验(P3)。
-    /// 对应 Go mtp.go:152-203(仅 P3 分支)。
+    /// 打开设备:libusb_open + claim_interface(锁内)+ P3/P4 接口校验(锁外)。
+    /// 对应 Go mtp.go:152-203。
     ///
-    /// P4 分支(interfaceStringIndex==0 的 microsoft/fujifilm 设备)留 Plan 2c:
-    /// 需先 OpenSession + GetDeviceInfo 读 MTPExtension 再 mtpExtensionFallback 判定。
-    /// 本 plan 对此类设备 throw needsInfoFallback。
-    ///
-    /// ⚠️ 不能在 open 的 MTPGlobalLock.sync 闭包内调用 close()(后者也加锁,串行队列不可重入会死锁);
-    /// 故 P3 校验失败时用内联回滚(直接 release + close,不加锁)。
+    /// ⚠️ 锁结构(Plan 2d Task 3 重构,避 P4 死锁):
+    /// - **锁内**只 libusb_open + claim_interface(必须持锁的 libusb 调用)。
+    /// - **锁外**做 P3/P4 校验:P3 调 getStringDescriptorASCII(已改局部加锁);
+    ///   P4 调 getDeviceInfo → runTransaction → bulkTransfer(局部加锁)。
+    ///   两者各自局部加锁,不重入 open 的锁(已退出),规避串行队列重入死锁。
+    /// - rollbackOpenNoLock(不加锁)在锁外 P3/P4 失败时调,安全。
     func open() throws {
-        try MTPGlobalLock.sync {
+        // 锁内:libusb_open + claim_interface(对照 Go mtp.go:162-170)。
+        _ = try MTPGlobalLock.sync { () -> OpaquePointer in
             guard handle == nil else { throw MTPError.alreadyOpen }
 
             var h: OpaquePointer?
@@ -195,24 +196,42 @@ extension MTPDevice {
                 throw error
             }
             self.claimed = true
+            return h
+        }
+        // 锁已退出:以下 P3/P4 校验各自局部加锁,不重入。
 
-            // 接口串校验(P3 三星 CDC/ACM 补丁分支)。
+        // 锁外:P3/P4 接口校验(避免 getDeviceInfo 经 runTransaction 重入 open 锁死锁)。
+        do {
             if interfaceDescriptor.interfaceStringIndex == 0 {
-                // P4 分支:无接口串,需 GetDeviceInfo 兜底 → Plan 2c 补。
-                self.rollbackOpenNoLock()
-                throw MTPError.needsInfoFallback
+                // P4 分支:无接口串 → getDeviceInfo 读 MTPExtension 兜底
+                // (对照 Go mtp.go:172-183)。
+                // GetDeviceInfo 无需 session(Open 内 claim 后、OpenSession 前调,合法)。
+                let info = try getDeviceInfo()
+                if !mtpExtensionFallback(info.mtpExtension) {
+                    rollbackOpenNoLock()
+                    throw MTPError.noMTPInInterface
+                }
+            } else {
+                // P3 分支:接口串含 MTP/CDC/ACM 之一才视为 MTP(对照 Go mtp.go:184-198)。
+                // getStringDescriptorASCII 已改局部加锁,锁外调用安全。
+                let iface = try getStringDescriptorASCII(interfaceDescriptor.interfaceStringIndex)
+                if !interfaceStringLooksLikeMTP(iface) {
+                    rollbackOpenNoLock()
+                    throw MTPError.noMTPInInterface
+                }
             }
-            // P3 分支:有接口串,含 MTP/CDC/ACM 之一才视为 MTP(对应 Go mtp.go:184-198)。
-            let iface = try getStringDescriptorASCII(interfaceDescriptor.interfaceStringIndex)
-            if !interfaceStringLooksLikeMTP(iface) {
-                self.rollbackOpenNoLock()
-                throw MTPError.noMTPInInterface
-            }
+        } catch {
+            // 校验失败(getDeviceInfo 抛错 / 非 MTP):回滚已 claim 的接口,重抛。
+            rollbackOpenNoLock()
+            throw error
         }
     }
 
-    /// open 失败时的内联回滚(release + close),不加锁(已在 open 的锁内)。
-    /// 避免在 MTPGlobalLock.sync 闭包内调用 close() 导致串行队列死锁。
+    /// open 失败时的内联回滚(release + close),不加锁。
+    /// Plan 2d Task 3:open 锁重构后,P3/P4 校验在锁外失败时调用本方法。
+    /// 本方法直接 release_interface + libusb_close(libusb 调用,但因 open 锁已退出,
+    /// 且 release/close 是非阻塞的句柄操作,串行队列上下文外调用安全 —— 与 close() 加锁不同,
+    /// 这里不进 MTPGlobalLock.sync,避免若调用方已在锁内时重入。open 路径已在锁外)。
     private func rollbackOpenNoLock() {
         guard let h = handle else { return }
         if claimed {
@@ -225,14 +244,21 @@ extension MTPDevice {
 
     /// 读 USB 字符串描述符为 ASCII String(对应 Go usb.go:663)。
     /// 必须在 open 后(handle 非 nil)调用。
+    ///
+    /// ⚠️ 局部 MTPGlobalLock.sync(仅包 libusb_get_string_descriptor_ascii 调用)。
+    /// Plan 2d Task 3:open() 锁重构后,P3 校验在 open 锁外调用本方法,
+    /// 故本方法须自行局部加锁(与 bulkTransfer 同策略,避免 open 锁外裸调 libusb)。
     private func getStringDescriptorASCII(_ index: UInt8) throws -> String {
         guard let h = handle else { throw MTPError.notOpen }
         var buf = [UInt8](repeating: 0, count: 1024)
-        // libusb_get_string_descriptor_ascii 返回写入字节数(< 0 为错误)。
-        let n = buf.withUnsafeMutableBufferPointer { ptr -> Int32 in
-            // baseAddress 可空(空 buffer 不会发生,但解包防御)。
-            guard let base = ptr.baseAddress else { return LIBUSB_ERROR_OTHER.rawValue }
-            return libusb_get_string_descriptor_ascii(h, index, base, Int32(ptr.count))
+        // libusb_get_string_descriptor_ascii 返回写入字节数(< 0 为错误,由后续 checkLibusb 抛)。
+        // 局部加锁:open 锁已退出,P3 在锁外调用,故本方法自保护 libusb 串行。
+        let n = MTPGlobalLock.sync { () -> Int32 in
+            buf.withUnsafeMutableBufferPointer { ptr -> Int32 in
+                // baseAddress 可空(空 buffer 不会发生,但解包防御)。
+                guard let base = ptr.baseAddress else { return LIBUSB_ERROR_OTHER.rawValue }
+                return libusb_get_string_descriptor_ascii(h, index, base, Int32(ptr.count))
+            }
         }
         try checkLibusb(n)
         // n 为实际写入字节数;按有效长度截断后 UTF-8 解码(遇 \0 自然截断)。
