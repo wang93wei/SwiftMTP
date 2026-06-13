@@ -157,4 +157,99 @@ extension MTPDevice {
             return devices
         }
     }
+
+    /// 打开设备:libusb_open + claim_interface + 接口串校验(P3)。
+    /// 对应 Go mtp.go:152-203(仅 P3 分支)。
+    ///
+    /// P4 分支(interfaceStringIndex==0 的 microsoft/fujifilm 设备)留 Plan 2c:
+    /// 需先 OpenSession + GetDeviceInfo 读 MTPExtension 再 mtpExtensionFallback 判定。
+    /// 本 plan 对此类设备 throw needsInfoFallback。
+    ///
+    /// ⚠️ 不能在 open 的 MTPGlobalLock.sync 闭包内调用 close()(后者也加锁,串行队列不可重入会死锁);
+    /// 故 P3 校验失败时用内联回滚(直接 release + close,不加锁)。
+    func open() throws {
+        try MTPGlobalLock.sync {
+            guard handle == nil else { throw MTPError.alreadyOpen }
+
+            var h: OpaquePointer?
+            try checkLibusb(libusb_open(device, &h))
+            guard let h else {
+                throw MTPError.libusb(MTPUSBError(code: LIBUSB_ERROR_OTHER.rawValue))
+            }
+            self.handle = h
+
+            // claim(对应 Go mtp.go:170)。Go 不检查返回;Swift 决定 claim 失败当致命错误(更严谨)。
+            do {
+                try checkLibusb(libusb_claim_interface(h, Int32(interfaceDescriptor.interfaceNumber)))
+            } catch {
+                // claim 失败:关闭已 open 的 handle,避免泄漏。
+                libusb_close(h)
+                self.handle = nil
+                throw error
+            }
+            self.claimed = true
+
+            // 接口串校验(P3 三星 CDC/ACM 补丁分支)。
+            if interfaceDescriptor.interfaceStringIndex == 0 {
+                // P4 分支:无接口串,需 GetDeviceInfo 兜底 → Plan 2c 补。
+                self.rollbackOpenNoLock()
+                throw MTPError.needsInfoFallback
+            }
+            // P3 分支:有接口串,含 MTP/CDC/ACM 之一才视为 MTP(对应 Go mtp.go:184-198)。
+            let iface = try getStringDescriptorASCII(interfaceDescriptor.interfaceStringIndex)
+            if !interfaceStringLooksLikeMTP(iface) {
+                self.rollbackOpenNoLock()
+                throw MTPError.noMTPInInterface
+            }
+        }
+    }
+
+    /// open 失败时的内联回滚(release + close),不加锁(已在 open 的锁内)。
+    /// 避免在 MTPGlobalLock.sync 闭包内调用 close() 导致串行队列死锁。
+    private func rollbackOpenNoLock() {
+        guard let h = handle else { return }
+        if claimed {
+            libusb_release_interface(h, Int32(interfaceDescriptor.interfaceNumber))
+            claimed = false
+        }
+        libusb_close(h)
+        handle = nil
+    }
+
+    /// 读 USB 字符串描述符为 ASCII String(对应 Go usb.go:663)。
+    /// 必须在 open 后(handle 非 nil)调用。
+    private func getStringDescriptorASCII(_ index: UInt8) throws -> String {
+        guard let h = handle else { throw MTPError.notOpen }
+        var buf = [UInt8](repeating: 0, count: 1024)
+        // libusb_get_string_descriptor_ascii 返回写入字节数(< 0 为错误)。
+        let n = buf.withUnsafeMutableBufferPointer { ptr -> Int32 in
+            // baseAddress 可空(空 buffer 不会发生,但解包防御)。
+            guard let base = ptr.baseAddress else { return LIBUSB_ERROR_OTHER.rawValue }
+            return libusb_get_string_descriptor_ascii(h, index, base, Int32(ptr.count))
+        }
+        try checkLibusb(n)
+        // n 为实际写入字节数;按有效长度截断后 UTF-8 解码(遇 \0 自然截断)。
+        let valid = Int(n)
+        let decoded = String(decoding: buf.prefix(valid), as: UTF8.self)
+        // C 字符串语义:在首个 \0 处截断(描述符可能含尾随 \0)。
+        if let terminator = decoded.firstIndex(of: "\0") {
+            return String(decoded[..<terminator])
+        }
+        return decoded
+    }
+
+    /// 关闭设备(对应 Go mtp.go:95-126)。幂等。
+    /// Plan 2b:仅 release_interface + libusb_close(session 管理在 Plan 2c 会加 throw 路径)。
+    func close() throws {
+        // MTPGlobalLock.sync 是 rethrows:当前闭包不 throw,故无需 try(Plan 2c session 清理可 throw)。
+        MTPGlobalLock.sync {
+            guard let h = handle else { return }
+            if claimed {
+                libusb_release_interface(h, Int32(interfaceDescriptor.interfaceNumber))
+                claimed = false
+            }
+            libusb_close(h)
+            handle = nil
+        }
+    }
 }
