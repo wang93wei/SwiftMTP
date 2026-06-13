@@ -35,7 +35,8 @@ final class EncodingGoldenTests: XCTestCase {
 
     func testDecodeObjectInfoSimpleAlignsWithGo() throws {
         let data = try fixtureHex("objectinfo_simple")
-        let info = try decode(data, as: ObjectInfo.self)
+        var reader = MTPReader(data)
+        let info = try ObjectInfo(from: &reader)
         let exp = try fixtureExpected("objectinfo_simple")
         XCTAssertEqual(info.storageID, uint32(exp["storageID"]))
         XCTAssertEqual(info.objectFormat, uint16(exp["objectFormat"]))
@@ -44,23 +45,29 @@ final class EncodingGoldenTests: XCTestCase {
         XCTAssertEqual(info.filename, exp["filename"] as? String)
         XCTAssertNil(info.captureDate, "simple fixture 无时间")
         XCTAssertNil(info.modificationDate)
+        // 线序完整性兜底:fixture hex 是 Go Encode 真理源,
+        // decode 后 reader 应恰好读完 —— 任何字段错位都会导致此处失败。
+        XCTAssertTrue(reader.isAtEnd, "ObjectInfo 解码后应恰好读完字节流")
     }
 
     func testDecodeObjectInfoCJKAlignsWithGo() throws {
         let data = try fixtureHex("objectinfo_cjk")
-        let info = try decode(data, as: ObjectInfo.self)
+        var reader = MTPReader(data)
+        let info = try ObjectInfo(from: &reader)
         let exp = try fixtureExpected("objectinfo_cjk")
         XCTAssertEqual(info.filename, exp["filename"] as? String, "CJK 文件名应一致")
         XCTAssertEqual(info.compressedSize, uint32(exp["compressedSize"]))
         let modUnix = try XCTUnwrap(exp["modificationTime"] as? Double)
         XCTAssertEqual(info.modificationDate!.timeIntervalSince1970, modUnix, accuracy: 1.0)
+        XCTAssertTrue(reader.isAtEnd, "ObjectInfo(CJK)解码后应恰好读完字节流")
     }
 
     // MARK: - Task 9: StorageInfo + Uint32Array 对齐 Go 黄金 fixture
 
     func testDecodeStorageInfoAlignsWithGo() throws {
         let data = try fixtureHex("storageinfo_simple")
-        let st = try decode(data, as: StorageInfo.self)
+        var reader = MTPReader(data)
+        let st = try StorageInfo(from: &reader)
         let exp = try fixtureExpected("storageinfo_simple")
         XCTAssertEqual(st.storageType, uint16(exp["storageType"]))
         XCTAssertEqual(st.filesystemType, uint16(exp["filesystemType"]))
@@ -68,30 +75,38 @@ final class EncodingGoldenTests: XCTestCase {
         XCTAssertEqual(st.freeSpaceInBytes, uint64(exp["freeSpaceInBytes"]))
         XCTAssertEqual(st.storageDescription, exp["storageDescription"] as? String)
         XCTAssertEqual(st.volumeLabel, exp["volumeLabel"] as? String)
+        XCTAssertTrue(reader.isAtEnd, "StorageInfo 解码后应恰好读完字节流")
     }
 
     func testDecodeUint32ArrayAlignsWithGo() throws {
         let data = try fixtureHex("uint32array_simple")
-        let arr = try decode(data, as: Uint32Array.self)
+        var reader = MTPReader(data)
+        let arr = try Uint32Array(from: &reader)
         let exp = try fixtureExpected("uint32array_simple")
         let expVals = (exp["values"] as? [NSNumber])?.map { $0.uint32Value } ?? []
         XCTAssertEqual(arr.values, expVals)
+        XCTAssertTrue(reader.isAtEnd, "Uint32Array 解码后应恰好读完字节流")
     }
 
     // MARK: - Task 10: DeviceInfo 对齐 Go 黄金 fixture
 
     func testDecodeDeviceInfoAlignsWithGo() throws {
         let data = try fixtureHex("deviceinfo_simple")
-        let di = try decode(data, as: DeviceInfo.self)
+        var reader = MTPReader(data)
+        let di = try DeviceInfo(from: &reader)
         let exp = try fixtureExpected("deviceinfo_simple")
         XCTAssertEqual(di.standardVersion, uint16(exp["standardVersion"]))
         XCTAssertEqual(di.mtpVendorExtensionID, uint32(exp["mtpVendorExtensionID"]))
         // mtpExtension 不在 fixture expected 键中,但 Go encode 输入为
-        // "microsoft.com: 1.0;",decode 后应一致(验证线序中该字段被正确跳过/读取)。
+        // "microsoft.com: 1.0;",decode 后应一致(验证线序中该字段被正确读取)。
         XCTAssertEqual(di.mtpExtension, "microsoft.com: 1.0;")
         XCTAssertEqual(di.manufacturer, exp["manufacturer"] as? String)
         XCTAssertEqual(di.model, exp["model"] as? String)
         XCTAssertEqual(di.serialNumber, exp["serialNumber"] as? String)
+        // DeviceInfo 含 5 个 []uint16 数组字段,fixture 中均为空(连续 00000000 长度前缀)。
+        // isAtEnd 兜底尤其关键:若任一数组线序错位,空数组场景下字段值断言无法暴露,
+        // 但字节流长度会不匹配,此处即捕获。
+        XCTAssertTrue(reader.isAtEnd, "DeviceInfo 解码后应恰好读完字节流")
     }
 }
 
