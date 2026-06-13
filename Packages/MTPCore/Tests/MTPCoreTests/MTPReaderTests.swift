@@ -41,4 +41,22 @@ final class MTPReaderTests: XCTestCase {
         _ = try reader.readU16()
         XCTAssertTrue(reader.isAtEnd)
     }
+
+    func testReadMTPStringAscii() throws {
+        // "AB" + 尾零:sz=3,然后 'A'=41 00,'B'=42 00,尾零=00 00
+        var reader = MTPReader(Data([0x03, 0x41, 0x00, 0x42, 0x00, 0x00, 0x00]))
+        XCTAssertEqual(try reader.readMTPString(), "AB")
+    }
+
+    func testReadMTPStringEmpty() throws {
+        // sz=0 → 空串
+        var reader = MTPReader(Data([0x00]))
+        XCTAssertEqual(try reader.readMTPString(), "")
+    }
+
+    func testReadMTPStringCJK() throws {
+        // "中" U+4E2D 小端 = 2D 4E;sz=2(字符+尾零)
+        var reader = MTPReader(Data([0x02, 0x2D, 0x4E, 0x00, 0x00]))
+        XCTAssertEqual(try reader.readMTPString(), "中")
+    }
 }
