@@ -77,6 +77,22 @@ final class EncodingGoldenTests: XCTestCase {
         let expVals = (exp["values"] as? [NSNumber])?.map { $0.uint32Value } ?? []
         XCTAssertEqual(arr.values, expVals)
     }
+
+    // MARK: - Task 10: DeviceInfo 对齐 Go 黄金 fixture
+
+    func testDecodeDeviceInfoAlignsWithGo() throws {
+        let data = try fixtureHex("deviceinfo_simple")
+        let di = try decode(data, as: DeviceInfo.self)
+        let exp = try fixtureExpected("deviceinfo_simple")
+        XCTAssertEqual(di.standardVersion, uint16(exp["standardVersion"]))
+        XCTAssertEqual(di.mtpVendorExtensionID, uint32(exp["mtpVendorExtensionID"]))
+        // mtpExtension 不在 fixture expected 键中,但 Go encode 输入为
+        // "microsoft.com: 1.0;",decode 后应一致(验证线序中该字段被正确跳过/读取)。
+        XCTAssertEqual(di.mtpExtension, "microsoft.com: 1.0;")
+        XCTAssertEqual(di.manufacturer, exp["manufacturer"] as? String)
+        XCTAssertEqual(di.model, exp["model"] as? String)
+        XCTAssertEqual(di.serialNumber, exp["serialNumber"] as? String)
+    }
 }
 
 // JSON 数字转 UInt 辅助(JSONSerialization 把数字给成 NSNumber)。
