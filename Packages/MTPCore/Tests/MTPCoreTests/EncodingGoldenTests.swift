@@ -3,9 +3,14 @@ import XCTest
 
 final class EncodingGoldenTests: XCTestCase {
     /// 加载共享 fixture(Go 与 Swift 读同一 JSON)。
+    /// 资源由 `.copy("Fixtures")` 打进 SwiftPM 生成的资源 bundle
+    /// (`MTPCore_MTPCoreTests.bundle`),用 `Bundle.module` 定位,
+    /// 而非 `Bundle(for:)`(后者拿到的是 xctest 容器,查不到嵌套资源)。
+    /// `.copy` 保留目录结构,故资源在 `Fixtures/` 子目录下,需传 `subdirectory`。
     func loadFixture(_ name: String) throws -> [String: Any] {
-        let url = try XCTUnwrap(Bundle(for: type(of: self)).url(forResource: name, withExtension: "json"),
-                                "缺少 fixture: \(name).json")
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures"),
+            "缺少 fixture: \(name).json")
         let data = try Data(contentsOf: url)
         return try (JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     }
@@ -25,7 +30,37 @@ final class EncodingGoldenTests: XCTestCase {
         var reader = MTPReader(data)
         XCTAssertEqual(try reader.readU16(), 0x1234)
     }
+
+    // MARK: - Task 8: ObjectInfo 对齐 Go 黄金 fixture
+
+    func testDecodeObjectInfoSimpleAlignsWithGo() throws {
+        let data = try fixtureHex("objectinfo_simple")
+        let info = try decode(data, as: ObjectInfo.self)
+        let exp = try fixtureExpected("objectinfo_simple")
+        XCTAssertEqual(info.storageID, uint32(exp["storageID"]))
+        XCTAssertEqual(info.objectFormat, uint16(exp["objectFormat"]))
+        XCTAssertEqual(info.compressedSize, uint32(exp["compressedSize"]))
+        XCTAssertEqual(info.parentObject, uint32(exp["parentObject"]))
+        XCTAssertEqual(info.filename, exp["filename"] as? String)
+        XCTAssertNil(info.captureDate, "simple fixture 无时间")
+        XCTAssertNil(info.modificationDate)
+    }
+
+    func testDecodeObjectInfoCJKAlignsWithGo() throws {
+        let data = try fixtureHex("objectinfo_cjk")
+        let info = try decode(data, as: ObjectInfo.self)
+        let exp = try fixtureExpected("objectinfo_cjk")
+        XCTAssertEqual(info.filename, exp["filename"] as? String, "CJK 文件名应一致")
+        XCTAssertEqual(info.compressedSize, uint32(exp["compressedSize"]))
+        let modUnix = try XCTUnwrap(exp["modificationTime"] as? Double)
+        XCTAssertEqual(info.modificationDate!.timeIntervalSince1970, modUnix, accuracy: 1.0)
+    }
 }
+
+// JSON 数字转 UInt 辅助(JSONSerialization 把数字给成 NSNumber)。
+private func uint32(_ v: Any?) -> UInt32 { (v as? NSNumber)?.uint32Value ?? 0 }
+private func uint16(_ v: Any?) -> UInt16 { (v as? NSNumber)?.uint16Value ?? 0 }
+private func uint64(_ v: Any?) -> UInt64 { (v as? NSNumber)?.uint64Value ?? 0 }
 
 // hex 字符串 → Data 的测试辅助。
 extension Data {
