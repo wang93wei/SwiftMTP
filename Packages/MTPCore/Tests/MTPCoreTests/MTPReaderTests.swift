@@ -35,6 +35,78 @@ final class MTPReaderTests: XCTestCase {
         }
     }
 
+    // MARK: - 多字节读取越界分支(U16/U32/U64 各自的 endOfData 守卫)
+    // 现有只覆盖 readU8 越界;U16/U32/U64 的 _read 守卫是核心安全路径,需各自验证。
+
+    func testReadU16BeyondEndThrows() {
+        // 仅 1 字节,readU16 需 2 → endOfData
+        var reader = MTPReader(Data([0x34]))
+        XCTAssertThrowsError(try reader.readU16()) { error in
+            guard case MTPDecodeError.endOfData = error else {
+                XCTFail("期望 endOfData,实际 \(error)"); return
+            }
+        }
+    }
+
+    func testReadU32BeyondEndThrows() {
+        // 仅 2 字节,readU32 需 4 → endOfData
+        var reader = MTPReader(Data([0xEF, 0xBE]))
+        XCTAssertThrowsError(try reader.readU32()) { error in
+            guard case MTPDecodeError.endOfData = error else {
+                XCTFail("期望 endOfData,实际 \(error)"); return
+            }
+        }
+    }
+
+    func testReadU64BeyondEndThrows() {
+        // 仅 4 字节,readU64 需 8 → endOfData
+        var reader = MTPReader(Data([0x78, 0x56, 0x34, 0x12]))
+        XCTAssertThrowsError(try reader.readU64()) { error in
+            guard case MTPDecodeError.endOfData = error else {
+                XCTFail("期望 endOfData,实际 \(error)"); return
+            }
+        }
+    }
+
+    // MARK: - readBytes(此前无任何测试:count==0 / 越界 / 正常)
+
+    func testReadBytesZeroCount() throws {
+        // count=0 → 空数组,不推进 offset(边界值)
+        var reader = MTPReader(Data([0x01, 0x02]))
+        XCTAssertEqual(try reader.readBytes(0), [])
+        XCTAssertEqual(reader.remaining, 2, "readBytes(0) 不应推进 offset")
+        XCTAssertFalse(reader.isAtEnd)
+    }
+
+    func testReadBytesExact() throws {
+        // 恰好读完全部 → isAtEnd
+        var reader = MTPReader(Data([0x01, 0x02, 0x03]))
+        XCTAssertEqual(try reader.readBytes(3), [0x01, 0x02, 0x03])
+        XCTAssertTrue(reader.isAtEnd)
+    }
+
+    func testReadBytesBeyondEndThrows() {
+        // count > remaining → endOfData
+        var reader = MTPReader(Data([0x01]))
+        XCTAssertThrowsError(try reader.readBytes(5)) { error in
+            guard case MTPDecodeError.endOfData = error else {
+                XCTFail("期望 endOfData,实际 \(error)"); return
+            }
+        }
+    }
+
+    // MARK: - remaining 属性(此前从未被断言)
+
+    func testRemainingAdvancesAfterRead() throws {
+        var reader = MTPReader(Data([0x01, 0x02, 0x03, 0x04]))
+        XCTAssertEqual(reader.remaining, 4)
+        _ = try reader.readU16()
+        XCTAssertEqual(reader.remaining, 2)
+        _ = try reader.readU16()
+        XCTAssertEqual(reader.remaining, 0)
+        XCTAssertTrue(reader.isAtEnd)
+    }
+
     func testIsAtEnd() throws {
         var reader = MTPReader(Data([0x01, 0x02]))
         XCTAssertFalse(reader.isAtEnd)

@@ -60,4 +60,23 @@ final class MTPReaderArrayGuardTests: XCTestCase {
             XCTAssertEqual(count, 0xFFFFFFFF)
         }
     }
+
+    // MARK: count==0 边界(此前未覆盖)
+    // count==0 应返回空数组,且只消耗 4 字节长度前缀,不读任何后续字节。
+
+    func testReadU32ArrayZeroCount() throws {
+        // count=0,后跟未消费字节(验证 count==0 不越界读取)
+        let bytes: [UInt8] = [0, 0, 0, 0, 0xFF, 0xFF]
+        var reader = MTPReader(bytes)
+        XCTAssertEqual(try reader.readU32Array(), [])
+        XCTAssertEqual(reader.remaining, 2, "count==0 应只消耗 4 字节长度前缀")
+    }
+
+    func testReadU16ArrayZeroCount() throws {
+        // count=0,后跟未消费字节
+        let bytes: [UInt8] = [0, 0, 0, 0, 0xAA, 0xBB]
+        var reader = MTPReader(bytes)
+        XCTAssertEqual(try reader.readU16Array(), [])
+        XCTAssertEqual(reader.remaining, 2, "count==0 应只消耗 4 字节长度前缀")
+    }
 }

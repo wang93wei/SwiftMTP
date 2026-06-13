@@ -33,4 +33,32 @@ final class EndpointClassificationTests: XCTestCase {
         // 缺中断端点(只有 2 个 bulk)
         XCTAssertFalse(isMTPCandidate([ep(0x02, 0x02), ep(0x81, 0x02), ep(0x83, 0x02)]))
     }
+
+    // MARK: - 空输入边界(此前未覆盖)
+
+    /// classifyEndpoints 空列表 → 全 nil(无端点可分派)。
+    func testClassifyEmptyListReturnsAllNil() {
+        let r = classifyEndpoints([])
+        XCTAssertNil(r.sendEP)
+        XCTAssertNil(r.fetchEP)
+        XCTAssertNil(r.eventEP)
+    }
+
+    /// isMTPCandidate([]) → false(count != 3 的 0 分支)。
+    func testIsMTPCandidateEmptyListIsFalse() {
+        XCTAssertFalse(isMTPCandidate([]), "空端点列表不应是 MTP 候选")
+    }
+
+    // MARK: - 同向同类型重复:后者覆盖前者(注释明说的顺序赋值契约)
+
+    /// 两个 OUT-BULK 端点 → sendEP 取后者(对照 Go select.go switch 顺序赋值)。
+    /// 此前只有单一端点,从未验证"后出现覆盖前者"语义。
+    func testClassifyDuplicateSameTypeLastWins() {
+        // 两个 OUT-BULK(0x02, 0x05),一个 IN-INT(0x81),一个 IN-BULK(0x83)
+        let eps = [ep(0x02, 0x02), ep(0x05, 0x02), ep(0x81, 0x03), ep(0x83, 0x02)]
+        let r = classifyEndpoints(eps)
+        XCTAssertEqual(r.sendEP, 0x05, "重复 OUT-BULK 应取后者(0x05)")
+        XCTAssertEqual(r.eventEP, 0x81)
+        XCTAssertEqual(r.fetchEP, 0x83)
+    }
 }
