@@ -55,6 +55,28 @@ final class EncodingGoldenTests: XCTestCase {
         let modUnix = try XCTUnwrap(exp["modificationTime"] as? Double)
         XCTAssertEqual(info.modificationDate!.timeIntervalSince1970, modUnix, accuracy: 1.0)
     }
+
+    // MARK: - Task 9: StorageInfo + Uint32Array 对齐 Go 黄金 fixture
+
+    func testDecodeStorageInfoAlignsWithGo() throws {
+        let data = try fixtureHex("storageinfo_simple")
+        let st = try decode(data, as: StorageInfo.self)
+        let exp = try fixtureExpected("storageinfo_simple")
+        XCTAssertEqual(st.storageType, uint16(exp["storageType"]))
+        XCTAssertEqual(st.filesystemType, uint16(exp["filesystemType"]))
+        XCTAssertEqual(st.maxCapability, uint64(exp["maxCapability"]))
+        XCTAssertEqual(st.freeSpaceInBytes, uint64(exp["freeSpaceInBytes"]))
+        XCTAssertEqual(st.storageDescription, exp["storageDescription"] as? String)
+        XCTAssertEqual(st.volumeLabel, exp["volumeLabel"] as? String)
+    }
+
+    func testDecodeUint32ArrayAlignsWithGo() throws {
+        let data = try fixtureHex("uint32array_simple")
+        let arr = try decode(data, as: Uint32Array.self)
+        let exp = try fixtureExpected("uint32array_simple")
+        let expVals = (exp["values"] as? [NSNumber])?.map { $0.uint32Value } ?? []
+        XCTAssertEqual(arr.values, expVals)
+    }
 }
 
 // JSON 数字转 UInt 辅助(JSONSerialization 把数字给成 NSNumber)。

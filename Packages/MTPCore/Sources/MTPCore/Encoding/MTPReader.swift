@@ -56,3 +56,14 @@ public struct MTPReader {
         return Array(s)
     }
 }
+
+public extension MTPReader {
+    /// 读 u32 长度前缀的 UInt32 数组。对应 Go encoding.go decodeArray(uint32)。
+    /// 线序:小端 u32 count → count 个小端 u32。
+    mutating func readU32Array() throws -> [UInt32] {
+        let count = Int(try readU32())
+        var arr = [UInt32](repeating: 0, count: count)
+        for i in 0..<count { arr[i] = try readU32() }
+        return arr
+    }
+}
