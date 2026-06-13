@@ -4,6 +4,8 @@ import Foundation
 /// 仅声明当前实际使用的 case(YAGNI);readMTPString/readMTPTime 引入时按需扩展。
 public enum MTPDecodeError: Error, Equatable {
     case endOfData
+    /// MTP 时间字符串无法解析(三变体均失败)。携带原始字符串便于诊断。
+    case invalidTime(String)
 }
 
 /// 小端字节流读取器。对应 Go encoding.go 的 binary.LittleEndian + io.Reader 读取。
