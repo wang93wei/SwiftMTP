@@ -1,0 +1,5 @@
+{"file": ".agents/skills/project-exemption/SKILL.md", "reason": "Reject Actor/Sendable migration in FileTransferManager files."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/design.md", "reason": "Check terminal callbacks, buffer ownership, compensation and retry invariants."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/repository-inventory.md", "reason": "Check current transfer behavior and ensure known bugs are not reproduced."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "Check libusb resource and cancellation semantics."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Check file/C callback/protocol/UI boundary consistency."}

@@ -1,0 +1,5 @@
+{"file": ".agents/skills/project-exemption/SKILL.md", "reason": "Mandatory traditional DispatchQueue and NSLock model for FileTransferManager files."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/design.md", "reason": "Parent transfer ownership, cancellation, retry and error contracts."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/repository-inventory.md", "reason": "Current upload/download/cancel behavior and known unsafe mechanisms."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "Official libusb async transfer cancellation and resource-lifetime constraints."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Transfer data crosses local files, C callbacks, protocol state, managers and UI."}

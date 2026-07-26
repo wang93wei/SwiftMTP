@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/design.md", "reason": "Verify foundation implementation respects the parent architecture."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/repository-inventory.md", "reason": "Verify compatibility with current identifiers, datasets and ABI behavior."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "Verify libusb header/module/link and licensing choices."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Check source, module, linker and test consistency."}

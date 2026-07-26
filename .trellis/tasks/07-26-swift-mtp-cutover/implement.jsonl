@@ -1,0 +1,5 @@
+{"file": ".agents/skills/project-exemption/SKILL.md", "reason": "Ensure final transfer implementation still respects the project concurrency exemption."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/design.md", "reason": "Parent final-state architecture, rollback and verification contract."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/repository-inventory.md", "reason": "Complete Go/CGO/libkalam build, runtime, code and documentation removal inventory."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "libusb artifacts and licensing must remain valid after cutover."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Cutover spans source, project settings, scripts, package, docs and runtime artifacts."}

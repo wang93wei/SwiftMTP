@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/design.md", "reason": "Check session serialization, invalidation and shutdown ordering."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/repository-inventory.md", "reason": "Check scan/storage parity and protocol edge cases."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "Check direct libusb API lifetime and cancellation requirements."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Check C callback and Swift state boundary contracts."}

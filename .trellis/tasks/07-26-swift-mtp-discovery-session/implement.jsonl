@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/design.md", "reason": "Parent USB lifecycle, session and transaction invariants."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/repository-inventory.md", "reason": "Existing discovery/session behavior and vendored protocol anchors."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "Official libusb event, cancellation, claim and thread-safety constraints."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Transport state crosses C callbacks, Swift session state and manager consumers."}

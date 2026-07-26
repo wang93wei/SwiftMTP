@@ -1,0 +1,5 @@
+{"file": ".agents/skills/project-exemption/SKILL.md", "reason": "Final check must enforce the transfer concurrency exemption."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/design.md", "reason": "Check final repository and app match the approved architecture."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/repository-inventory.md", "reason": "Verify every known Go/CGO/libkalam removal surface."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "Verify retained libusb link, license, signing and packaging."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Check cross-layer cleanup and runtime consistency."}

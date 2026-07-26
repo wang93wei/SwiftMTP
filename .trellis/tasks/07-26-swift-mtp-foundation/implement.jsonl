@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/design.md", "reason": "Parent architecture contract for module boundaries, typed backend and provider migration."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/repository-inventory.md", "reason": "Current ABI, data shapes, protocol semantics and test baseline."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "Official libusb version, C API and packaging constraints."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "CLibUSB, Swift codec, Xcode linking and tests cross several boundaries."}
