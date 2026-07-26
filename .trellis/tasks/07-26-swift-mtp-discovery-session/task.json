@@ -3,7 +3,7 @@
   "name": "swift-mtp-discovery-session",
   "title": "实现 libusb 设备会话与扫描",
   "description": "实现 libusb 枚举、端点识别、open/claim/release、MTP session/transaction、设备与存储扫描。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

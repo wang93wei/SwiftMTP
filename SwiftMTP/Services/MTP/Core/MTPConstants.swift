@@ -30,9 +30,11 @@ nonisolated struct MTPResponseCode: RawRepresentable, Hashable, Sendable {
     static let ok = Self(rawValue: 0x2001)
     static let generalError = Self(rawValue: 0x2002)
     static let sessionNotOpen = Self(rawValue: 0x2003)
+    static let invalidTransactionID = Self(rawValue: 0x2004)
     static let operationNotSupported = Self(rawValue: 0x2005)
     static let invalidObjectHandle = Self(rawValue: 0x2009)
     static let deviceBusy = Self(rawValue: 0x2019)
+    static let sessionAlreadyOpen = Self(rawValue: 0x201E)
 }
 
 nonisolated enum MTPContainerType: UInt16, Sendable {

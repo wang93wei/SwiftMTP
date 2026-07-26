@@ -68,4 +68,12 @@ final class MTPBinaryCodecTests: XCTestCase {
         XCTAssertThrowsError(try overlong.writeMTPString(String(repeating: "A", count: 255)))
         XCTAssertTrue(overlong.data.isEmpty)
     }
+
+    func testReaderTreatsOffsetsAsRelativeToANonZeroDataSlice() throws {
+        let source = Data([0xFF, 0x44, 0x33, 0x22, 0x11])
+        var reader = MTPBinaryReader(data: source.dropFirst())
+
+        XCTAssertEqual(try reader.readUInt32(), 0x1122_3344)
+        XCTAssertEqual(reader.remainingCount, 0)
+    }
 }

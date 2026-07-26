@@ -72,6 +72,11 @@ nonisolated struct MTPBinaryReader: Sendable {
                 "binary input truncated at offset \(offset), requested \(count) bytes"
             )
         }
-        return data[offset..<(offset + count)]
+        // Data slices can have a non-zero startIndex after a framer consumes
+        // an earlier container. `offset` is intentionally relative to the
+        // reader input, so translate it through the collection indices.
+        let start = data.index(data.startIndex, offsetBy: offset)
+        let end = data.index(start, offsetBy: count)
+        return data[start..<end]
     }
 }
