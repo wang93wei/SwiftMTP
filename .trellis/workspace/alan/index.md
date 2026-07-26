@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 0
-- **Last Active**: -
+- **Total Sessions**: 1
+- **Last Active**: 2026-07-27
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~0 | Active |
+| `journal-1.md` | ~28 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 1 | 2026-07-27 | Swift 原生 MTP 发现与会话基础 | `92b1a27` | `refactor/swift-native-mtp` |
 <!-- @@@/auto:session-history -->
 
 ---
