@@ -22,35 +22,48 @@ nonisolated extension MTPDeviceSession {
             progress: progress
         )
         let maximumExactPayload = UInt64(UInt32.max) - MTPContainer.headerLength
-        let result = try transport.send(
-            request,
-            dataHeader: MTPStreamingDataHeader(
-                operationCode: .sendObject,
-                transactionID: transactionID,
-                payloadLength: size <= maximumExactPayload ? size : nil
-            ),
-            source: progressSource,
-            cancellation: cancellation
-        )
-        try cancellation.throwIfCancelled()
-        guard result.responseCode == .ok else {
-            throw MTPCoreError.response(code: result.responseCode)
-        }
-        guard result.responseParameters.isEmpty else {
-            throw MTPCoreError.protocolViolation(
-                "SendObject response unexpectedly contained parameters"
+        var transferredByteCount: UInt64?
+        do {
+            let result = try transport.send(
+                request,
+                dataHeader: MTPStreamingDataHeader(
+                    operationCode: .sendObject,
+                    transactionID: transactionID,
+                    payloadLength: size <= maximumExactPayload ? size : nil
+                ),
+                source: progressSource,
+                cancellation: cancellation
             )
-        }
-        guard result.transferredByteCount == size else {
-            throw MTPCoreError.protocolViolation(
-                "SendObject byte count does not match the declared source size"
+            transferredByteCount = result.transferredByteCount
+            try cancellation.throwIfCancelled()
+            guard result.responseCode == .ok else {
+                throw MTPCoreError.response(code: result.responseCode)
+            }
+            guard result.responseParameters.isEmpty else {
+                throw MTPCoreError.protocolViolation(
+                    "SendObject response unexpectedly contained parameters"
+                )
+            }
+            guard result.transferredByteCount == size else {
+                throw MTPCoreError.protocolViolation(
+                    "SendObject byte count does not match the declared source size"
+                )
+            }
+            progressSource.finish(transferredByteCount: result.transferredByteCount)
+            return MTPUploadResult(
+                objectID: objectID,
+                transferredByteCount: result.transferredByteCount
             )
+        } catch {
+            recordTransactionFailure(
+                operation: .sendObject,
+                transactionID: transactionID.rawValue,
+                error: error,
+                transferredByteCount: transferredByteCount
+                    ?? progressSource.transferredByteCount
+            )
+            throw error
         }
-        progressSource.finish(transferredByteCount: result.transferredByteCount)
-        return MTPUploadResult(
-            objectID: objectID,
-            transferredByteCount: result.transferredByteCount
-        )
     }
 }
 

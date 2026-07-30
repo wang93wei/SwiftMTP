@@ -44,6 +44,24 @@ final class MTPUploadSourcePolicyTests: XCTestCase {
         source.close()
     }
 
+    func testModificationDateUsesBasicMTPTimestampWithoutTimezoneSuffix() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("dated.bin")
+        try Data([1]).write(to: url)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date(timeIntervalSince1970: 1_700_000_000)],
+            ofItemAtPath: url.path
+        )
+
+        let source = try MTPUploadSourcePolicy.open(
+            request: try request(url: url, name: "dated.bin", size: 1)
+        )
+
+        XCTAssertEqual(source.modificationDateString, "20231114T221320")
+        source.close()
+    }
+
     func testRejectsMissingDirectorySymlinkFIFOAndSizeMismatch() throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

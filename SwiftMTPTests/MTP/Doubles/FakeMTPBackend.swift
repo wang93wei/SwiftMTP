@@ -9,6 +9,7 @@ final class FakeMTPBackend: MTPBackend {
     private(set) var shutdownCount = 0
     var openError: MTPCoreError?
     var scanResult = MTPScanResult(snapshots: [], failures: [])
+    var scanHandler: (() throws -> MTPScanResult)?
 
     init(providerKind: MTPProviderKind) {
         self.providerKind = providerKind
@@ -16,7 +17,7 @@ final class FakeMTPBackend: MTPBackend {
 
     func initialize() throws { initializeCount += 1 }
     func scanDevices() throws -> MTPScanResult {
-        scanResult
+        try scanHandler?() ?? scanResult
     }
 
     func openSession(for deviceID: MTPDeviceID) throws -> any MTPBackendSession {

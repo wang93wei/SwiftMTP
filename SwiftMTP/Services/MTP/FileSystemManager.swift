@@ -117,12 +117,21 @@ actor FileSystemManager: FileSystemManaging {
     }
 
     func deleteObject(for device: Device, objectID: MTPObjectID) async throws {
-        try await coordinator.deleteObject(
-            appDeviceID: device.id,
-            deviceID: device.mtpIdentity.deviceID,
-            objectID: objectID
-        )
-        clearCache(for: device)
+        do {
+            try await coordinator.deleteObject(
+                appDeviceID: device.id,
+                deviceID: device.mtpIdentity.deviceID,
+                objectID: objectID
+            )
+            clearCache(for: device)
+        } catch {
+            let coreError = Self.coreError(error)
+            MTPLog.fileSystem.error(
+                "Single delete failed for device \(device.mtpIdentity.deviceID.rawValue, privacy: .private(mask: .hash)), object=\(objectID.rawValue, privacy: .public), error=\(String(describing: coreError), privacy: .public)"
+            )
+            clearCache(for: device)
+            throw coreError
+        }
     }
 
     func deleteObjects(

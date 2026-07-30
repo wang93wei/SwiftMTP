@@ -13,6 +13,38 @@ nonisolated struct MTPTransactionResult: Equatable, Sendable {
     let responseParameters: [UInt32]
 }
 
+nonisolated struct MTPTransactionFailureDiagnostic: Equatable, Sendable {
+    let operation: MTPOperationCode
+    let transactionID: UInt32
+    let error: MTPCoreError
+    let transferredByteCount: UInt64?
+}
+
+typealias MTPTransactionFailureReporter = (MTPTransactionFailureDiagnostic) -> Void
+
+private nonisolated func logMTPTransactionFailure(
+    _ diagnostic: MTPTransactionFailureDiagnostic
+) {
+    let responseCode: UInt16? = if case .response(let code) = diagnostic.error {
+        code.rawValue
+    } else {
+        nil
+    }
+    let responseCodeDescription = responseCode.map(String.init) ?? "none"
+    let transferredByteCountDescription =
+        diagnostic.transferredByteCount.map(String.init) ?? "none"
+    let errorDescription = String(describing: diagnostic.error)
+    if diagnostic.operation == .sendObject {
+        MTPLog.transfer.error(
+            "MTP transaction failed: operation=\(diagnostic.operation.rawValue, privacy: .public), transactionID=\(diagnostic.transactionID, privacy: .public), responseCode=\(responseCodeDescription, privacy: .public), transferredByteCount=\(transferredByteCountDescription, privacy: .public), error=\(errorDescription, privacy: .private(mask: .hash))"
+        )
+    } else {
+        MTPLog.session.error(
+            "MTP transaction failed: operation=\(diagnostic.operation.rawValue, privacy: .public), transactionID=\(diagnostic.transactionID, privacy: .public), responseCode=\(responseCodeDescription, privacy: .public), transferredByteCount=\(transferredByteCountDescription, privacy: .public), error=\(errorDescription, privacy: .private(mask: .hash))"
+        )
+    }
+}
+
 nonisolated struct MTPDownloadResult: Equatable, Sendable {
     let expectedByteCount: UInt64?
     let transferredByteCount: UInt64
@@ -29,6 +61,7 @@ nonisolated final class MTPDeviceSession {
     let transport: any MTPTransport
     private let sessionIDGenerator: () throws -> MTPSessionID
     let reportUploadDiagnostic: MTPUploadDiagnosticReporter
+    private let transactionFailureReporter: MTPTransactionFailureReporter
     private let firstTransactionID: UInt32
     let lock = NSLock()
     var state = State.idle
@@ -44,11 +77,15 @@ nonisolated final class MTPDeviceSession {
                 "Upload compensation outcome for object \($0.objectID.rawValue, privacy: .public): \(String(describing: $0.outcome), privacy: .public)"
             )
         },
+        reportTransactionFailure: @escaping MTPTransactionFailureReporter = {
+            logMTPTransactionFailure($0)
+        },
         firstTransactionID: UInt32 = 1
     ) {
         self.transport = transport
         self.sessionIDGenerator = sessionIDGenerator
         self.reportUploadDiagnostic = reportUploadDiagnostic
+        self.transactionFailureReporter = reportTransactionFailure
         self.firstTransactionID = firstTransactionID
     }
 
@@ -305,17 +342,26 @@ nonisolated final class MTPDeviceSession {
         cancellation: MTPCancellationToken
     ) throws -> MTPTransactionResult {
         let transactionID = try consumeTransactionID()
-        let result = try transact(
-            operation: operation,
-            transactionID: transactionID,
-            parameters: parameters,
-            phase: phase,
-            cancellation: cancellation
-        )
-        guard result.responseCode == .ok else {
-            throw MTPCoreError.response(code: result.responseCode)
+        do {
+            let result = try transact(
+                operation: operation,
+                transactionID: transactionID,
+                parameters: parameters,
+                phase: phase,
+                cancellation: cancellation
+            )
+            guard result.responseCode == .ok else {
+                throw MTPCoreError.response(code: result.responseCode)
+            }
+            return result
+        } catch {
+            recordTransactionFailure(
+                operation: operation,
+                transactionID: transactionID,
+                error: error
+            )
+            throw error
         }
-        return result
     }
 
     func consumeTransactionID() throws -> UInt32 {
@@ -450,6 +496,25 @@ nonisolated final class MTPDeviceSession {
              .permissionDenied, .unsupportedDevice, .localFileIO:
             return false
         }
+    }
+
+    func recordTransactionFailure(
+        operation: MTPOperationCode,
+        transactionID: UInt32,
+        error: Error,
+        transferredByteCount: UInt64? = nil
+    ) {
+        guard let coreError = error as? MTPCoreError else {
+            return
+        }
+        transactionFailureReporter(
+            MTPTransactionFailureDiagnostic(
+                operation: operation,
+                transactionID: transactionID,
+                error: coreError,
+                transferredByteCount: transferredByteCount
+            )
+        )
     }
 
 }

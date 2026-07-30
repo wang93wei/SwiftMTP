@@ -35,12 +35,14 @@ final class ScriptedUploadSource: MTPStreamSource {
 
 func makeUploadSession(
     transport: ScriptedMTPTransport,
-    reporter: @escaping MTPUploadDiagnosticReporter = { _ in }
+    reporter: @escaping MTPUploadDiagnosticReporter = { _ in },
+    transactionReporter: @escaping MTPTransactionFailureReporter = { _ in }
 ) -> MTPDeviceSession {
     MTPDeviceSession(
         transport: transport,
         sessionIDGenerator: { try MTPSessionID(validating: 7) },
-        reportUploadDiagnostic: reporter
+        reportUploadDiagnostic: reporter,
+        reportTransactionFailure: transactionReporter
     )
 }
 

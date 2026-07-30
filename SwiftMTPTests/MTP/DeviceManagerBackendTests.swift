@@ -206,6 +206,132 @@ final class MTPProviderRuntimeTests: XCTestCase {
         XCTAssertEqual(result, backend.scanResult)
         XCTAssertEqual(backend.initializeCount, 1)
     }
+
+    func testScanWaitsForActiveUploadBeforeEnteringScanBackend() throws {
+        let deviceID = try MTPDeviceID(validating: "swift:1:1:2717:ff48")
+        let selectedSnapshot = snapshot(deviceID, name: "Xiaomi")
+        let appDeviceID = UUID()
+        let activeBackend = FakeMTPBackend(providerKind: .swift)
+        let coordinator = MTPConnectionCoordinator(
+            factories: [.swift: { activeBackend }]
+        )
+        try coordinator.register(
+            appDeviceID: appDeviceID,
+            snapshot: selectedSnapshot,
+            providerKind: .swift
+        )
+        try coordinator.selectDevice(appDeviceID)
+        let session = try XCTUnwrap(activeBackend.sessions.first)
+        let uploadStarted = DispatchSemaphore(value: 0)
+        let releaseUpload = DispatchSemaphore(value: 0)
+        session.uploadHandler = { _, _, _ in
+            uploadStarted.signal()
+            releaseUpload.wait()
+        }
+
+        let scanBackend = FakeMTPBackend(providerKind: .swift)
+        let scanEntered = DispatchSemaphore(value: 0)
+        scanBackend.scanResult = MTPScanResult(
+            snapshots: [selectedSnapshot],
+            failures: []
+        )
+        scanBackend.scanHandler = {
+            scanEntered.signal()
+            return scanBackend.scanResult
+        }
+        let runtime = MTPProviderRuntime(
+            providerKind: .swift,
+            scanBackend: scanBackend,
+            coordinator: coordinator
+        )
+        let uploadResult = UncheckedResultBox<Result<Void, Error>>()
+        let scanResult = UncheckedResultBox<Result<MTPScanResult, Error>>()
+        let operations = DispatchGroup()
+
+        operations.enter()
+        DispatchQueue.global().async {
+            defer { operations.leave() }
+            uploadResult.store(
+                Result {
+                    try coordinator.upload(
+                        appDeviceID: appDeviceID,
+                        deviceID: deviceID,
+                        request: MTPUploadRequest(
+                            storageID: try MTPStorageID(validating: 1),
+                            parentID: .root,
+                            sourceURL: URL(fileURLWithPath: "/tmp/source"),
+                            name: "source",
+                            size: 1
+                        ),
+                        progress: { _ in },
+                        cancellation: MTPCancellationToken()
+                    )
+                }
+            )
+        }
+        XCTAssertEqual(uploadStarted.wait(timeout: .now() + 1), .success)
+
+        operations.enter()
+        DispatchQueue.global().async {
+            defer { operations.leave() }
+            scanResult.store(Result { try runtime.scanDevices() })
+        }
+
+        XCTAssertEqual(scanEntered.wait(timeout: .now() + 0.1), .timedOut)
+        releaseUpload.signal()
+        XCTAssertEqual(operations.wait(timeout: .now() + 2), .success)
+        XCTAssertNoThrow(try uploadResult.value?.get())
+        XCTAssertEqual(try scanResult.value?.get(), scanBackend.scanResult)
+    }
+
+    func testScanReusesSelectedSwiftSnapshotWithoutOpeningSecondSession() throws {
+        let deviceID = try MTPDeviceID(validating: "swift:2:1.3:2717:ff48")
+        let selectedSnapshot = snapshot(deviceID, name: "Xiaomi")
+        let appDeviceID = UUID()
+        let activeBackend = FakeMTPBackend(providerKind: .swift)
+        let coordinator = MTPConnectionCoordinator(
+            factories: [.swift: { activeBackend }]
+        )
+        try coordinator.register(
+            appDeviceID: appDeviceID,
+            snapshot: selectedSnapshot,
+            providerKind: .swift
+        )
+        try coordinator.selectDevice(appDeviceID)
+
+        let fakeUSB = FakeLibUSBFunctions()
+        let context = try LibUSBContext(functions: fakeUSB.table, startsEventLoop: false)
+        let candidate = makeCandidate(
+            deviceID: deviceID,
+            raw: 0x401,
+            functions: fakeUSB.table
+        )
+        let scanSession = FakeSwiftDiscoverySession(deviceID: deviceID)
+        let opened = UncheckedResultBox<[MTPDeviceID]>()
+        opened.store([])
+        let scanBackend = SwiftMTPBackend(
+            functions: fakeUSB.table,
+            contextFactory: { context },
+            enumerateCandidates: { _ in [candidate] },
+            makeSession: { _, candidate in
+                var values = opened.value ?? []
+                values.append(candidate.interface.deviceID)
+                opened.store(values)
+                return scanSession
+            }
+        )
+        let runtime = MTPProviderRuntime(
+            providerKind: .swift,
+            scanBackend: scanBackend,
+            coordinator: coordinator
+        )
+
+        let result = try runtime.scanDevices()
+
+        XCTAssertEqual(result.snapshots, [selectedSnapshot])
+        XCTAssertEqual(opened.value, [])
+        XCTAssertEqual(scanSession.closeCount, 0)
+    }
 }
 
 private final class FakeProviderRuntime: MTPProviderRuntimeProtocol, @unchecked Sendable {

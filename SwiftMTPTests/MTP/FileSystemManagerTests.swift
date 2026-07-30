@@ -56,7 +56,7 @@ final class FileSystemManagerTests: XCTestCase {
         XCTAssertEqual(coordinator.listCount, 2)
     }
 
-    func testCreateAndDeleteInvalidateOnlyAfterConfirmedSuccess() async throws {
+    func testCreateInvalidatesOnlyAfterConfirmedSuccess() async throws {
         let coordinator = FakeFileSystemCoordinator()
         let device = try makeDevice()
         let manager = FileSystemManager(coordinator: coordinator)
@@ -84,6 +84,24 @@ final class FileSystemManagerTests: XCTestCase {
         XCTAssertEqual(folderID, try MTPObjectID(validating: 9))
         XCTAssertEqual(coordinator.lastCreateStorageID, try MTPStorageID(validating: 1))
         XCTAssertEqual(coordinator.lastCreateParentID, .root)
+        XCTAssertEqual(coordinator.listCount, 2)
+    }
+
+    func testSingleDeleteFailureInvalidatesDeviceCacheAndPreservesTypedError() async throws {
+        let coordinator = FakeFileSystemCoordinator()
+        let objectID = try MTPObjectID(validating: 3)
+        let expectedError = MTPCoreError.response(code: .generalError)
+        coordinator.deleteErrors[objectID] = expectedError
+        let device = try makeDevice()
+        let manager = FileSystemManager(coordinator: coordinator)
+        _ = try await manager.getRootFiles(for: device)
+
+        await XCTAssertThrowsErrorAsync(expected: expectedError) {
+            try await manager.deleteObject(for: device, objectID: objectID)
+        }
+        _ = try await manager.getRootFiles(for: device)
+
+        XCTAssertEqual(coordinator.deleteCount, 1)
         XCTAssertEqual(coordinator.listCount, 2)
     }
 

@@ -332,7 +332,9 @@ extension FileBrowserView {
                 )
                 await loadFiles()
             } catch {
-                errorMessage = L10n.FileBrowser.operationFailedWithMessage.localized(file.name)
+                await loadFiles()
+                let failure = "\(file.name): \(String(describing: error))"
+                errorMessage = L10n.FileBrowser.operationFailedWithMessage.localized(failure)
                 showingErrorAlert = true
             }
         }

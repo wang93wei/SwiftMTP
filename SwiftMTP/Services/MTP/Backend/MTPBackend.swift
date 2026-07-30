@@ -125,8 +125,19 @@ typealias MTPUploadDiagnosticReporter = (MTPUploadCompensationDiagnostic) -> Voi
 nonisolated protocol MTPBackend {
     func initialize() throws
     func scanDevices() throws -> MTPScanResult
+    func scanDevices(
+        reusing snapshots: [MTPDeviceID: MTPDeviceSnapshot]
+    ) throws -> MTPScanResult
     func openSession(for deviceID: MTPDeviceID) throws -> any MTPBackendSession
     func shutdown()
+}
+
+nonisolated extension MTPBackend {
+    func scanDevices(
+        reusing snapshots: [MTPDeviceID: MTPDeviceSnapshot]
+    ) throws -> MTPScanResult {
+        try scanDevices()
+    }
 }
 
 nonisolated protocol MTPBackendSession: AnyObject {

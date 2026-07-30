@@ -107,7 +107,53 @@ final class MTPUploadSessionTests: XCTestCase {
         }
     }
 
-    func testSendObjectInfoRequiresExactlyThreeMatchingResponseParameters() throws {
+    func testSendObjectInfoAcceptsNormalizedRoutingFieldsAndExtraParameters() throws {
+        let storageID = try MTPStorageID(validating: 1)
+        let objectID = try MTPObjectID(validating: 9)
+        let transport = try uploadTransport(
+            storageID: storageID,
+            objectID: objectID,
+            name: "normalized.bin",
+            size: 0,
+            sendStep: .init(
+                expectedRequest: scriptedMTPCommand(operation: .sendObject, tid: 2),
+                expectedDataHeader: MTPStreamingDataHeader(
+                    operationCode: .sendObject,
+                    transactionID: MTPTransactionID(validating: 2),
+                    payloadLength: 0
+                ),
+                expectedSourceLength: 0,
+                result: .success(
+                    MTPStreamingTransactionResult(
+                        responseCode: .ok,
+                        responseParameters: [],
+                        transferredByteCount: 0
+                    )
+                )
+            ),
+            closingTransactionID: 3,
+            sendObjectInfoResponseParameters: [0, 0, objectID.rawValue, 0xABCD]
+        )
+        let session = makeUploadSession(transport: transport)
+
+        try session.open()
+        let result = try session.upload(
+            storageID: storageID,
+            parentID: .root,
+            name: "normalized.bin",
+            size: 0,
+            modificationDateString: "",
+            source: ScriptedUploadSource(length: 0, chunks: []),
+            progress: { _ in },
+            cancellation: MTPCancellationToken()
+        )
+        session.close()
+
+        XCTAssertEqual(result.objectID, objectID)
+        try transport.verifyConsumed()
+    }
+
+    func testSendObjectInfoRequiresAtLeastThreeResponseParameters() throws {
         let storageID = try MTPStorageID(validating: 1)
         let transport = ScriptedMTPTransport(
             steps: [
@@ -159,7 +205,8 @@ final class MTPUploadSessionTests: XCTestCase {
         name: String,
         size: UInt64,
         sendStep: ScriptedMTPTransport.SendStep,
-        closingTransactionID: UInt32
+        closingTransactionID: UInt32,
+        sendObjectInfoResponseParameters: [UInt32]? = nil
     ) throws -> ScriptedMTPTransport {
         ScriptedMTPTransport(
             steps: [
@@ -173,7 +220,7 @@ final class MTPUploadSessionTests: XCTestCase {
                     storageID: storageID,
                     name: name,
                     size: size,
-                    responseParameters: [
+                    responseParameters: sendObjectInfoResponseParameters ?? [
                         storageID.rawValue,
                         MTPObjectID.root.rawValue,
                         objectID.rawValue,

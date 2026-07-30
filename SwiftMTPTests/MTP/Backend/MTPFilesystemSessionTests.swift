@@ -2,6 +2,45 @@ import XCTest
 @testable import SwiftMTP
 
 final class MTPFilesystemSessionTests: XCTestCase {
+    func testOrdinaryResponseFailureReportsOperationTransactionAndCodeOnce() throws {
+        let storageID = try MTPStorageID(validating: 1)
+        var diagnostics: [MTPTransactionFailureDiagnostic] = []
+        let transport = ScriptedMTPTransport(steps: [
+            step(.openSession, tid: 0, parameters: [7], response: scriptedMTPResponse(.ok, tid: 0)),
+            step(
+                .getStorageInfo,
+                tid: 1,
+                parameters: [storageID.rawValue],
+                response: scriptedMTPResponse(.generalError, tid: 1)
+            ),
+            step(.closeSession, tid: 2, response: scriptedMTPResponse(.ok, tid: 2)),
+        ])
+        let session = MTPDeviceSession(
+            transport: transport,
+            sessionIDGenerator: { try MTPSessionID(validating: 7) },
+            reportTransactionFailure: { diagnostics.append($0) }
+        )
+
+        try session.open()
+        XCTAssertThrowsError(try session.getStorageInfo(storageID)) {
+            XCTAssertEqual($0 as? MTPCoreError, .response(code: .generalError))
+        }
+        session.close()
+
+        XCTAssertEqual(
+            diagnostics,
+            [
+                MTPTransactionFailureDiagnostic(
+                    operation: .getStorageInfo,
+                    transactionID: 1,
+                    error: .response(code: .generalError),
+                    transferredByteCount: nil
+                ),
+            ]
+        )
+        XCTAssertNoThrow(try transport.verifyConsumed())
+    }
+
     func testHandlesInfoCreateAndDeleteUseExactTransactionsAndResponseParameters() throws {
         let sessionID = try MTPSessionID(validating: 7)
         let storageID = try MTPStorageID(validating: 0x0001_0001)

@@ -2,6 +2,59 @@ import XCTest
 @testable import SwiftMTP
 
 final class MTPUploadCompensationSessionTests: XCTestCase {
+    func testSendObjectResponseFailureReportsTransactionAndTransferredBytesOnce() throws {
+        let storageID = try MTPStorageID(validating: 1)
+        let objectID = try MTPObjectID(validating: 9)
+        var transactionDiagnostics: [MTPTransactionFailureDiagnostic] = []
+        let transport = try makeUploadFailureTransport(
+            storageID: storageID,
+            objectID: objectID,
+            sendResult: .success(
+                MTPStreamingTransactionResult(
+                    responseCode: .generalError,
+                    responseParameters: [],
+                    transferredByteCount: 1
+                )
+            ),
+            cleanupResponse: .ok,
+            includeClose: true
+        )
+        let session = makeUploadSession(
+            transport: transport,
+            transactionReporter: { transactionDiagnostics.append($0) }
+        )
+
+        try session.open()
+        XCTAssertThrowsError(
+            try session.upload(
+                storageID: storageID,
+                parentID: .root,
+                name: "failure.bin",
+                size: 1,
+                modificationDateString: "",
+                source: ScriptedUploadSource(length: 1, chunks: [Data([1])]),
+                progress: { _ in },
+                cancellation: MTPCancellationToken()
+            )
+        ) {
+            XCTAssertEqual($0 as? MTPCoreError, .response(code: .generalError))
+        }
+        session.close()
+
+        XCTAssertEqual(
+            transactionDiagnostics,
+            [
+                MTPTransactionFailureDiagnostic(
+                    operation: .sendObject,
+                    transactionID: 2,
+                    error: .response(code: .generalError),
+                    transferredByteCount: 1
+                ),
+            ]
+        )
+        try transport.verifyConsumed()
+    }
+
     func testOrdinarySendFailureDeletesOrphanAndPreservesPrimaryError() throws {
         let storageID = try MTPStorageID(validating: 1)
         let objectID = try MTPObjectID(validating: 9)

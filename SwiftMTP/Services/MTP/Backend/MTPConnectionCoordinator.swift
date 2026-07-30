@@ -196,6 +196,25 @@ nonisolated final class MTPConnectionCoordinator: @unchecked Sendable {
         }
     }
 
+    /// Serializes discovery with active session operations and exposes the
+    /// selected snapshot so scanning never opens a competing MTP session.
+    func withExclusiveScanAccess<T>(
+        providerKind: MTPProviderKind,
+        operation: ([MTPDeviceID: MTPDeviceSnapshot]) throws -> T
+    ) rethrows -> T {
+        try lock.withLock {
+            let reusableSnapshots: [MTPDeviceID: MTPDeviceSnapshot]
+            if let active,
+               active.registration.providerKind == providerKind {
+                let snapshot = active.registration.snapshot
+                reusableSnapshots = [snapshot.deviceID: snapshot]
+            } else {
+                reusableSnapshots = [:]
+            }
+            return try operation(reusableSnapshots)
+        }
+    }
+
     func close() {
         lock.withLock {
             closeActiveLocked()

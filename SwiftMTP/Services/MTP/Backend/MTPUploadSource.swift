@@ -146,7 +146,7 @@ private nonisolated final class MTPFileUploadSource: MTPUploadSource {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
+        formatter.dateFormat = "yyyyMMdd'T'HHmmss"
         return formatter.string(from: date)
     }
 }

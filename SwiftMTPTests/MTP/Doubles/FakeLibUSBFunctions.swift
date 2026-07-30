@@ -27,6 +27,10 @@ final class FakeLibUSBFunctions: @unchecked Sendable {
         lock.withLock { recordedTransferFlags }
     }
 
+    var submittedOutboundData: [Data] {
+        lock.withLock { recordedOutboundData }
+    }
+
     var currentConfiguration: Int32 = 0
     var setConfigurationCode: Int32 = 0
     var claimCode: Int32 = 0
@@ -39,6 +43,7 @@ final class FakeLibUSBFunctions: @unchecked Sendable {
     var scriptedTransferBehaviors: [TransferBehavior] = []
     private var recordedEvents: [String] = []
     private var recordedTransferFlags: [UInt8] = []
+    private var recordedOutboundData: [Data] = []
 
     var table: LibUSBFunctionTable {
         LibUSBFunctionTable(
@@ -98,6 +103,14 @@ final class FakeLibUSBFunctions: @unchecked Sendable {
                 self.record("submitTransfer")
                 self.lock.withLock {
                     self.recordedTransferFlags.append(transfer.pointee.flags)
+                    let isOutput = transfer.pointee.endpoint & 0x80 == 0
+                    if isOutput,
+                       transfer.pointee.length > 0,
+                       let buffer = transfer.pointee.buffer {
+                        self.recordedOutboundData.append(
+                            Data(bytes: buffer, count: Int(transfer.pointee.length))
+                        )
+                    }
                 }
                 if self.blockSubmit {
                     self.allowSubmit.wait()

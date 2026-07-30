@@ -343,7 +343,7 @@ struct FileBrowserView: View {
                 }
                 .buttonStyle(.borderless)
 
-                ForEach(Array(currentPath.enumerated()), id: \.element.id) { index, item in
+                ForEach(Array(currentPath.enumerated()), id: \.offset) { index, item in
                     Image(systemName: "chevron.right")
                         .tint(.secondary)
                         .font(.caption)
@@ -425,6 +425,10 @@ struct FileBrowserView: View {
     
     func navigateInto(_ folder: FileItem) {
         Task {
+            guard currentPath.last?.storageID != folder.storageID
+                    || currentPath.last?.objectID != folder.objectID else {
+                return
+            }
             currentPath.append(folder)
             await loadFiles()
         }

@@ -119,6 +119,12 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
     }
 
     func scanDevices() throws -> MTPScanResult {
+        try scanDevices(reusing: [:])
+    }
+
+    func scanDevices(
+        reusing reusableSnapshots: [MTPDeviceID: MTPDeviceSnapshot]
+    ) throws -> MTPScanResult {
         let context = try currentContext()
         let candidates = try enumerateCandidates(context)
         var snapshots: [MTPDeviceSnapshot] = []
@@ -126,6 +132,13 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
 
         for candidate in candidates {
             let deviceID = candidate.interface.deviceID
+            if let reusableSnapshot = reusableSnapshots[deviceID] {
+                MTPLog.session.debug(
+                    "Skipping duplicate scan session for active device \(deviceID.rawValue, privacy: .private(mask: .hash))"
+                )
+                snapshots.append(reusableSnapshot)
+                continue
+            }
             do {
                 let session = try makeSession(context, candidate)
                 defer { session.close() }

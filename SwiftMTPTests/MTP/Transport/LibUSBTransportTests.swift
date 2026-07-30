@@ -193,7 +193,6 @@ final class LibUSBTransportTests: XCTestCase {
         ).encoded()
         fake.scriptedTransferBehaviors = [
             .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
-            .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
             .deferred,
             .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
             .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: response),
@@ -221,7 +220,7 @@ final class LibUSBTransportTests: XCTestCase {
         }
 
         XCTAssertTrue(fake.waitForPendingTransferCount(1))
-        XCTAssertEqual(fake.events.filter { $0 == "submitTransfer" }.count, 3)
+        XCTAssertEqual(fake.events.filter { $0 == "submitTransfer" }.count, 2)
         fake.completeNext()
         XCTAssertEqual(finished.wait(timeout: .now() + 1), .success)
         XCTAssertEqual(try result.value?.get().transferredByteCount, 4)
@@ -265,6 +264,55 @@ final class LibUSBTransportTests: XCTestCase {
             fake.submittedTransferFlags.prefix(3),
             [0, 0, UInt8(LIBUSB_TRANSFER_ADD_ZERO_PACKET.rawValue)]
         )
+        handle.close()
+        context.shutdown()
+    }
+
+    func testKnownLengthStreamingOutboundStartsWithOneEndpointPacket() throws {
+        let fake = FakeLibUSBFunctions()
+        let context = try LibUSBContext(functions: fake.table, startsEventLoop: false)
+        let handle = try makeTestLibUSBDeviceHandle(context: context, functions: fake.table)
+        let transactionID = try MTPTransactionID(validating: 29)
+        let header = MTPStreamingDataHeader(
+            operationCode: .sendObject,
+            transactionID: transactionID,
+            payloadLength: 600
+        )
+        let response = try MTPContainer(
+            type: .response,
+            code: MTPResponseCode.ok.rawValue,
+            transactionID: transactionID,
+            payload: Data()
+        ).encoded()
+        fake.scriptedTransferBehaviors = [
+            .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
+            .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
+            .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
+            .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: response),
+        ]
+        let transport = LibUSBTransport(handle: handle, functions: fake.table, readCapacity: 1_024)
+        let payload = Data((0..<600).map { UInt8(truncatingIfNeeded: $0) })
+        let source = BufferedMTPStreamSource(data: payload)
+
+        _ = try transport.send(
+            Data(repeating: 0xA5, count: 12),
+            dataHeader: header,
+            source: source,
+            cancellation: MTPCancellationToken()
+        )
+
+        XCTAssertEqual(source.requestedMaximumLengths, [500, 100, 1])
+        XCTAssertEqual(fake.submittedOutboundData.count, 3)
+        if fake.submittedOutboundData.count == 3 {
+            XCTAssertEqual(fake.submittedOutboundData[1], header.encoded() + payload.prefix(500))
+            XCTAssertEqual(fake.submittedOutboundData[1].count, 512)
+            XCTAssertEqual(fake.submittedOutboundData[2], Data(payload.suffix(100)))
+            XCTAssertEqual(fake.submittedTransferFlags[1], 0)
+            XCTAssertEqual(
+                fake.submittedTransferFlags[2],
+                UInt8(LIBUSB_TRANSFER_ADD_ZERO_PACKET.rawValue)
+            )
+        }
         handle.close()
         context.shutdown()
     }
@@ -346,7 +394,6 @@ final class LibUSBTransportTests: XCTestCase {
         fake.scriptedTransferBehaviors = [
             .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
             .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
-            .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
         ]
         let transport = LibUSBTransport(handle: handle, functions: fake.table, readCapacity: 64)
 
@@ -366,7 +413,7 @@ final class LibUSBTransportTests: XCTestCase {
                 return XCTFail("expected protocol violation, got \($0)")
             }
         }
-        XCTAssertEqual(fake.events.filter { $0 == "submitTransfer" }.count, 3)
+        XCTAssertEqual(fake.events.filter { $0 == "submitTransfer" }.count, 2)
         handle.close()
         context.shutdown()
     }
@@ -377,7 +424,6 @@ final class LibUSBTransportTests: XCTestCase {
         let handle = try makeTestLibUSBDeviceHandle(context: context, functions: fake.table)
         let transactionID = try MTPTransactionID(validating: 28)
         fake.scriptedTransferBehaviors = [
-            .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
             .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
             .immediate(status: LIBUSB_TRANSFER_COMPLETED, data: Data()),
         ]
@@ -402,7 +448,7 @@ final class LibUSBTransportTests: XCTestCase {
                 return XCTFail("expected protocol violation, got \($0)")
             }
         }
-        XCTAssertEqual(fake.events.filter { $0 == "submitTransfer" }.count, 3)
+        XCTAssertEqual(fake.events.filter { $0 == "submitTransfer" }.count, 2)
         handle.close()
         context.shutdown()
     }
@@ -437,6 +483,35 @@ private final class ArrayMTPStreamSource: MTPStreamSource, @unchecked Sendable {
                 throw MTPCoreError.protocolViolation("test source chunk exceeds requested length")
             }
             return chunk
+        }
+    }
+}
+
+private final class BufferedMTPStreamSource: MTPStreamSource, @unchecked Sendable {
+    let length: UInt64?
+    private let lock = NSLock()
+    private let data: Data
+    private var offset = 0
+    private var requestedLengths: [Int] = []
+
+    init(data: Data) {
+        self.data = data
+        self.length = UInt64(data.count)
+    }
+
+    var requestedMaximumLengths: [Int] {
+        lock.withLock { requestedLengths }
+    }
+
+    func read(maximumLength: Int) throws -> Data {
+        lock.withLock {
+            requestedLengths.append(maximumLength)
+            guard offset < data.count else {
+                return Data()
+            }
+            let count = min(maximumLength, data.count - offset)
+            defer { offset += count }
+            return data.subdata(in: offset..<(offset + count))
         }
     }
 }

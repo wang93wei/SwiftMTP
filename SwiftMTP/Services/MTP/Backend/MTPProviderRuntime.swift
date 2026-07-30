@@ -50,7 +50,11 @@ nonisolated final class MTPProviderRuntime: MTPProviderRuntimeProtocol, @uncheck
                 try scanBackend.initialize()
                 scanBackendInitialized = true
             }
-            return try scanBackend.scanDevices()
+            return try coordinator.withExclusiveScanAccess(
+                providerKind: providerKind
+            ) { reusableSnapshots in
+                try scanBackend.scanDevices(reusing: reusableSnapshots)
+            }
         }
     }
 }

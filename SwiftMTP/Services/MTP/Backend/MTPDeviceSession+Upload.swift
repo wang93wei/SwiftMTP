@@ -69,13 +69,11 @@ nonisolated extension MTPDeviceSession {
             }
             throw error
         }
-        guard result.responseParameters.count == 3,
-              result.responseParameters[0] == storageID.rawValue,
-              result.responseParameters[1] == parentID.rawValue,
+        guard result.responseParameters.count >= 3,
               result.responseParameters[2] != 0 else {
             state = .invalid
             throw MTPCoreError.protocolViolation(
-                "SendObjectInfo response must contain matching storage, parent, and object"
+                "SendObjectInfo response must contain a nonzero object handle"
             )
         }
         return try MTPObjectID(validating: result.responseParameters[2])

@@ -417,6 +417,9 @@ remains unchanged only for the un-migrated transfer compatibility path.
 - Cache keys include app UUID, provider/device identity, storage, and parent.
   Only successful listings are cached; confirmed mutations invalidate after
   success, and a generation prevents late responses from repopulating cache.
+  A submitted single-object delete that fails invalidates only the selected
+  device cache before rethrowing the typed error, because the listed handle may
+  already be stale. The mutation is never replayed automatically.
 - `Scripts/build_kalam.sh` builds with vendored Go dependencies and the
   repository-pinned `SwiftMTP/libusb-1.0.dylib` and CLibUSB header. It must not
   replace them with a local Homebrew libusb.
@@ -432,7 +435,8 @@ remains unchanged only for the un-migrated transfer compatibility path.
 | `sessionNotOpen` / `invalidTransactionID` during batch delete | stop the batch, invalidate the active session, and throw |
 | Create/delete response is ambiguous or failed | throw; never replay mutation |
 | Successful create/delete | invalidate the affected device cache once |
-| Failed create/delete | preserve current cache |
+| Failed create | preserve current cache |
+| Failed single-object delete | invalidate the selected device cache, rethrow the typed error, and never retry |
 | Cleanup races an operation | wait for the operation lock; dispose once |
 
 ### 5. Good / Base / Bad Cases

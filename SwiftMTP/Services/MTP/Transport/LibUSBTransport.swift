@@ -157,13 +157,9 @@ nonisolated final class LibUSBTransport: MTPTransport, @unchecked Sendable {
             try write(request, label: "command", cancellation: cancellation)
             let transferredByteCount: UInt64
             if let payloadLength = dataHeader.payloadLength {
-                try write(
-                    dataHeader.encoded(),
-                    label: "streaming data header",
-                    cancellation: cancellation
-                )
                 transferredByteCount = try writeExactStream(
                     source,
+                    header: dataHeader.encoded(),
                     payloadLength: payloadLength,
                     cancellation: cancellation
                 )
@@ -230,10 +226,54 @@ nonisolated final class LibUSBTransport: MTPTransport, @unchecked Sendable {
 
     private func writeExactStream(
         _ source: any MTPStreamSource,
+        header: Data,
         payloadLength: UInt64,
         cancellation: MTPCancellationToken
     ) throws -> UInt64 {
-        var transferredByteCount: UInt64 = 0
+        if payloadLength == 0 {
+            guard try source.read(maximumLength: 1).isEmpty else {
+                throw MTPCoreError.protocolViolation("stream source payload overrun")
+            }
+            try write(
+                header,
+                label: "streaming data header",
+                addZeroPacket: true,
+                cancellation: cancellation
+            )
+            return 0
+        }
+
+        let packetSize = Int(handle.interface.bulkOutEndpoint.maxPacketSize)
+        let firstPayloadCapacity = packetSize - header.count
+        guard firstPayloadCapacity > 0 else {
+            throw MTPCoreError.protocolViolation(
+                "bulk-out packet is too small for the MTP data header"
+            )
+        }
+
+        try cancellation.throwIfCancelled()
+        let firstMaximumLength = Int(
+            min(UInt64(firstPayloadCapacity), payloadLength)
+        )
+        let firstChunk = try readSourceChunk(
+            source,
+            maximumLength: firstMaximumLength
+        )
+        guard !firstChunk.isEmpty else {
+            throw MTPCoreError.protocolViolation(
+                "stream source ended before its declared length"
+            )
+        }
+        var firstTransfer = header
+        firstTransfer.append(firstChunk)
+        var transferredByteCount = UInt64(firstChunk.count)
+        try write(
+            firstTransfer,
+            label: "streaming data header and first packet",
+            addZeroPacket: transferredByteCount == payloadLength,
+            cancellation: cancellation
+        )
+
         while transferredByteCount < payloadLength {
             try cancellation.throwIfCancelled()
             let remaining = payloadLength - transferredByteCount
@@ -244,8 +284,13 @@ nonisolated final class LibUSBTransport: MTPTransport, @unchecked Sendable {
                     "stream source ended before its declared length"
                 )
             }
-            try write(chunk, label: "streaming data chunk", cancellation: cancellation)
             transferredByteCount += UInt64(chunk.count)
+            try write(
+                chunk,
+                label: "streaming data chunk",
+                addZeroPacket: transferredByteCount == payloadLength,
+                cancellation: cancellation
+            )
         }
         guard try source.read(maximumLength: 1).isEmpty else {
             throw MTPCoreError.protocolViolation("stream source payload overrun")
