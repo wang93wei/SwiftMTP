@@ -17,6 +17,7 @@ import (
 type Device struct {
 	h   *usb.DeviceHandle
 	dev *usb.Device
+	ctx *usb.Context
 
 	claimed bool
 
@@ -127,8 +128,14 @@ func (d *Device) Close() error {
 
 // Done releases the libusb device reference.
 func (d *Device) Done() {
-	d.dev.Unref()
-	d.dev = nil
+	if d.dev != nil {
+		d.dev.Unref()
+		d.dev = nil
+	}
+	if d.ctx != nil {
+		d.ctx.Exit()
+		d.ctx = nil
+	}
 }
 
 // Claims the USB interface of the device.

@@ -148,7 +148,7 @@ func (m *mtpDeviceManager) Scan() ([]DeviceJSON, error) {
 		}
 
 		d := DeviceJSON{
-			ID:           1,
+			ID:           "",
 			Name:         deviceName,
 			Manufacturer: info.Manufacturer,
 			Model:        info.Model,
@@ -400,7 +400,7 @@ type MTPSupportJSON struct {
 }
 
 type DeviceJSON struct {
-	ID           int            `json:"id"`
+	ID           string         `json:"id"`
 	Name         string         `json:"name"`
 	Manufacturer string         `json:"manufacturer"`
 	Model        string         `json:"model"`

@@ -61,8 +61,9 @@ type Config struct {
 	}
 }
 
-// DefaultConfig returns the default configuration
-func DefaultConfig() *Config {
+// defaultConfig returns defaults that do not inspect the live environment.
+// Kalam_Init loads environment-backed values explicitly for each runtime generation.
+func defaultConfig() *Config {
 	cfg := &Config{}
 
 	// Timeout settings
@@ -93,12 +94,16 @@ func DefaultConfig() *Config {
 	cfg.FileSize.LargeThreshold = 100 * 1024 * 1024 // 100MB
 	cfg.FileSize.MaxSize = 10 * 1024 * 1024 * 1024  // 10GB
 
-	// Download settings
-	cfg.Download.DefaultDir = getDefaultDownloadDir()
-
 	// Retry settings
 	cfg.Retry.MaxConsecutiveFailures = 3
 
+	return cfg
+}
+
+// DefaultConfig returns the default configuration for a new runtime generation.
+func DefaultConfig() *Config {
+	cfg := defaultConfig()
+	cfg.Download.DefaultDir = getDefaultDownloadDir()
 	return cfg
 }
 
@@ -114,8 +119,9 @@ func LoadConfig() *Config {
 	return cfg
 }
 
-// Global configuration instance
-var cfg = LoadConfig()
+// cfg starts with environment-independent safety defaults. Kalam_Init replaces it
+// with the live configuration before admitting bridge operations.
+var cfg = defaultConfig()
 
 // getDefaultDownloadDir returns the default download directory for the current user
 func getDefaultDownloadDir() string {

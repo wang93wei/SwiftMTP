@@ -9,10 +9,13 @@ import Foundation
 
 struct StorageInfo: Identifiable, Codable, Sendable {
     let id: UUID
-    let storageId: UInt32
+    let storageID: MTPStorageID
     let maxCapacity: UInt64
     let freeSpace: UInt64
     let description: String
+
+    /// Raw projection retained only for the not-yet-migrated transfer boundary.
+    var storageId: UInt32 { storageID.rawValue }
     
     var usedSpace: UInt64 {
         maxCapacity - freeSpace
@@ -23,12 +26,69 @@ struct StorageInfo: Identifiable, Codable, Sendable {
         return Double(usedSpace) / Double(maxCapacity) * 100
     }
     
-    init(id: UUID = UUID(), storageId: UInt32, maxCapacity: UInt64, freeSpace: UInt64, description: String) {
+    init(
+        id: UUID = UUID(),
+        storageID: MTPStorageID,
+        maxCapacity: UInt64,
+        freeSpace: UInt64,
+        description: String
+    ) {
         self.id = id
-        self.storageId = storageId
+        self.storageID = storageID
         self.maxCapacity = maxCapacity
         self.freeSpace = freeSpace
         self.description = description
+    }
+
+    init(
+        id: UUID = UUID(),
+        storageId: UInt32,
+        maxCapacity: UInt64,
+        freeSpace: UInt64,
+        description: String
+    ) {
+        self.init(
+            id: id,
+            storageID: MTPStorageID(rawValue: storageId),
+            maxCapacity: maxCapacity,
+            freeSpace: freeSpace,
+            description: description
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case storageID = "storageId"
+        case maxCapacity
+        case freeSpace
+        case description
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        let rawStorageID = try container.decode(UInt32.self, forKey: .storageID)
+        do {
+            storageID = try MTPStorageID(validating: rawStorageID)
+        } catch {
+            throw DecodingError.dataCorruptedError(
+                forKey: .storageID,
+                in: container,
+                debugDescription: "MTP storage ID must be non-zero"
+            )
+        }
+        maxCapacity = try container.decode(UInt64.self, forKey: .maxCapacity)
+        freeSpace = try container.decode(UInt64.self, forKey: .freeSpace)
+        description = try container.decode(String.self, forKey: .description)
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(storageID.rawValue, forKey: .storageID)
+        try container.encode(maxCapacity, forKey: .maxCapacity)
+        try container.encode(freeSpace, forKey: .freeSpace)
+        try container.encode(description, forKey: .description)
     }
 }
 
@@ -49,6 +109,7 @@ struct MTPSupportInfo: Identifiable, Codable, Sendable {
 struct Device: Identifiable, Hashable, Sendable {
     let id: UUID
     let deviceIndex: Int
+    let mtpIdentity: MTPDeviceIdentity
     let name: String
     let manufacturer: String
     let model: String
@@ -58,12 +119,14 @@ struct Device: Identifiable, Hashable, Sendable {
     var mtpSupportInfo: MTPSupportInfo?
     var isConnected: Bool
     
-    init(id: UUID = UUID(), deviceIndex: Int, name: String, manufacturer: String, 
+    init(id: UUID = UUID(), deviceIndex: Int, mtpIdentity: MTPDeviceIdentity,
+         name: String, manufacturer: String,
          model: String, serialNumber: String, batteryLevel: Int?, 
          storageInfo: [StorageInfo] = [], mtpSupportInfo: MTPSupportInfo? = nil,
          isConnected: Bool = true) {
         self.id = id
         self.deviceIndex = deviceIndex
+        self.mtpIdentity = mtpIdentity
         self.name = name
         self.manufacturer = manufacturer
         self.model = model
@@ -115,13 +178,22 @@ struct Device: Identifiable, Hashable, Sendable {
     /// 用于 SwiftUI Preview 的示例设备
     static let preview = Device(
         deviceIndex: 0,
+        mtpIdentity: MTPDeviceIdentity(
+            providerKind: .go,
+            deviceID: MTPDeviceID(rawValue: "go:1:1:18d1:4ee1")
+        ),
         name: "Pixel 7",
         manufacturer: "Google",
         model: "Pixel 7",
         serialNumber: "ABC123",
         batteryLevel: nil,
         storageInfo: [
-            StorageInfo(storageId: 1, maxCapacity: 128_000_000_000, freeSpace: 32_000_000_000, description: "内部存储")
+            StorageInfo(
+                storageID: MTPStorageID(rawValue: 1),
+                maxCapacity: 128_000_000_000,
+                freeSpace: 32_000_000_000,
+                description: "内部存储"
+            )
         ],
         mtpSupportInfo: MTPSupportInfo(
             mtpVersion: "1.0",

@@ -9,9 +9,9 @@ import Foundation
 
 struct FileItem: Identifiable, Hashable, Comparable, Sendable {
     let id: UUID
-    let objectId: UInt32
-    let parentId: UInt32
-    let storageId: UInt32
+    let objectID: MTPObjectID
+    let parentID: MTPObjectID
+    let storageID: MTPStorageID
     let name: String
     let path: String
     let size: UInt64
@@ -19,18 +19,33 @@ struct FileItem: Identifiable, Hashable, Comparable, Sendable {
     let isDirectory: Bool
     let fileType: String
     var children: [FileItem]?
+
+    /// Raw projections retained only for the not-yet-migrated transfer boundary.
+    var objectId: UInt32 { objectID.rawValue }
+    var parentId: UInt32 { parentID.rawValue }
+    var storageId: UInt32 { storageID.rawValue }
     
-    nonisolated init(id: UUID = UUID(), objectId: UInt32, parentId: UInt32, storageId: UInt32,
-         name: String, path: String, size: UInt64, modifiedDate: Date?,
-         isDirectory: Bool, fileType: String = "", children: [FileItem]? = nil) {
+    nonisolated init(
+        id: UUID = UUID(),
+        objectID: MTPObjectID,
+        parentID: MTPObjectID,
+        storageID: MTPStorageID,
+        name: String,
+        path: String,
+        size: UInt64,
+        modifiedDate: Date?,
+        isDirectory: Bool,
+        fileType: String = "",
+        children: [FileItem]? = nil
+    ) {
         // Validate name
         let safeName = name.isEmpty ? "Unknown" : name
         self.name = safeName
 
         self.id = id
-        self.objectId = objectId
-        self.parentId = parentId
-        self.storageId = storageId
+        self.objectID = objectID
+        self.parentID = parentID
+        self.storageID = storageID
         self.path = path
         self.size = size
         self.modifiedDate = modifiedDate
@@ -117,11 +132,11 @@ struct FileItem: Identifiable, Hashable, Comparable, Sendable {
     // Hashable conformance
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
-        hasher.combine(objectId)
+        hasher.combine(objectID)
     }
     
     static func == (lhs: FileItem, rhs: FileItem) -> Bool {
-        lhs.id == rhs.id && lhs.objectId == rhs.objectId
+        lhs.id == rhs.id && lhs.objectID == rhs.objectID
     }
     
     // Comparable conformance (default sorting by name)

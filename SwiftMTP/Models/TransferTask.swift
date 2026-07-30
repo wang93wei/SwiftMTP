@@ -32,6 +32,7 @@ enum TransferStatus: Codable, Equatable, Sendable {
     case transferring      // 传输中
     case paused           // 已暂停
     case completed        // 已完成
+    case partial(String)  // 部分完成（包含摘要）
     case failed(String)   // 失败（包含错误信息）
     case cancelled        // 已取消
     
@@ -42,6 +43,7 @@ enum TransferStatus: Codable, Equatable, Sendable {
         case .transferring: return L10n.FileTransfer.statusTransferring
         case .paused: return L10n.FileTransfer.statusPaused
         case .completed: return L10n.FileTransfer.statusCompleted
+        case .partial(let summary): return summary
         case .failed(let error): return L10n.FileTransfer.statusFailed.localized(error)
         case .cancelled: return L10n.FileTransfer.statusCancelled
         }
@@ -87,7 +89,7 @@ class TransferTask: Identifiable, ObservableObject {
     let destinationPath: String
     
     /// 文件总大小（字节）
-    let totalSize: UInt64
+    @Published private(set) var totalSize: UInt64
     
     /// 已传输大小（字节）
     @Published var transferredSize: UInt64 = 0
@@ -103,6 +105,9 @@ class TransferTask: Identifiable, ObservableObject {
     
     /// 传输结束时间
     @Published var endTime: Date?
+
+    /// Typed directory result. `nil` for single-file tasks and active directory tasks.
+    @Published private(set) var directoryUploadResult: MTPDirectoryUploadResult?
     
     // MARK: - 私有属性
     
@@ -182,6 +187,14 @@ class TransferTask: Identifiable, ObservableObject {
         self.transferredSize = transferred
         self.speed = speed
     }
+
+    func updateTotalSize(_ totalSize: UInt64) {
+        self.totalSize = totalSize
+    }
+
+    func updateDirectoryUploadResult(_ result: MTPDirectoryUploadResult) {
+        directoryUploadResult = result
+    }
     
     /// 更新传输状态
     /// - Parameter newStatus: 新的传输状态
@@ -194,7 +207,7 @@ class TransferTask: Identifiable, ObservableObject {
             if self.startTime == nil {
                 self.startTime = Date()
             }
-        case .completed, .failed, .cancelled:
+        case .completed, .partial, .failed, .cancelled:
             self.endTime = Date()
         default:
             break

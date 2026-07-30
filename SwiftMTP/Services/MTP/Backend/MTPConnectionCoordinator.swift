@@ -2,7 +2,7 @@ import Foundation
 
 /// Maps the app-facing UUID to one immutable provider + transport snapshot and
 /// owns at most one open backend session.
-nonisolated final class MTPConnectionCoordinator {
+nonisolated final class MTPConnectionCoordinator: @unchecked Sendable {
     typealias BackendFactory = () -> any MTPBackend
 
     private struct Registration {
@@ -95,13 +95,104 @@ nonisolated final class MTPConnectionCoordinator {
         appDeviceID: UUID,
         deviceID: MTPDeviceID,
         storageID: MTPStorageID
-    ) throws {
+    ) throws -> MTPStorage {
         try lock.withLock {
-            let session = try sessionLocked(
+            try withActiveSessionLocked(
                 appDeviceID: appDeviceID,
                 deviceID: deviceID
-            )
-            try session.refreshStorage(storageID)
+            ) {
+                try $0.refreshStorage(storageID)
+            }
+        }
+    }
+
+    func listObjects(
+        appDeviceID: UUID,
+        deviceID: MTPDeviceID,
+        storageID: MTPStorageID,
+        parentID: MTPObjectID
+    ) throws -> MTPDirectoryListing {
+        try lock.withLock {
+            try withActiveSessionLocked(
+                appDeviceID: appDeviceID,
+                deviceID: deviceID
+            ) {
+                try $0.listObjects(storageID: storageID, parentID: parentID)
+            }
+        }
+    }
+
+    func createFolder(
+        appDeviceID: UUID,
+        deviceID: MTPDeviceID,
+        storageID: MTPStorageID,
+        parentID: MTPObjectID,
+        name: String
+    ) throws -> MTPObjectID {
+        try lock.withLock {
+            try withActiveSessionLocked(
+                appDeviceID: appDeviceID,
+                deviceID: deviceID
+            ) {
+                try $0.createFolder(storageID: storageID, parentID: parentID, name: name)
+            }
+        }
+    }
+
+    func deleteObject(
+        appDeviceID: UUID,
+        deviceID: MTPDeviceID,
+        objectID: MTPObjectID
+    ) throws {
+        try lock.withLock {
+            try withActiveSessionLocked(
+                appDeviceID: appDeviceID,
+                deviceID: deviceID
+            ) {
+                try $0.deleteObject(objectID)
+            }
+        }
+    }
+
+    func download(
+        appDeviceID: UUID,
+        deviceID: MTPDeviceID,
+        request: MTPDownloadRequest,
+        progress: @escaping MTPTransferProgress,
+        cancellation: MTPCancellationToken
+    ) throws {
+        try lock.withLock {
+            try withActiveSessionLocked(
+                appDeviceID: appDeviceID,
+                deviceID: deviceID
+            ) {
+                try $0.download(
+                    request,
+                    progress: progress,
+                    cancellation: cancellation
+                )
+            }
+        }
+    }
+
+    func upload(
+        appDeviceID: UUID,
+        deviceID: MTPDeviceID,
+        request: MTPUploadRequest,
+        progress: @escaping MTPTransferProgress,
+        cancellation: MTPCancellationToken
+    ) throws {
+        try lock.withLock {
+            try withActiveSessionLocked(
+                appDeviceID: appDeviceID,
+                deviceID: deviceID
+            ) {
+                try $0.upload(
+                    request,
+                    progress: progress,
+                    cancellation: cancellation
+                )
+            }
         }
     }
 
@@ -118,10 +209,46 @@ nonisolated final class MTPConnectionCoordinator {
         guard let active,
               active.appDeviceID == appDeviceID,
               active.registration.snapshot.deviceID == deviceID,
-              active.session.deviceID == deviceID else {
+              active.session.deviceID == deviceID,
+              active.session.providerKind == active.registration.providerKind else {
             throw MTPCoreError.disconnected
         }
         return active.session
+    }
+
+    private func withActiveSessionLocked<T>(
+        appDeviceID: UUID,
+        deviceID: MTPDeviceID,
+        operation: (any MTPBackendSession) throws -> T
+    ) throws -> T {
+        let session = try sessionLocked(
+            appDeviceID: appDeviceID,
+            deviceID: deviceID
+        )
+        do {
+            return try operation(session)
+        } catch {
+            if Self.isTerminalSessionError(error) {
+                closeActiveLocked()
+            }
+            throw error
+        }
+    }
+
+    private static func isTerminalSessionError(_ error: Error) -> Bool {
+        guard let error = error as? MTPCoreError else {
+            return true
+        }
+        switch error {
+        case .noDevice, .disconnected, .timeout, .cancelled, .usb,
+             .protocolViolation:
+            return true
+        case .response(let code):
+            return code == .sessionNotOpen || code == .invalidTransactionID
+        case .invalidIdentifier, .invalidInput, .busy, .permissionDenied,
+             .unsupportedDevice, .localFileIO:
+            return false
+        }
     }
 
     private func closeActiveLocked() {

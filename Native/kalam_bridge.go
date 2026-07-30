@@ -7,14 +7,12 @@ import "C"
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 	"unsafe"
-
-	"github.com/ganeshrvel/go-mtpfs/mtp"
-	"github.com/ganeshrvel/go-mtpx"
 )
 
 var (
@@ -32,99 +30,208 @@ func safeCString(s string) *C.char {
 	return C.CString(s)
 }
 
+func trackedCString(s string) *C.char {
+	result := safeCString(s)
+	if result == nil {
+		return nil
+	}
+	stringMu.Lock()
+	allocatedStrings[result] = time.Now()
+	stringMu.Unlock()
+	return result
+}
+
+func bridgeJSON(value any) *C.char {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil
+	}
+	return trackedCString(string(data))
+}
+
+type bridgeOpenResponse struct {
+	OK    bool   `json:"ok"`
+	Token string `json:"token,omitempty"`
+	Error string `json:"error,omitempty"`
+}
+
+type bridgeListResponse struct {
+	OK       bool                  `json:"ok"`
+	Files    []FileJSON            `json:"files,omitempty"`
+	Failures []nativeObjectFailure `json:"failures,omitempty"`
+	Error    string                `json:"error,omitempty"`
+}
+
+type bridgeMutationResponse struct {
+	OK       bool         `json:"ok"`
+	ObjectID uint32       `json:"objectId,omitempty"`
+	Storage  *StorageJSON `json:"storage,omitempty"`
+	Error    string       `json:"error,omitempty"`
+}
+
+type bridgeScanResponse struct {
+	OK       bool                `json:"ok"`
+	Devices  []DeviceJSON        `json:"devices,omitempty"`
+	Failures []nativeScanFailure `json:"failures,omitempty"`
+	Error    string              `json:"error,omitempty"`
+}
+
+func nativeBridgeErrorCode(err error) string {
+	switch {
+	case err == nil:
+		return ""
+	case isDisconnectedNativeError(err):
+		return "disconnected"
+	case errors.Is(err, errStaleSessionToken):
+		return "stale_token"
+	case errors.Is(err, errUnknownSessionToken):
+		return "unknown_token"
+	case errors.Is(err, errNativeDisconnected):
+		return "disconnected"
+	case errors.Is(err, errBridgeShuttingDown):
+		return "shutting_down"
+	case errors.Is(err, errAmbiguousLegacySession):
+		return "ambiguous_session"
+	default:
+		return "operation_failed"
+	}
+}
+
 // -- Exported Functions --
 
 //export Kalam_Init
 func Kalam_Init() {
-	bridgeShutdownFlag.Store(false)
+	bridgeRuntime.initialize()
 	fmt.Println("Kalam Kernel Bridge Initialized")
 }
 
 //export Kalam_Scan
 func Kalam_Scan() *C.char {
-	var result string
-
-	// Use a faster, more lightweight scan for device detection
-	err := withDeviceQuick(func(dev *mtp.Device) error {
-		// First try just getting device info for quick detection
-		info, err := mtpx.FetchDeviceInfo(dev)
-		if err != nil {
-			return fmt.Errorf("FetchDeviceInfo failed: %w", err)
-		}
-
-		// Only fetch storage if device info succeeded
-		var storages []mtpx.StorageData
-		storages, err = mtpx.FetchStorages(dev)
-		if err != nil {
-			fmt.Printf("Kalam_Scan: FetchStorages failed: %v\n", err)
-			storages = []mtpx.StorageData{}
-		}
-
-		var deviceList []DeviceJSON
-
-		deviceName := info.Model
-		if info.Manufacturer != "" && !containsIgnoreCase(info.Model, info.Manufacturer) {
-			deviceName = info.Manufacturer + " " + info.Model
-		}
-
-		majorVersion := info.MTPVersion / 100
-		minorVersion := (info.MTPVersion % 100) / 10
-		mtpVersion := fmt.Sprintf("%d.%d", majorVersion, minorVersion)
-
-		mtpSupport := MTPSupportJSON{
-			MtpVersion:      mtpVersion,
-			DeviceVersion:   info.DeviceVersion,
-			VendorExtension: info.Manufacturer,
-		}
-
-		d := DeviceJSON{
-			ID:           1,
-			Name:         deviceName,
-			Manufacturer: info.Manufacturer,
-			Model:        info.Model,
-			SerialNumber: info.SerialNumber,
-			Storage:      []StorageJSON{},
-			MTPSupport:   mtpSupport,
-		}
-
-		for _, s := range storages {
-			d.Storage = append(d.Storage, StorageJSON{
-				ID:          s.Sid,
-				Description: s.Info.StorageDescription,
-				FreeSpace:   s.Info.FreeSpaceInBytes,
-				MaxCapacity: s.Info.MaxCapability,
-			})
-		}
-
-		deviceList = append(deviceList, d)
-
-		jsonData, err := json.Marshal(deviceList)
-		if err != nil {
-			return fmt.Errorf("JSON marshal failed: %w", err)
-		}
-
-		result = string(jsonData)
-		return nil
-	})
-
+	result, err := scanNativeDevices(liveDeviceEnumerator, nativeSessions)
 	if err != nil {
 		fmt.Printf("Kalam_Scan: %v\n", err)
-		// Return nil instead of empty array to indicate no devices found
 		return nil
 	}
+	return bridgeJSON(result.Devices)
+}
 
-	cStr := safeCString(result)
-	if cStr == nil {
-		fmt.Printf("Kalam_Scan: Failed to allocate C string for result\n")
-		return nil
+//export Kalam_ScanResult
+func Kalam_ScanResult() *C.char {
+	result, err := scanNativeDevices(liveDeviceEnumerator, nativeSessions)
+	if err != nil {
+		return bridgeJSON(bridgeScanResponse{Error: nativeBridgeErrorCode(err)})
 	}
+	return bridgeJSON(bridgeScanResponse{
+		OK:       true,
+		Devices:  result.Devices,
+		Failures: result.Failures,
+	})
+}
 
-	// Track allocated string
-	stringMu.Lock()
-	allocatedStrings[cStr] = time.Now()
-	stringMu.Unlock()
+//export Kalam_OpenSession
+func Kalam_OpenSession(deviceID *C.char) *C.char {
+	if deviceID == nil {
+		return bridgeJSON(bridgeOpenResponse{Error: "invalid_input"})
+	}
+	locator, err := parseUSBDeviceLocator(C.GoString(deviceID))
+	if err != nil {
+		return bridgeJSON(bridgeOpenResponse{Error: "invalid_input"})
+	}
+	token, err := nativeSessions.open(locator)
+	if err != nil {
+		return bridgeJSON(bridgeOpenResponse{Error: nativeBridgeErrorCode(err)})
+	}
+	return bridgeJSON(bridgeOpenResponse{OK: true, Token: token})
+}
 
-	return cStr
+//export Kalam_CloseSession
+func Kalam_CloseSession(token *C.char) *C.char {
+	if token == nil || C.GoString(token) == "" {
+		return bridgeJSON(bridgeMutationResponse{Error: "invalid_input"})
+	}
+	err := nativeSessions.close(C.GoString(token))
+	if err != nil {
+		return bridgeJSON(bridgeMutationResponse{Error: nativeBridgeErrorCode(err)})
+	}
+	return bridgeJSON(bridgeMutationResponse{OK: true})
+}
+
+//export Kalam_ListFilesSession
+func Kalam_ListFilesSession(token *C.char, storageID uint32, parentID uint32) *C.char {
+	if token == nil {
+		return bridgeJSON(bridgeListResponse{Error: "invalid_input"})
+	}
+	var listing nativeDirectoryListing
+	err := nativeSessions.withSession(C.GoString(token), func(session *nativeDeviceSession) error {
+		var operationErr error
+		listing, operationErr = session.listFiles(storageID, parentID)
+		return operationErr
+	})
+	if err != nil {
+		return bridgeJSON(bridgeListResponse{Error: nativeBridgeErrorCode(err)})
+	}
+	return bridgeJSON(bridgeListResponse{
+		OK:       true,
+		Files:    listing.Files,
+		Failures: listing.Failures,
+	})
+}
+
+//export Kalam_CreateFolderSession
+func Kalam_CreateFolderSession(
+	token *C.char,
+	storageID uint32,
+	parentID uint32,
+	folderName *C.char,
+) *C.char {
+	if token == nil || folderName == nil {
+		return bridgeJSON(bridgeMutationResponse{Error: "invalid_input"})
+	}
+	name := C.GoString(folderName)
+	if name == "" {
+		return bridgeJSON(bridgeMutationResponse{Error: "invalid_input"})
+	}
+	var handle uint32
+	err := nativeSessions.withSession(C.GoString(token), func(session *nativeDeviceSession) error {
+		var operationErr error
+		handle, operationErr = session.createFolder(storageID, parentID, name)
+		return operationErr
+	})
+	if err != nil {
+		return bridgeJSON(bridgeMutationResponse{Error: nativeBridgeErrorCode(err)})
+	}
+	return bridgeJSON(bridgeMutationResponse{OK: true, ObjectID: handle})
+}
+
+//export Kalam_DeleteObjectSession
+func Kalam_DeleteObjectSession(token *C.char, objectID uint32) *C.char {
+	if token == nil {
+		return bridgeJSON(bridgeMutationResponse{Error: "invalid_input"})
+	}
+	err := nativeSessions.withSession(C.GoString(token), func(session *nativeDeviceSession) error {
+		return session.deleteObject(objectID)
+	})
+	if err != nil {
+		return bridgeJSON(bridgeMutationResponse{Error: nativeBridgeErrorCode(err)})
+	}
+	return bridgeJSON(bridgeMutationResponse{OK: true})
+}
+
+//export Kalam_RefreshStorageSession
+func Kalam_RefreshStorageSession(token *C.char, storageID uint32) *C.char {
+	if token == nil {
+		return bridgeJSON(bridgeMutationResponse{Error: "invalid_input"})
+	}
+	var storage StorageJSON
+	err := nativeSessions.withSession(C.GoString(token), func(session *nativeDeviceSession) error {
+		var operationErr error
+		storage, operationErr = session.refreshStorage(storageID)
+		return operationErr
+	})
+	if err != nil {
+		return bridgeJSON(bridgeMutationResponse{Error: nativeBridgeErrorCode(err)})
+	}
+	return bridgeJSON(bridgeMutationResponse{OK: true, Storage: &storage})
 }
 
 //export Kalam_ListFiles
@@ -147,36 +254,12 @@ func Kalam_ListFiles(storageID uint32, parentID uint32) *C.char {
 
 	var result string
 
-	err := withDevice(func(dev *mtp.Device) error {
-		var handles mtp.Uint32Array
-		if err := dev.GetObjectHandles(uint32(storageIDTyped), 0, uint32(parentIDTyped), &handles); err != nil {
-			return fmt.Errorf("GetObjectHandles failed: %w", err)
+	err := nativeSessions.withLegacySession(func(session *nativeDeviceSession) error {
+		listing, err := session.listFiles(uint32(storageIDTyped), uint32(parentIDTyped))
+		if err != nil {
+			return err
 		}
-
-		var files []FileJSON
-		for _, handle := range handles.Values {
-			var info mtp.ObjectInfo
-			if err := dev.GetObjectInfo(handle, &info); err != nil {
-				fmt.Printf("Kalam_ListFiles: GetObjectInfo failed for handle %d: %v\n", handle, err)
-				continue
-			}
-
-			files = append(files, FileJSON{
-				ID:        handle,
-				ParentID:  info.ParentObject,
-				StorageID: info.StorageID,
-				Name:      info.Filename,
-				Size:      uint64(info.CompressedSize),
-				IsFolder:  info.ObjectFormat == 0x3001,
-				ModTime:   info.ModificationDate.Unix(),
-			})
-		}
-
-		if files == nil {
-			files = []FileJSON{}
-		}
-
-		jsonData, err := json.Marshal(files)
+		jsonData, err := json.Marshal(listing.Files)
 		if err != nil {
 			return fmt.Errorf("JSON marshal failed: %w", err)
 		}
@@ -263,21 +346,14 @@ func Kalam_CreateFolder(storageID uint32, parentID uint32, folderName *C.char) u
 
 	var newHandle uint32
 
-	err := withDevice(func(dev *mtp.Device) error {
-		var objInfo mtp.ObjectInfo
-		objInfo.StorageID = uint32(storageIDTyped)
-		objInfo.ParentObject = uint32(parentIDTyped)
-		objInfo.Filename = name
-		objInfo.ObjectFormat = ObjectFormatFolder
-		objInfo.CompressedSize = 0
-
-		_, _, handle, err := dev.SendObjectInfo(uint32(storageIDTyped), uint32(parentIDTyped), &objInfo)
-		if err != nil {
-			return fmt.Errorf("SendObjectInfo failed: %w", err)
-		}
-
-		newHandle = handle
-		return nil
+	err := nativeSessions.withLegacySession(func(session *nativeDeviceSession) error {
+		var operationErr error
+		newHandle, operationErr = session.createFolder(
+			uint32(storageIDTyped),
+			uint32(parentIDTyped),
+			name,
+		)
+		return operationErr
 	})
 
 	if err != nil {
@@ -299,11 +375,8 @@ func Kalam_DeleteObject(objectID uint32) int32 {
 		return 0
 	}
 
-	err := withDevice(func(dev *mtp.Device) error {
-		if err := dev.DeleteObject(uint32(objectIDTyped)); err != nil {
-			return fmt.Errorf("DeleteObject failed: %w", err)
-		}
-		return nil
+	err := nativeSessions.withLegacySession(func(session *nativeDeviceSession) error {
+		return session.deleteObject(uint32(objectIDTyped))
 	})
 
 	if err != nil {
@@ -325,20 +398,9 @@ func Kalam_RefreshStorage(storageID uint32) int32 {
 		return 0
 	}
 
-	err := withDevice(func(dev *mtp.Device) error {
-		// Try to refresh the device storage
-		// This helps to clear the cache after file operations
-		fmt.Printf("Kalam_RefreshStorage: Refreshing storage %d\n", uint32(storageIDTyped))
-
-		// Get storage info to trigger refresh
-		var info mtp.StorageInfo
-		if err := dev.GetStorageInfo(uint32(storageIDTyped), &info); err != nil {
-			fmt.Printf("Kalam_RefreshStorage: GetStorageInfo failed: %v\n", err)
-			return err
-		}
-
-		fmt.Printf("Kalam_RefreshStorage: Storage refreshed successfully\n")
-		return nil
+	err := nativeSessions.withLegacySession(func(session *nativeDeviceSession) error {
+		_, operationErr := session.refreshStorage(uint32(storageIDTyped))
+		return operationErr
 	})
 
 	if err != nil {
@@ -355,16 +417,12 @@ func Kalam_ResetDeviceCache() int32 {
 
 	// Force a device reset by closing and reopening
 	// This is more aggressive but should clear all caches
-	err := withDevice(func(dev *mtp.Device) error {
-		// Try to get device info to ensure connection is active
-		var info mtp.DeviceInfo
-		if err := dev.GetDeviceInfo(&info); err != nil {
-			fmt.Printf("Kalam_ResetDeviceCache: GetDeviceInfo failed: %v\n", err)
-			return err
+	err := nativeSessions.withLegacySession(func(session *nativeDeviceSession) error {
+		if session.fetchDeviceInfo == nil {
+			return fmt.Errorf("active exact session cannot inspect device")
 		}
-
-		fmt.Printf("Kalam_ResetDeviceCache: Device cache reset successfully\n")
-		return nil
+		_, operationErr := session.fetchDeviceInfo()
+		return operationErr
 	})
 
 	if err != nil {
@@ -401,23 +459,7 @@ func Kalam_CleanupLeakedStrings() {
 //export Kalam_CleanupDevicePool
 func Kalam_CleanupDevicePool() {
 	fmt.Printf("Kalam_CleanupDevicePool: Cleaning up all device connections\n")
-	bridgeShutdownFlag.Store(true)
-
-	// Serialize teardown with all bridge operations that use pooled devices.
-	deviceMu.Lock()
-	defer deviceMu.Unlock()
-
-	devicePoolMu.Lock()
-	defer devicePoolMu.Unlock()
-
-	for _, entry := range devicePool {
-		if entry.device != nil {
-			fmt.Printf("Kalam_CleanupDevicePool: Disposing device connection\n")
-			mtpx.Dispose(entry.device)
-		}
-	}
-
-	devicePool = nil
+	bridgeRuntime.cleanup()
 	fmt.Printf("Kalam_CleanupDevicePool: Device pool cleanup completed\n")
 }
 

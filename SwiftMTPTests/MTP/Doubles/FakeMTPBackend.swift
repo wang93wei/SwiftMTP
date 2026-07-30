@@ -8,13 +8,16 @@ final class FakeMTPBackend: MTPBackend {
     private(set) var initializeCount = 0
     private(set) var shutdownCount = 0
     var openError: MTPCoreError?
+    var scanResult = MTPScanResult(snapshots: [], failures: [])
 
     init(providerKind: MTPProviderKind) {
         self.providerKind = providerKind
     }
 
     func initialize() throws { initializeCount += 1 }
-    func scanDevices() throws -> [MTPDeviceSnapshot] { [] }
+    func scanDevices() throws -> MTPScanResult {
+        scanResult
+    }
 
     func openSession(for deviceID: MTPDeviceID) throws -> any MTPBackendSession {
         if let openError {
@@ -31,17 +34,31 @@ final class FakeMTPBackend: MTPBackend {
 
 final class FakeMTPBackendSession: MTPBackendSession {
     let deviceID: MTPDeviceID
-    let providerKind: MTPProviderKind
+    var providerKind: MTPProviderKind
     private(set) var closeCount = 0
-    var listObjectsHandler: ((MTPStorageID, MTPObjectID) throws -> [MTPObject])?
+    var listObjectsHandler: ((MTPStorageID, MTPObjectID) throws -> MTPDirectoryListing)?
+    var downloadHandler: ((
+        MTPDownloadRequest,
+        MTPTransferProgress,
+        MTPCancellationToken
+    ) throws -> Void)?
+    var uploadHandler: ((
+        MTPUploadRequest,
+        MTPTransferProgress,
+        MTPCancellationToken
+    ) throws -> Void)?
 
     init(deviceID: MTPDeviceID, providerKind: MTPProviderKind) {
         self.deviceID = deviceID
         self.providerKind = providerKind
     }
 
-    func listObjects(storageID: MTPStorageID, parentID: MTPObjectID) throws -> [MTPObject] {
-        try listObjectsHandler?(storageID, parentID) ?? []
+    func listObjects(
+        storageID: MTPStorageID,
+        parentID: MTPObjectID
+    ) throws -> MTPDirectoryListing {
+        try listObjectsHandler?(storageID, parentID)
+            ?? MTPDirectoryListing(objects: [], failures: [])
     }
     func createFolder(
         storageID: MTPStorageID,
@@ -53,14 +70,20 @@ final class FakeMTPBackendSession: MTPBackendSession {
     func deleteObject(_ objectID: MTPObjectID) throws {}
     func download(
         _ request: MTPDownloadRequest,
-        progress: @escaping (UInt64) -> Void,
+        progress: @escaping MTPTransferProgress,
         cancellation: MTPCancellationToken
-    ) throws {}
+    ) throws {
+        try downloadHandler?(request, progress, cancellation)
+    }
     func upload(
         _ request: MTPUploadRequest,
-        progress: @escaping (UInt64) -> Void,
+        progress: @escaping MTPTransferProgress,
         cancellation: MTPCancellationToken
-    ) throws {}
-    func refreshStorage(_ storageID: MTPStorageID) throws {}
+    ) throws {
+        try uploadHandler?(request, progress, cancellation)
+    }
+    func refreshStorage(_ storageID: MTPStorageID) throws -> MTPStorage {
+        MTPStorage(id: storageID, description: "", freeSpace: 0, maxCapacity: 0)
+    }
     func close() { closeCount += 1 }
 }

@@ -31,14 +31,14 @@ final class SwiftMTPBackendTests: XCTestCase {
         )
 
         try backend.initialize()
-        let snapshots = try backend.scanDevices()
+        let result = try backend.scanDevices()
 
-        XCTAssertEqual(snapshots.count, 1)
-        XCTAssertEqual(snapshots.first?.deviceID, firstID)
-        XCTAssertEqual(snapshots.first?.manufacturer, "Acme")
-        XCTAssertEqual(snapshots.first?.storages.map(\.id), [firstStorage])
+        XCTAssertEqual(result.snapshots.count, 1)
+        XCTAssertEqual(result.snapshots.first?.deviceID, firstID)
+        XCTAssertEqual(result.snapshots.first?.manufacturer, "Acme")
+        XCTAssertEqual(result.snapshots.first?.storages.map(\.id), [firstStorage])
         XCTAssertEqual(
-            backend.lastScanFailures,
+            result.failures,
             [
                 MTPScanFailure(
                     deviceID: firstID,
@@ -92,7 +92,7 @@ final class SwiftMTPBackendTests: XCTestCase {
 
         try backendWithSelectedSession.initialize()
         let session = try backendWithSelectedSession.openSession(for: secondID)
-        try session.refreshStorage(storageID)
+        _ = try session.refreshStorage(storageID)
 
         XCTAssertEqual(opened.value, [secondID])
         XCTAssertEqual(session.deviceID, secondID)
@@ -128,7 +128,7 @@ final class SwiftMTPBackendTests: XCTestCase {
         )
 
         try backend.initialize()
-        let snapshots = try backend.scanDevices()
+        let snapshots = try backend.scanDevices().snapshots
         let session = try backend.openSession(for: secondID)
 
         XCTAssertEqual(snapshots.map(\.deviceID), [firstID, secondID])
@@ -169,83 +169,4 @@ final class SwiftMTPBackendTests: XCTestCase {
         XCTAssertEqual(opened.value, [])
         backend.shutdown()
     }
-}
-
-private final class FakeSwiftDiscoverySession: SwiftMTPDiscoverySession {
-    let deviceID: MTPDeviceID
-    var deviceInfoError: MTPCoreError?
-    var storageIDs: [MTPStorageID]
-    var storageInfo: [MTPStorageID: MTPStorageInfoDataset] = [:]
-    var storageErrors: [MTPStorageID: MTPCoreError] = [:]
-    private(set) var closeCount = 0
-
-    init(deviceID: MTPDeviceID, storageIDs: [MTPStorageID] = []) {
-        self.deviceID = deviceID
-        self.storageIDs = storageIDs
-    }
-
-    func getDeviceInfo() throws -> MTPDeviceInfoDataset {
-        if let deviceInfoError {
-            throw deviceInfoError
-        }
-        return MTPDeviceInfoDataset(
-            standardVersion: 100,
-            vendorExtensionID: 6,
-            vendorExtensionVersion: 101,
-            vendorExtensionDescription: "MTP",
-            functionalMode: 0,
-            operationsSupported: [],
-            eventsSupported: [],
-            devicePropertiesSupported: [],
-            captureFormats: [],
-            imageFormats: [],
-            manufacturer: "Acme",
-            model: "Phone",
-            deviceVersion: "1",
-            serialNumber: "private"
-        )
-    }
-
-    func getStorageIDs() throws -> [MTPStorageID] {
-        storageIDs
-    }
-
-    func getStorageInfo(_ storageID: MTPStorageID) throws -> MTPStorageInfoDataset {
-        if let error = storageErrors[storageID] {
-            throw error
-        }
-        guard let info = storageInfo[storageID] else {
-            throw MTPCoreError.noDevice
-        }
-        return info
-    }
-
-    func close() {
-        closeCount += 1
-    }
-}
-
-private func makeStorageInfo(description: String) -> MTPStorageInfoDataset {
-    MTPStorageInfoDataset(
-        storageType: 3,
-        fileSystemType: 2,
-        accessCapability: 0,
-        maxCapacity: 1_000,
-        freeSpaceInBytes: 500,
-        freeSpaceInImages: 4,
-        description: description,
-        volumeLabel: "Phone"
-    )
-}
-
-private func makeCandidate(
-    deviceID: MTPDeviceID,
-    raw: Int,
-    functions: LibUSBFunctionTable
-) -> LibUSBDeviceCandidate {
-    makeTestLibUSBDeviceCandidate(
-        deviceID: deviceID,
-        rawDeviceValue: raw,
-        functions: functions
-    )
 }

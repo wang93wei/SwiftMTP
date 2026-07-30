@@ -1,24 +1,37 @@
 import Foundation
 import OSLog
 
+nonisolated enum MTPDataPhase: Equatable, Sendable {
+    case none
+    case inbound
+    case outbound(Data)
+}
+
+nonisolated struct MTPTransactionResult: Equatable, Sendable {
+    let data: Data?
+    let responseCode: MTPResponseCode
+    let responseParameters: [UInt32]
+}
+
+nonisolated struct MTPDownloadResult: Equatable, Sendable {
+    let expectedByteCount: UInt64?
+    let transferredByteCount: UInt64
+}
+
 nonisolated final class MTPDeviceSession {
-    private enum State {
+    enum State {
         case idle
         case open
         case invalid
         case closed
     }
 
-    private struct TransactionResult {
-        let data: Data?
-        let responseCode: MTPResponseCode
-    }
-
-    private let transport: any MTPTransport
+    let transport: any MTPTransport
     private let sessionIDGenerator: () throws -> MTPSessionID
+    let reportUploadDiagnostic: MTPUploadDiagnosticReporter
     private let firstTransactionID: UInt32
-    private let lock = NSLock()
-    private var state = State.idle
+    let lock = NSLock()
+    var state = State.idle
     private var nextTransactionID: UInt32 = 0
 
     init(
@@ -26,10 +39,16 @@ nonisolated final class MTPDeviceSession {
         sessionIDGenerator: @escaping () throws -> MTPSessionID = {
             try MTPSessionID(validating: UInt32.random(in: 1..<UInt32.max))
         },
+        reportUploadDiagnostic: @escaping MTPUploadDiagnosticReporter = {
+            MTPLog.session.error(
+                "Upload compensation outcome for object \($0.objectID.rawValue, privacy: .public): \(String(describing: $0.outcome), privacy: .public)"
+            )
+        },
         firstTransactionID: UInt32 = 1
     ) {
         self.transport = transport
         self.sessionIDGenerator = sessionIDGenerator
+        self.reportUploadDiagnostic = reportUploadDiagnostic
         self.firstTransactionID = firstTransactionID
     }
 
@@ -53,7 +72,7 @@ nonisolated final class MTPDeviceSession {
                     operation: .openSession,
                     transactionID: 0,
                     parameters: [sessionID.rawValue],
-                    expectsData: false
+                    phase: .none
                 )
 
                 if first.responseCode == .sessionAlreadyOpen {
@@ -61,7 +80,7 @@ nonisolated final class MTPDeviceSession {
                         operation: .closeSession,
                         transactionID: 0,
                         parameters: [],
-                        expectsData: false
+                        phase: .none
                     )
                     guard staleClose.responseCode == .ok else {
                         throw MTPCoreError.response(code: staleClose.responseCode)
@@ -70,7 +89,7 @@ nonisolated final class MTPDeviceSession {
                         operation: .openSession,
                         transactionID: 0,
                         parameters: [sessionID.rawValue],
-                        expectsData: false
+                        phase: .none
                     )
                     guard retry.responseCode == .ok else {
                         throw MTPCoreError.response(code: retry.responseCode)
@@ -92,13 +111,13 @@ nonisolated final class MTPDeviceSession {
     }
 
     func getDeviceInfo() throws -> MTPDeviceInfoDataset {
-        try execute(operation: .getDeviceInfo, expectsData: true) {
+        try executeInbound(operation: .getDeviceInfo) {
             try MTPDeviceInfoDataset.decode($0)
         }
     }
 
     func getStorageIDs() throws -> [MTPStorageID] {
-        try execute(operation: .getStorageIDs, expectsData: true) { data in
+        try executeInbound(operation: .getStorageIDs) { data in
             try MTPUInt32Array.decode(data).values.map {
                 try MTPStorageID(validating: $0)
             }
@@ -106,13 +125,71 @@ nonisolated final class MTPDeviceSession {
     }
 
     func getStorageInfo(_ storageID: MTPStorageID) throws -> MTPStorageInfoDataset {
-        try execute(
+        try executeInbound(
             operation: .getStorageInfo,
-            parameters: [storageID.rawValue],
-            expectsData: true
+            parameters: [storageID.rawValue]
         ) {
             try MTPStorageInfoDataset.decode($0)
         }
+    }
+
+    func getObjectHandles(
+        storageID: MTPStorageID,
+        parentID: MTPObjectID
+    ) throws -> [MTPObjectID] {
+        try executeInbound(
+            operation: .getObjectHandles,
+            parameters: [storageID.rawValue, 0, parentID.rawValue]
+        ) { data in
+            try MTPUInt32Array.decode(data).values.map {
+                try MTPObjectID(validating: $0)
+            }
+        }
+    }
+
+    func getObjectInfo(_ objectID: MTPObjectID) throws -> MTPObjectInfoDataset {
+        try executeInbound(
+            operation: .getObjectInfo,
+            parameters: [objectID.rawValue]
+        ) {
+            try MTPObjectInfoDataset.decode($0)
+        }
+    }
+
+    func createFolder(
+        storageID: MTPStorageID,
+        parentID: MTPObjectID,
+        name: String
+    ) throws -> MTPObjectID {
+        let dataset = try MTPObjectInfoDataset.folder(
+            storageID: storageID,
+            parentObject: parentID,
+            name: name
+        )
+        let result = try execute(
+            operation: .sendObjectInfo,
+            parameters: [storageID.rawValue, parentID.rawValue],
+            phase: .outbound(try dataset.encoded())
+        )
+        guard result.responseParameters.count == 3 else {
+            throw invalidateProtocol("SendObjectInfo response must contain three parameters")
+        }
+        guard result.responseParameters[0] == storageID.rawValue,
+              result.responseParameters[1] == parentID.rawValue else {
+            throw invalidateProtocol("SendObjectInfo response storage or parent mismatch")
+        }
+        guard result.responseParameters[2] != 0 else {
+            throw invalidateProtocol("SendObjectInfo returned an invalid zero object handle")
+        }
+        return try MTPObjectID(validating: result.responseParameters[2])
+    }
+
+    func deleteObject(_ objectID: MTPObjectID) throws {
+        _ = try execute(
+            operation: .deleteObject,
+            parameters: [objectID.rawValue, 0],
+            phase: .none
+        )
     }
 
     func close() {
@@ -131,7 +208,7 @@ nonisolated final class MTPDeviceSession {
                     operation: .closeSession,
                     transactionID: transactionID,
                     parameters: [],
-                    expectsData: false
+                    phase: .none
                 )
                 if result.responseCode != .ok {
                     MTPLog.session.error(
@@ -145,41 +222,103 @@ nonisolated final class MTPDeviceSession {
         }
     }
 
-    private func execute<T>(
+    private func executeInbound<T>(
         operation: MTPOperationCode,
         parameters: [UInt32] = [],
-        expectsData: Bool,
         decode: (Data) throws -> T
     ) throws -> T {
+        let result = try execute(
+            operation: operation,
+            parameters: parameters,
+            phase: .inbound
+        )
+        guard let data = result.data else {
+            throw invalidateProtocol(
+                "operation \(operation.rawValue) returned no data container"
+            )
+        }
+        do {
+            return try decode(data)
+        } catch {
+            // A successful inbound transaction whose payload cannot satisfy the
+            // operation's wire schema is a protocol failure, even when the
+            // low-level validator reports an invalid identifier.
+            lock.withLock { state = .invalid }
+            throw error
+        }
+    }
+
+    func executeInboundLocked<T>(
+        operation: MTPOperationCode,
+        parameters: [UInt32] = [],
+        cancellation: MTPCancellationToken,
+        decode: (Data) throws -> T
+    ) throws -> T {
+        let result = try executeLocked(
+            operation: operation,
+            parameters: parameters,
+            phase: .inbound,
+            cancellation: cancellation
+        )
+        guard let data = result.data else {
+            throw MTPCoreError.protocolViolation(
+                "operation \(operation.rawValue) returned no data container"
+            )
+        }
+        do {
+            return try decode(data)
+        } catch {
+            state = .invalid
+            throw error
+        }
+    }
+
+    private func execute(
+        operation: MTPOperationCode,
+        parameters: [UInt32] = [],
+        phase: MTPDataPhase
+    ) throws -> MTPTransactionResult {
         try lock.withLock {
             guard state == .open else {
                 throw MTPCoreError.disconnected
             }
             do {
-                let transactionID = try consumeTransactionID()
-                let result = try transact(
+                return try executeLocked(
                     operation: operation,
-                    transactionID: transactionID,
                     parameters: parameters,
-                    expectsData: expectsData
+                    phase: phase,
+                    cancellation: MTPCancellationToken()
                 )
-                guard result.responseCode == .ok else {
-                    throw MTPCoreError.response(code: result.responseCode)
-                }
-                guard let data = result.data else {
-                    throw MTPCoreError.protocolViolation(
-                        "operation \(operation.rawValue) returned no data container"
-                    )
-                }
-                return try decode(data)
             } catch {
-                state = .invalid
+                if shouldInvalidate(error) {
+                    state = .invalid
+                }
                 throw error
             }
         }
     }
 
-    private func consumeTransactionID() throws -> UInt32 {
+    func executeLocked(
+        operation: MTPOperationCode,
+        parameters: [UInt32],
+        phase: MTPDataPhase,
+        cancellation: MTPCancellationToken
+    ) throws -> MTPTransactionResult {
+        let transactionID = try consumeTransactionID()
+        let result = try transact(
+            operation: operation,
+            transactionID: transactionID,
+            parameters: parameters,
+            phase: phase,
+            cancellation: cancellation
+        )
+        guard result.responseCode == .ok else {
+            throw MTPCoreError.response(code: result.responseCode)
+        }
+        return result
+    }
+
+    func consumeTransactionID() throws -> UInt32 {
         guard nextTransactionID != 0 else {
             throw MTPCoreError.protocolViolation(
                 "transaction ID space exhausted; create a fresh MTP session"
@@ -194,20 +333,30 @@ nonisolated final class MTPDeviceSession {
         operation: MTPOperationCode,
         transactionID: UInt32,
         parameters: [UInt32],
-        expectsData: Bool
-    ) throws -> TransactionResult {
-        var payload = MTPBinaryWriter()
-        parameters.forEach { payload.write($0) }
+        phase: MTPDataPhase,
+        cancellation: MTPCancellationToken = MTPCancellationToken()
+    ) throws -> MTPTransactionResult {
         let typedTransactionID = try MTPTransactionID(validating: transactionID)
-        let request = MTPContainer(
-            type: .command,
-            code: operation.rawValue,
+        let request = try command(
+            operation: operation,
             transactionID: typedTransactionID,
-            payload: payload.data
+            parameters: parameters
         )
+        let outboundContainer: Data?
+        if case .outbound(let outboundPayload) = phase {
+            outboundContainer = try MTPContainer(
+                type: .data,
+                code: operation.rawValue,
+                transactionID: typedTransactionID,
+                payload: outboundPayload
+            ).encoded()
+        } else {
+            outboundContainer = nil
+        }
         let fragments = try transport.transact(
-            request.encoded(),
-            cancellation: MTPCancellationToken()
+            request,
+            outboundData: outboundContainer,
+            cancellation: cancellation
         )
         var framer = MTPContainerFramer()
         var containers: [MTPContainer] = []
@@ -220,6 +369,7 @@ nonisolated final class MTPDeviceSession {
 
         var dataPayload: Data?
         var responseCode: MTPResponseCode?
+        var responseParameters: [UInt32] = []
         for container in containers {
             guard container.transactionID == typedTransactionID else {
                 throw MTPCoreError.protocolViolation(
@@ -229,7 +379,7 @@ nonisolated final class MTPDeviceSession {
             }
             switch container.type {
             case .data:
-                guard expectsData, dataPayload == nil, responseCode == nil else {
+                guard phase == .inbound, dataPayload == nil, responseCode == nil else {
                     throw MTPCoreError.protocolViolation("unexpected data container")
                 }
                 guard container.code == operation.rawValue else {
@@ -246,6 +396,10 @@ nonisolated final class MTPDeviceSession {
                     )
                 }
                 responseCode = MTPResponseCode(rawValue: container.code)
+                var parameterReader = MTPBinaryReader(data: container.payload)
+                while parameterReader.remainingCount > 0 {
+                    responseParameters.append(try parameterReader.readUInt32())
+                }
             case .command, .event:
                 throw MTPCoreError.protocolViolation("unexpected transaction container type")
             }
@@ -253,9 +407,49 @@ nonisolated final class MTPDeviceSession {
         guard let responseCode else {
             throw MTPCoreError.protocolViolation("transaction returned no response container")
         }
-        if expectsData, dataPayload == nil, responseCode == .ok {
+        if phase == .inbound, dataPayload == nil, responseCode == .ok {
             throw MTPCoreError.protocolViolation("successful transaction returned no data")
         }
-        return TransactionResult(data: dataPayload, responseCode: responseCode)
+        return MTPTransactionResult(
+            data: dataPayload,
+            responseCode: responseCode,
+            responseParameters: responseParameters
+        )
     }
+
+    func command(
+        operation: MTPOperationCode,
+        transactionID: MTPTransactionID,
+        parameters: [UInt32]
+    ) throws -> Data {
+        var payload = MTPBinaryWriter()
+        parameters.forEach { payload.write($0) }
+        return try MTPContainer(
+            type: .command,
+            code: operation.rawValue,
+            transactionID: transactionID,
+            payload: payload.data
+        ).encoded()
+    }
+
+    private func invalidateProtocol(_ message: String) -> MTPCoreError {
+        lock.withLock { state = .invalid }
+        return .protocolViolation(message)
+    }
+
+    func shouldInvalidate(_ error: Error) -> Bool {
+        guard let error = error as? MTPCoreError else {
+            return true
+        }
+        switch error {
+        case .protocolViolation, .disconnected, .timeout, .cancelled, .usb:
+            return true
+        case .response(let code):
+            return code == .sessionNotOpen || code == .invalidTransactionID
+        case .invalidIdentifier, .invalidInput, .noDevice, .busy,
+             .permissionDenied, .unsupportedDevice, .localFileIO:
+            return false
+        }
+    }
+
 }

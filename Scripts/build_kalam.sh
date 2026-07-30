@@ -18,31 +18,29 @@ if ! command -v go &> /dev/null; then
     exit 1
 fi
 
-# Check for libusb
-if [ ! -f "/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib" ]; then
-    echo "Error: libusb not found. Please install it with 'brew install libusb'."
+# Check for the repository-pinned libusb runtime and headers.
+if [ ! -f "${TARGET_DIR}/libusb-1.0.dylib" ] ||
+   [ ! -f "${TARGET_DIR}/Support/CLibUSB/include/libusb.h" ]; then
+    echo "Error: bundled libusb runtime or headers are missing."
     exit 1
 fi
 
 cd "${NATIVE_DIR}"
 
-# Initialize module if needed
-if [ ! -f go.mod ]; then
-    echo "Initializing Go module..."
-    go mod init kalam-bridge
+if [ ! -f go.mod ] || [ ! -d vendor ]; then
+    echo "Error: pinned Go module metadata or vendored dependencies are missing."
+    exit 1
 fi
 
-# Fetch dependencies
-echo "Fetching dependencies..."
-go get github.com/ganeshrvel/go-mtpx
-go mod tidy
+echo "Using vendored Go dependencies..."
 
 # Build libkalam.dylib
 echo "Compiling libkalam.dylib..."
-export CGO_LDFLAGS="-L/opt/homebrew/opt/libusb/lib -lusb-1.0 -framework CoreFoundation -framework IOKit"
-export CGO_CFLAGS="-I/opt/homebrew/opt/libusb/include/libusb-1.0"
+export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-26.0}"
+export CGO_LDFLAGS="-L${TARGET_DIR} -framework CoreFoundation -framework IOKit -mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}"
+export CGO_CFLAGS="-I${TARGET_DIR}/Support/CLibUSB/include -mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET}"
 
-go build -o "${TARGET_DIR}/libkalam.dylib" -buildmode=c-shared .
+go build -mod=vendor -o "${TARGET_DIR}/libkalam.dylib" -buildmode=c-shared .
 
 # Check outputs
 if [ -f "${TARGET_DIR}/libkalam.dylib" ] && [ -f "${TARGET_DIR}/libkalam.h" ]; then
@@ -50,20 +48,7 @@ if [ -f "${TARGET_DIR}/libkalam.dylib" ] && [ -f "${TARGET_DIR}/libkalam.h" ]; t
     echo "   Library: ${TARGET_DIR}/libkalam.dylib"
     echo "   Header:  ${TARGET_DIR}/libkalam.h"
 
-    # Copy libusb.dylib to target directory for bundling
-    echo "📦 Bundling libusb.dylib..."
-    cp -f "/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib" "${TARGET_DIR}/libusb-1.0.dylib"
-
-    # Copy com.apple.provenance extended attribute from system libusb
-    echo "🔧 Copying extended attributes from system libusb..."
-    if xattr -p com.apple.provenance "/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib" > /dev/null 2>&1; then
-        chmod +w "${TARGET_DIR}/libusb-1.0.dylib"
-        xattr -w com.apple.provenance "$(xattr -p com.apple.provenance /opt/homebrew/opt/libusb/lib/libusb-1.0.dylib | xxd -p -r)" "${TARGET_DIR}/libusb-1.0.dylib"
-        chmod -w "${TARGET_DIR}/libusb-1.0.dylib"
-        echo "   ✅ Extended attributes copied"
-    else
-        echo "   ⚠️ No extended attributes found, skipping"
-    fi
+    echo "📦 Using repository-pinned libusb.dylib..."
 
     # Set install name for libkalam.dylib to be relative to @rpath
     echo "🔧 Setting install name for libkalam.dylib..."
@@ -74,9 +59,15 @@ if [ -f "${TARGET_DIR}/libkalam.dylib" ] && [ -f "${TARGET_DIR}/libkalam.h" ]; t
     install_name_tool -change "/opt/homebrew/opt/libusb/lib/libusb-1.0.0.dylib" "@rpath/libusb-1.0.dylib" "${TARGET_DIR}/libkalam.dylib"
     install_name_tool -change "/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib" "@rpath/libusb-1.0.dylib" "${TARGET_DIR}/libkalam.dylib" 2>/dev/null || true
 
-    # Set install name for libusb.dylib to be relative to @rpath
-    echo "🔧 Setting install name for libusb-1.0.dylib..."
-    install_name_tool -id "@rpath/libusb-1.0.dylib" "${TARGET_DIR}/libusb-1.0.dylib"
+    # install_name_tool invalidates Go's generated ad-hoc signature.
+    echo "🔐 Re-signing libkalam.dylib after Mach-O updates..."
+    codesign --force --sign - --timestamp=none "${TARGET_DIR}/libkalam.dylib"
+    codesign --verify --strict "${TARGET_DIR}/libkalam.dylib"
+
+    # Keep the checked-in Native ABI header identical to the Swift target header.
+    echo "🔄 Synchronizing generated ABI headers..."
+    cp -f "${TARGET_DIR}/libkalam.h" "${NATIVE_DIR}/libkalam.h"
+    cmp "${NATIVE_DIR}/libkalam.h" "${TARGET_DIR}/libkalam.h"
 
     # Display library dependencies
     echo "📦 Library dependencies:"

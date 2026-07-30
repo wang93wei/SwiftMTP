@@ -54,6 +54,107 @@ final class MTPContainerTests: XCTestCase {
         XCTAssertEqual(MTPContainer.dataWireLength(payloadLength: 0x1_0000_0000), 0xFFFF_FFFF)
     }
 
+    func testStreamingHeaderKeepsExactMaximumDistinctFromUnknownSentinel() throws {
+        let transactionID = try MTPTransactionID(validating: 9)
+        let exact = MTPStreamingDataHeader(
+            operationCode: .getObject,
+            transactionID: transactionID,
+            payloadLength: 0xFFFF_FFF3
+        )
+        let unknown = MTPStreamingDataHeader(
+            operationCode: .getObject,
+            transactionID: transactionID,
+            payloadLength: nil
+        )
+
+        XCTAssertEqual(
+            exact.encoded(),
+            Data([0xFF, 0xFF, 0xFF, 0xFF, 0x02, 0x00, 0x09, 0x10, 0x09, 0x00, 0x00, 0x00])
+        )
+        XCTAssertEqual(unknown.encoded(), exact.encoded())
+        XCTAssertEqual(exact.payloadLength, 0xFFFF_FFF3)
+        XCTAssertNil(unknown.payloadLength)
+    }
+
+    func testStreamingDecoderAcceptsFragmentedHeaderAndCompletesAtExactLength() throws {
+        let transactionID = try MTPTransactionID(validating: 11)
+        let header = MTPStreamingDataHeader(
+            operationCode: .getObject,
+            transactionID: transactionID,
+            payloadLength: 3
+        )
+        var decoder = MTPStreamingDataDecoder(
+            operationCode: .getObject,
+            transactionID: transactionID,
+            expectedPayloadLength: 3
+        )
+
+        XCTAssertTrue(try decoder.append(Data(header.encoded().prefix(5)), packetEnded: false).isEmpty)
+        let remainder = Data(header.encoded().dropFirst(5)) + Data([1, 2])
+        XCTAssertEqual(try decoder.append(remainder, packetEnded: false), [Data([1, 2])])
+        XCTAssertEqual(try decoder.append(Data([3]), packetEnded: true), [Data([3])])
+        XCTAssertTrue(decoder.isComplete)
+        XCTAssertEqual(decoder.receivedPayloadLength, 3)
+    }
+
+    func testStreamingDecoderRejectsShortOverrunAndHeaderIdentityMismatch() throws {
+        let transactionID = try MTPTransactionID(validating: 12)
+        let header = MTPStreamingDataHeader(
+            operationCode: .getObject,
+            transactionID: transactionID,
+            payloadLength: 2
+        )
+        var short = MTPStreamingDataDecoder(
+            operationCode: .getObject,
+            transactionID: transactionID,
+            expectedPayloadLength: 2
+        )
+        XCTAssertThrowsError(
+            try short.append(header.encoded() + Data([1]), packetEnded: true)
+        )
+
+        var overrun = MTPStreamingDataDecoder(
+            operationCode: .getObject,
+            transactionID: transactionID,
+            expectedPayloadLength: 2
+        )
+        XCTAssertThrowsError(
+            try overrun.append(header.encoded() + Data([1, 2, 3]), packetEnded: true)
+        )
+
+        var mismatch = MTPStreamingDataDecoder(
+            operationCode: .sendObject,
+            transactionID: transactionID,
+            expectedPayloadLength: 2
+        )
+        XCTAssertThrowsError(
+            try mismatch.append(header.encoded(), packetEnded: false)
+        )
+    }
+
+    func testUnknownStreamingDecoderCompletesOnlyOnExplicitPacketTerminal() throws {
+        let transactionID = try MTPTransactionID(validating: 13)
+        let header = MTPStreamingDataHeader(
+            operationCode: .getObject,
+            transactionID: transactionID,
+            payloadLength: nil
+        )
+        var decoder = MTPStreamingDataDecoder(
+            operationCode: .getObject,
+            transactionID: transactionID,
+            expectedPayloadLength: nil
+        )
+
+        XCTAssertEqual(
+            try decoder.append(header.encoded() + Data([1, 2]), packetEnded: false),
+            [Data([1, 2])]
+        )
+        XCTAssertFalse(decoder.isComplete)
+        XCTAssertTrue(try decoder.append(Data(), packetEnded: true).isEmpty)
+        XCTAssertTrue(decoder.isComplete)
+        XCTAssertEqual(decoder.receivedPayloadLength, 2)
+    }
+
     func testContainerRoundTripsMaximumTransactionID() throws {
         let container = MTPContainer(
             type: .command,

@@ -5,12 +5,34 @@ nonisolated enum MTPProviderKind: String, Hashable, Sendable {
     case `swift`
 }
 
+nonisolated struct MTPDeviceIdentity: Hashable, Sendable {
+    let providerKind: MTPProviderKind
+    let deviceID: MTPDeviceID
+}
+
 nonisolated struct MTPDeviceSnapshot: Equatable, Sendable {
     let deviceID: MTPDeviceID
     let name: String
     let manufacturer: String
     let model: String
     let storages: [MTPStorage]
+}
+
+nonisolated struct MTPScanFailure: Equatable, Sendable {
+    enum Stage: String, Equatable, Sendable {
+        case device
+        case storage
+    }
+
+    let deviceID: MTPDeviceID
+    let storageID: MTPStorageID?
+    let stage: Stage
+    let error: MTPCoreError
+}
+
+nonisolated struct MTPScanResult: Equatable, Sendable {
+    let snapshots: [MTPDeviceSnapshot]
+    let failures: [MTPScanFailure]
 }
 
 nonisolated struct MTPStorage: Equatable, Sendable {
@@ -30,10 +52,46 @@ nonisolated struct MTPObject: Equatable, Sendable {
     let modificationDate: Date?
 }
 
+nonisolated struct MTPObjectFailure: Equatable, Sendable {
+    enum Stage: String, Equatable, Sendable {
+        case objectInfo
+    }
+
+    let deviceID: MTPDeviceID
+    let storageID: MTPStorageID
+    let parentID: MTPObjectID
+    let objectID: MTPObjectID
+    let stage: Stage
+    let error: MTPCoreError
+}
+
+nonisolated struct MTPDirectoryListing: Equatable, Sendable {
+    let objects: [MTPObject]
+    let failures: [MTPObjectFailure]
+}
+
+nonisolated enum MTPDownloadReplacementPolicy: Equatable, Sendable {
+    case replaceExisting
+    case failIfExists
+}
+
 nonisolated struct MTPDownloadRequest: Equatable, Sendable {
     let objectID: MTPObjectID
     let destinationURL: URL
     let expectedSize: UInt64?
+    let replacementPolicy: MTPDownloadReplacementPolicy
+
+    init(
+        objectID: MTPObjectID,
+        destinationURL: URL,
+        expectedSize: UInt64?,
+        replacementPolicy: MTPDownloadReplacementPolicy = .replaceExisting
+    ) {
+        self.objectID = objectID
+        self.destinationURL = destinationURL
+        self.expectedSize = expectedSize
+        self.replacementPolicy = replacementPolicy
+    }
 }
 
 nonisolated struct MTPUploadRequest: Equatable, Sendable {
@@ -44,9 +102,29 @@ nonisolated struct MTPUploadRequest: Equatable, Sendable {
     let size: UInt64
 }
 
+nonisolated struct MTPUploadResult: Equatable, Sendable {
+    let objectID: MTPObjectID
+    let transferredByteCount: UInt64
+}
+
+nonisolated struct MTPUploadCompensationDiagnostic: Equatable, Sendable {
+    enum Outcome: Equatable, Sendable {
+        case removed
+        case failed(MTPCoreError)
+        case skippedOrphanRisk
+    }
+
+    let objectID: MTPObjectID
+    let primaryError: MTPCoreError
+    let outcome: Outcome
+}
+
+typealias MTPTransferProgress = (UInt64) -> Void
+typealias MTPUploadDiagnosticReporter = (MTPUploadCompensationDiagnostic) -> Void
+
 nonisolated protocol MTPBackend {
     func initialize() throws
-    func scanDevices() throws -> [MTPDeviceSnapshot]
+    func scanDevices() throws -> MTPScanResult
     func openSession(for deviceID: MTPDeviceID) throws -> any MTPBackendSession
     func shutdown()
 }
@@ -58,7 +136,7 @@ nonisolated protocol MTPBackendSession: AnyObject {
     func listObjects(
         storageID: MTPStorageID,
         parentID: MTPObjectID
-    ) throws -> [MTPObject]
+    ) throws -> MTPDirectoryListing
     func createFolder(
         storageID: MTPStorageID,
         parentID: MTPObjectID,
@@ -67,14 +145,14 @@ nonisolated protocol MTPBackendSession: AnyObject {
     func deleteObject(_ objectID: MTPObjectID) throws
     func download(
         _ request: MTPDownloadRequest,
-        progress: @escaping (UInt64) -> Void,
+        progress: @escaping MTPTransferProgress,
         cancellation: MTPCancellationToken
     ) throws
     func upload(
         _ request: MTPUploadRequest,
-        progress: @escaping (UInt64) -> Void,
+        progress: @escaping MTPTransferProgress,
         cancellation: MTPCancellationToken
     ) throws
-    func refreshStorage(_ storageID: MTPStorageID) throws
+    func refreshStorage(_ storageID: MTPStorageID) throws -> MTPStorage
     func close()
 }

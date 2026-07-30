@@ -6,15 +6,25 @@ final class FakeLibUSBFunctions: @unchecked Sendable {
     enum TransferBehavior {
         case deferred
         case immediate(status: libusb_transfer_status, data: Data)
+        case immediateDuplicate(status: libusb_transfer_status, data: Data)
     }
 
     private let lock = NSLock()
     private let contextPointer = OpaquePointer(bitPattern: 0x100)!
     private let handlePointer = OpaquePointer(bitPattern: 0x200)!
-    private var pendingTransfer: UnsafeMutablePointer<libusb_transfer>?
+    private var pendingTransfers: [UnsafeMutablePointer<libusb_transfer>] = []
+    private var maximumPendingCount = 0
 
     var events: [String] {
         lock.withLock { recordedEvents }
+    }
+
+    var maximumPendingTransferCount: Int {
+        lock.withLock { maximumPendingCount }
+    }
+
+    var submittedTransferFlags: [UInt8] {
+        lock.withLock { recordedTransferFlags }
     }
 
     var currentConfiguration: Int32 = 0
@@ -28,6 +38,7 @@ final class FakeLibUSBFunctions: @unchecked Sendable {
     var transferBehavior = TransferBehavior.deferred
     var scriptedTransferBehaviors: [TransferBehavior] = []
     private var recordedEvents: [String] = []
+    private var recordedTransferFlags: [UInt8] = []
 
     var table: LibUSBFunctionTable {
         LibUSBFunctionTable(
@@ -85,6 +96,9 @@ final class FakeLibUSBFunctions: @unchecked Sendable {
                     return Int32(LIBUSB_ERROR_OTHER.rawValue)
                 }
                 self.record("submitTransfer")
+                self.lock.withLock {
+                    self.recordedTransferFlags.append(transfer.pointee.flags)
+                }
                 if self.blockSubmit {
                     self.allowSubmit.wait()
                 }
@@ -100,10 +114,18 @@ final class FakeLibUSBFunctions: @unchecked Sendable {
                 switch behavior {
                 case .deferred:
                     self.lock.withLock {
-                        self.pendingTransfer = transfer
+                        self.pendingTransfers.append(transfer)
+                        self.maximumPendingCount = max(
+                            self.maximumPendingCount,
+                            self.pendingTransfers.count
+                        )
                     }
                 case .immediate(let status, let data):
                     self.populate(transfer, status: status, data: data)
+                    transfer.pointee.callback?(transfer)
+                case .immediateDuplicate(let status, let data):
+                    self.populate(transfer, status: status, data: data)
+                    transfer.pointee.callback?(transfer)
                     transfer.pointee.callback?(transfer)
                 }
                 return 0
@@ -113,7 +135,13 @@ final class FakeLibUSBFunctions: @unchecked Sendable {
                 self.record("cancelTransfer")
                 if self.cancelCode == 0, let transfer {
                     self.lock.withLock {
-                        self.pendingTransfer = transfer
+                        if !self.pendingTransfers.contains(where: { $0 == transfer }) {
+                            self.pendingTransfers.append(transfer)
+                            self.maximumPendingCount = max(
+                                self.maximumPendingCount,
+                                self.pendingTransfers.count
+                            )
+                        }
                     }
                 }
                 return self.cancelCode
@@ -127,20 +155,42 @@ final class FakeLibUSBFunctions: @unchecked Sendable {
         )
     }
 
-    func complete(
+    func completeNext(
         status: libusb_transfer_status = LIBUSB_TRANSFER_COMPLETED,
         data: Data = Data()
     ) {
-        let transfer = lock.withLock {
-            let value = pendingTransfer
-            pendingTransfer = nil
-            return value
+        let transfer: UnsafeMutablePointer<libusb_transfer>? = lock.withLock {
+            guard !pendingTransfers.isEmpty else {
+                return nil
+            }
+            return pendingTransfers.removeFirst()
         }
         guard let transfer else {
             return
         }
         populate(transfer, status: status, data: data)
         transfer.pointee.callback?(transfer)
+    }
+
+    func complete(
+        status: libusb_transfer_status = LIBUSB_TRANSFER_COMPLETED,
+        data: Data = Data()
+    ) {
+        completeNext(status: status, data: data)
+    }
+
+    func waitForPendingTransferCount(
+        _ count: Int,
+        timeout: TimeInterval = 1
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if lock.withLock({ pendingTransfers.count == count }) {
+                return true
+            }
+            Thread.sleep(forTimeInterval: 0.005)
+        }
+        return lock.withLock { pendingTransfers.count == count }
     }
 
     func waitForEvent(_ event: String, timeout: TimeInterval = 1) -> Bool {

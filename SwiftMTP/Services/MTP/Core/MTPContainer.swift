@@ -73,6 +73,137 @@ nonisolated struct MTPContainer: Equatable, Sendable {
     }
 }
 
+/// A data-container header whose payload is supplied or consumed separately.
+/// `payloadLength` preserves the semantic difference between the largest exact
+/// payload and the same `0xFFFFFFFF` wire value used for an unknown stream.
+nonisolated struct MTPStreamingDataHeader: Equatable, Sendable {
+    let operationCode: MTPOperationCode
+    let transactionID: MTPTransactionID
+    let payloadLength: UInt64?
+
+    func encoded() -> Data {
+        var writer = MTPBinaryWriter()
+        writer.write(payloadLength.map(MTPContainer.dataWireLength) ?? UInt32.max)
+        writer.write(MTPContainerType.data.rawValue)
+        writer.write(operationCode.rawValue)
+        writer.write(transactionID.rawValue)
+        return writer.data
+    }
+
+    static func decode(
+        _ data: Data,
+        expectedPayloadLength: UInt64?
+    ) throws -> Self {
+        guard data.count == Int(MTPContainer.headerLength) else {
+            throw MTPCoreError.protocolViolation("streaming data header must be exactly 12 bytes")
+        }
+        var reader = MTPBinaryReader(data: data)
+        let wireLength = try reader.readUInt32()
+        guard wireLength >= UInt32(MTPContainer.headerLength) else {
+            throw MTPCoreError.protocolViolation("streaming data length is shorter than its header")
+        }
+        let rawType = try reader.readUInt16()
+        guard rawType == MTPContainerType.data.rawValue else {
+            throw MTPCoreError.protocolViolation("expected streaming data before MTP response")
+        }
+        let operationCode = MTPOperationCode(rawValue: try reader.readUInt16())
+        let transactionID = try MTPTransactionID(validating: reader.readUInt32())
+        let payloadLength: UInt64?
+        if wireLength == UInt32.max {
+            payloadLength = expectedPayloadLength
+        } else {
+            payloadLength = UInt64(wireLength) - MTPContainer.headerLength
+        }
+        return Self(
+            operationCode: operationCode,
+            transactionID: transactionID,
+            payloadLength: payloadLength
+        )
+    }
+}
+
+/// Incremental validator for a single streaming MTP data container.
+nonisolated struct MTPStreamingDataDecoder: Sendable {
+    private let operationCode: MTPOperationCode
+    private let transactionID: MTPTransactionID
+    private let expectedPayloadLength: UInt64?
+    private var headerBytes = Data()
+    private var header: MTPStreamingDataHeader?
+
+    private(set) var receivedPayloadLength: UInt64 = 0
+    private(set) var isComplete = false
+
+    init(
+        operationCode: MTPOperationCode,
+        transactionID: MTPTransactionID,
+        expectedPayloadLength: UInt64?
+    ) {
+        self.operationCode = operationCode
+        self.transactionID = transactionID
+        self.expectedPayloadLength = expectedPayloadLength
+    }
+
+    mutating func append(_ fragment: Data, packetEnded: Bool) throws -> [Data] {
+        guard !isComplete else {
+            throw MTPCoreError.protocolViolation("streaming data contains bytes after terminal")
+        }
+
+        var payload = fragment
+        if header == nil {
+            let missingHeaderBytes = Int(MTPContainer.headerLength) - headerBytes.count
+            let consumed = min(missingHeaderBytes, payload.count)
+            headerBytes.append(payload.prefix(consumed))
+            payload.removeFirst(consumed)
+            guard headerBytes.count == Int(MTPContainer.headerLength) else {
+                if packetEnded && fragment.isEmpty {
+                    throw MTPCoreError.protocolViolation("streaming data header is truncated")
+                }
+                return []
+            }
+
+            let decoded = try MTPStreamingDataHeader.decode(
+                headerBytes,
+                expectedPayloadLength: expectedPayloadLength
+            )
+            guard decoded.operationCode == operationCode else {
+                throw MTPCoreError.protocolViolation("streaming data operation code mismatch")
+            }
+            guard decoded.transactionID == transactionID else {
+                throw MTPCoreError.protocolViolation("streaming data transaction ID mismatch")
+            }
+            if let expectedPayloadLength,
+               let declaredPayloadLength = decoded.payloadLength,
+               declaredPayloadLength != expectedPayloadLength {
+                throw MTPCoreError.protocolViolation("streaming data declared length mismatch")
+            }
+            header = decoded
+        }
+
+        let effectiveLength = expectedPayloadLength ?? header?.payloadLength
+        let payloadCount = UInt64(payload.count)
+        if let effectiveLength {
+            guard payloadCount <= effectiveLength - min(receivedPayloadLength, effectiveLength) else {
+                throw MTPCoreError.protocolViolation("streaming data payload overrun")
+            }
+        }
+        receivedPayloadLength += payloadCount
+
+        if let effectiveLength {
+            if receivedPayloadLength == effectiveLength {
+                isComplete = true
+            } else if packetEnded {
+                throw MTPCoreError.protocolViolation(
+                    "streaming data payload ended before its declared length"
+                )
+            }
+        } else if packetEnded {
+            isComplete = true
+        }
+
+        return payload.isEmpty ? [] : [payload]
+    }
+}
+
 nonisolated struct MTPContainerFramer: Sendable {
     private var buffer = Data()
 

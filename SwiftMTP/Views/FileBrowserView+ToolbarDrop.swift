@@ -2,10 +2,28 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
+private nonisolated final class DroppedFileURLCollector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var urls: [URL] = []
+
+    func append(_ url: URL) {
+        lock.withLock {
+            urls.append(url)
+        }
+    }
+
+    func snapshot() -> [URL] {
+        lock.withLock { urls }
+    }
+}
+
 extension FileBrowserView {
     var refreshButton: some View {
         Button {
-            NotificationCenter.default.post(name: NSNotification.Name("RefreshFileList"), object: nil)
+            Task {
+                await FileSystemManager.shared.clearCache(for: device)
+                await loadFiles()
+            }
         } label: {
             Label(L10n.MainWindow.refresh, systemImage: "arrow.clockwise")
                 .labelStyle(.iconOnly)
@@ -145,21 +163,19 @@ extension FileBrowserView {
     let folderName = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !folderName.isEmpty else { return }
 
-    let parentId = currentPath.last?.objectId ?? AppConfiguration.rootDirectoryId
-    let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId ?? AppConfiguration.rootDirectoryId
-
     Task {
-        let result = folderName.withCString { cString in
-            Kalam_CreateFolder(storageId, parentId, UnsafeMutablePointer(mutating: cString))
-        }
-        let success = result > 0
-
-        if success {
-            await FileSystemManager.shared.clearCache(for: device)
+        do {
+            try await FileSystemManager.shared.createFolder(
+                for: device,
+                parent: currentPath.last,
+                name: folderName
+            )
             await loadFiles()
             showingCreateFolderDialog = false
             newFolderName = ""
-        } else {
+        } catch {
+            errorMessage = String(describing: error)
+            showingErrorAlert = true
         }
     }
 }
@@ -171,37 +187,37 @@ extension FileBrowserView {
         }
         
         let parentId = currentPath.last?.objectId ?? AppConfiguration.rootDirectoryId
-        let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId ?? AppConfiguration.rootDirectoryId
+        guard let storageId = currentPath.first?.storageId ?? device.storageInfo.first?.storageId else {
+            return false
+        }
         
-        var fileURLs: [URL] = []
+        let fileURLs = DroppedFileURLCollector()
         let dispatchGroup = DispatchGroup()
         
         for provider in providers {
             if provider.canLoadObject(ofClass: URL.self) {
                 dispatchGroup.enter()
-                provider.loadObject(ofClass: URL.self) { url, error in
+                _ = provider.loadObject(ofClass: URL.self) { url, error in
                     defer {
                         dispatchGroup.leave()
                     }
                     
-                    if let error = error {
+                    guard error == nil, let url else {
                         return
                     }
                     
-                    if let url = url as? URL {
-                        fileURLs.append(url)
-                    }
+                    fileURLs.append(url)
                 }
             }
         }
         
         dispatchGroup.notify(queue: .main) {
-            
-            if fileURLs.isEmpty {
+            let urls = fileURLs.snapshot()
+            if urls.isEmpty {
                 return
             }
             
-            self.uploadDroppedFiles(fileURLs, parentId: parentId, storageId: storageId)
+            self.uploadDroppedFiles(urls, parentId: parentId, storageId: storageId)
         }
         
         return true
@@ -232,13 +248,11 @@ extension FileBrowserView {
         }
         
         for directoryURL in directoriesToUpload {
-            Task {
-                await uploadDirectoryWithProgress(
-                    directoryURL: directoryURL,
-                    parentId: parentId,
-                    storageId: storageId
-                )
-            }
+            uploadDirectoryWithProgress(
+                directoryURL: directoryURL,
+                parentId: parentId,
+                storageId: storageId
+            )
         }
     }
 }

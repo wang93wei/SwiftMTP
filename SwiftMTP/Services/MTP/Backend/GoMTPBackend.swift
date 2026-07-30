@@ -1,7 +1,8 @@
 import Foundation
+import OSLog
 
 /// Injected migration boundary around the existing Kalam C ABI.
-/// Production managers are not wired to this adapter in the foundation phase.
+/// Go remains the production provider until the transfer path is migrated.
 nonisolated protocol GoMTPKernelBoundary: AnyObject {
     func initialize()
     func shutdown()
@@ -10,13 +11,26 @@ nonisolated protocol GoMTPKernelBoundary: AnyObject {
     func openSession(for deviceID: MTPDeviceID) throws -> any MTPBackendSession
 }
 
+nonisolated protocol GoMTPSnapshotRecording: AnyObject {
+    func recordSnapshots(_ snapshots: [MTPDeviceSnapshot])
+}
+
 nonisolated final class GoMTPBackend: MTPBackend {
+    typealias DiagnosticReporter = @Sendable (String) -> Void
+
     private let kernel: any GoMTPKernelBoundary
+    private let reportDiagnostic: DiagnosticReporter
     private let stateLock = NSLock()
     private var initialized = false
 
-    init(kernel: any GoMTPKernelBoundary) {
+    init(
+        kernel: any GoMTPKernelBoundary,
+        reportDiagnostic: @escaping DiagnosticReporter = {
+            MTPLog.session.error("\($0, privacy: .public)")
+        }
+    ) {
         self.kernel = kernel
+        self.reportDiagnostic = reportDiagnostic
     }
 
     func initialize() throws {
@@ -32,9 +46,9 @@ nonisolated final class GoMTPBackend: MTPBackend {
         }
     }
 
-    func scanDevices() throws -> [MTPDeviceSnapshot] {
+    func scanDevices() throws -> MTPScanResult {
         guard let pointer = kernel.scanDevicesJSON() else {
-            throw MTPCoreError.noDevice
+            throw MTPCoreError.disconnected
         }
         // The Kalam allocation must be released on every decode path.
         defer { kernel.freeString(pointer) }
@@ -44,12 +58,21 @@ nonisolated final class GoMTPBackend: MTPBackend {
             throw MTPCoreError.protocolViolation("Go device JSON is not UTF-8")
         }
         do {
-            return try JSONDecoder()
-                .decode([GoDeviceDTO].self, from: data)
+            let response = try JSONDecoder().decode(GoScanResponseDTO.self, from: data)
+            try validateGoScanSuccess(response.ok, errorCode: response.error)
+            let snapshots = try (response.devices ?? [])
                 .map { try $0.snapshot() }
+            let failures = try (response.failures ?? [])
+                .map { try $0.failure() }
+            (kernel as? any GoMTPSnapshotRecording)?.recordSnapshots(snapshots)
+            return MTPScanResult(snapshots: snapshots, failures: failures)
         } catch let error as MTPCoreError {
             throw error
         } catch {
+            reportDiagnostic(
+                "Go device JSON decode failed: byteCount=\(data.count), "
+                    + "errorType=\(String(reflecting: type(of: error)))"
+            )
             throw MTPCoreError.protocolViolation("Go device JSON decode failed")
         }
     }
@@ -80,8 +103,74 @@ nonisolated final class GoMTPBackend: MTPBackend {
     }
 }
 
+private nonisolated func validateGoScanSuccess(
+    _ ok: Bool,
+    errorCode: String?
+) throws {
+    guard ok else {
+        switch errorCode {
+        case "disconnected", "shutting_down":
+            throw MTPCoreError.disconnected
+        default:
+            throw MTPCoreError.response(code: .generalError)
+        }
+    }
+}
+
+private nonisolated struct GoScanResponseDTO: Decodable {
+    let ok: Bool
+    let devices: [GoDeviceDTO]?
+    let failures: [GoScanFailureDTO]?
+    let error: String?
+}
+
+private nonisolated struct GoScanFailureDTO: Decodable {
+    let deviceId: String
+    let storageId: UInt32?
+    let stage: String
+    let error: String
+
+    func failure() throws -> MTPScanFailure {
+        let deviceID = try MTPDeviceID(validating: deviceId)
+        let storageID = try storageId.map { try MTPStorageID(validating: $0) }
+        let typedStage: MTPScanFailure.Stage
+        switch stage {
+        case "device":
+            guard storageID == nil else {
+                throw MTPCoreError.protocolViolation(
+                    "Go device scan failure unexpectedly included a storage ID"
+                )
+            }
+            typedStage = .device
+        case "storage":
+            typedStage = .storage
+        default:
+            throw MTPCoreError.protocolViolation("Go scan failure has an unknown stage")
+        }
+        return MTPScanFailure(
+            deviceID: deviceID,
+            storageID: storageID,
+            stage: typedStage,
+            error: Self.coreError(error)
+        )
+    }
+
+    private static func coreError(_ code: String) -> MTPCoreError {
+        switch code {
+        case "disconnected", "stale_token", "unknown_token", "shutting_down":
+            return .disconnected
+        case "timeout":
+            return .timeout
+        case "permission_denied":
+            return .permissionDenied
+        default:
+            return .response(code: .generalError)
+        }
+    }
+}
+
 private nonisolated struct GoDeviceDTO: Decodable {
-    let id: Int
+    let id: String
     let name: String
     let manufacturer: String
     let model: String
@@ -89,7 +178,7 @@ private nonisolated struct GoDeviceDTO: Decodable {
 
     func snapshot() throws -> MTPDeviceSnapshot {
         MTPDeviceSnapshot(
-            deviceID: try MTPDeviceID(validating: "go:\(id)"),
+            deviceID: try MTPDeviceID(validating: id),
             name: name,
             manufacturer: manufacturer,
             model: model,
@@ -98,7 +187,7 @@ private nonisolated struct GoDeviceDTO: Decodable {
     }
 }
 
-private nonisolated struct GoStorageDTO: Decodable {
+nonisolated struct GoStorageDTO: Decodable {
     let id: UInt32
     let description: String
     let freeSpace: UInt64

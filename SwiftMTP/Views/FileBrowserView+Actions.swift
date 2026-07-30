@@ -10,7 +10,7 @@ extension FileBrowserView {
 
         panel.begin { response in
             if response == .OK, let url = panel.url {
-                FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: url, shouldReplace: true)
+                submitDownload(file, to: url, shouldReplace: true)
             }
         }
     }
@@ -55,12 +55,12 @@ extension FileBrowserView {
                                 }
                                 for file in filesToActuallyDownload {
                                     let destination = directory.appendingPathComponent(file.name)
-                                    FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination)
+                                    submitDownload(file, to: destination)
                                 }
                             case .alertThirdButtonReturn:
                                 for file in filesToDownload {
                                     let destination = directory.appendingPathComponent(file.name)
-                                    FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination, shouldReplace: true)
+                                    submitDownload(file, to: destination, shouldReplace: true)
                                 }
                             default:
                                 break
@@ -76,12 +76,12 @@ extension FileBrowserView {
                             }
                             for file in filesToActuallyDownload {
                                 let destination = directory.appendingPathComponent(file.name)
-                                FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination)
+                                submitDownload(file, to: destination)
                             }
                         case .alertThirdButtonReturn:
                             for file in filesToDownload {
                                 let destination = directory.appendingPathComponent(file.name)
-                                FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination, shouldReplace: true)
+                                submitDownload(file, to: destination, shouldReplace: true)
                             }
                         default:
                             break
@@ -90,10 +90,27 @@ extension FileBrowserView {
                 } else {
                     for file in filesToDownload {
                         let destination = directory.appendingPathComponent(file.name)
-                        FileTransferManager.shared.downloadFile(from: device, fileItem: file, to: destination)
+                        submitDownload(file, to: destination)
                     }
                 }
             }
+        }
+    }
+
+    private func submitDownload(
+        _ file: FileItem,
+        to destination: URL,
+        shouldReplace: Bool = false
+    ) {
+        do {
+            _ = try FileTransferManager.shared.downloadFile(
+                from: device,
+                fileItem: file,
+                to: destination,
+                shouldReplace: shouldReplace
+            )
+        } catch {
+            presentTransferSubmissionError(error, operation: .download)
         }
     }
     
@@ -153,23 +170,51 @@ extension FileBrowserView {
 
         if existingFiles.isEmpty {
             for file in newFiles {
-                FileTransferManager.shared.uploadFile(to: device, sourceURL: file.url, parentId: file.parentId, storageId: file.storageId)
+                submitUpload(file)
             }
             return
         }
 
         showFileReplaceDialog(existingFiles: existingFiles) { decision in
             for file in newFiles {
-                FileTransferManager.shared.uploadFile(to: device, sourceURL: file.url, parentId: file.parentId, storageId: file.storageId)
+                submitUpload(file)
             }
 
             for (url, shouldReplace) in decision {
                 if shouldReplace {
                     let file = files.first { $0.url == url }!
-                    FileTransferManager.shared.uploadFile(to: device, sourceURL: file.url, parentId: file.parentId, storageId: file.storageId)
+                    submitUpload(file)
                 }
             }
         }
+    }
+
+    private func submitUpload(
+        _ file: (url: URL, parentId: UInt32, storageId: UInt32)
+    ) {
+        do {
+            _ = try FileTransferManager.shared.uploadFile(
+                to: device,
+                sourceURL: file.url,
+                parentId: file.parentId,
+                storageId: file.storageId
+            )
+        } catch {
+            presentTransferSubmissionError(error, operation: .upload)
+        }
+    }
+
+    private func presentTransferSubmissionError(
+        _ error: Error,
+        operation: MTPTransferPresentationOperation
+    ) {
+        let coreError = error as? MTPCoreError
+            ?? .protocolViolation("unexpected transfer submission failure")
+        errorMessage = MTPTransferErrorPresentation.message(
+            for: coreError,
+            operation: operation
+        )
+        showingErrorAlert = true
     }
 
     func selectFilesToUpload() {
@@ -221,34 +266,43 @@ extension FileBrowserView {
                 }
                 
                 
-                Task {
-                    await self.uploadDirectoryWithProgress(
-                        directoryURL: directoryURL,
-                        parentId: parentId,
-                        storageId: storageId
-                    )
-                }
+                self.uploadDirectoryWithProgress(
+                    directoryURL: directoryURL,
+                    parentId: parentId,
+                    storageId: storageId
+                )
             }
         }
     }
     
-    @MainActor
     func uploadDirectoryWithProgress(
         directoryURL: URL,
         parentId: UInt32,
         storageId: UInt32
-    ) async {
-
-        let result = await FileTransferManager.shared.uploadDirectory(
-            to: self.device,
-            sourceURL: directoryURL,
-            parentId: parentId,
-            storageId: storageId
-        ) { completed, total in
-            let progress = Double(completed) / Double(total) * 100
+    ) {
+        do {
+            _ = try FileTransferManager.shared.uploadDirectory(
+                to: device,
+                sourceURL: directoryURL,
+                parentId: parentId,
+                storageId: storageId,
+                completionHandler: { result in
+                    self.presentDirectoryUploadResult(result, directoryURL: directoryURL)
+                }
+            )
+        } catch {
+            presentTransferSubmissionError(error, operation: .directoryUpload)
         }
+    }
 
-        if result.failedFiles == 0 {
+    private func presentDirectoryUploadResult(
+        _ result: MTPDirectoryUploadResult,
+        directoryURL: URL
+    ) {
+        switch result.outcome {
+        case .cancelled:
+            return
+        case .succeeded:
             ToastManager.shared.showSuccess(
                 title: L10n.FileBrowser.uploadSuccess,
                 message: L10n.FileBrowser.uploadDirectorySuccess.localized(
@@ -256,36 +310,28 @@ extension FileBrowserView {
                     directoryURL.lastPathComponent
                 )
             )
-        } else if result.uploadedFiles == 0 {
+        case .failed:
             ToastManager.shared.showError(
                 title: L10n.FileBrowser.uploadFailed,
-                message: L10n.FileBrowser.uploadDirectoryFailed.localized(
-                    result.failedFiles,
-                    result.errors.first ?? "Unknown error"
-                )
+                message: MTPTransferErrorPresentation.directoryMessage(for: result)
             )
-        } else {
-            let message = L10n.FileBrowser.uploadDirectoryPartial.localized(
-                result.uploadedFiles,
-                result.totalFiles
-            )
-            let errorDetails = result.errors.isEmpty ? "" : result.errors.prefix(3).joined(separator: "\n")
+        case .partial:
             ToastManager.shared.showWarning(
-                title: message,
-                message: errorDetails.isEmpty ? nil : errorDetails + (result.errors.count > 3 ? "\n..." : "")
+                title: MTPTransferErrorPresentation.directoryMessage(for: result),
+                message: nil
             )
         }
     }
     
     func deleteFile(_ file: FileItem) {
         Task {
-            let result = Kalam_DeleteObject(file.objectId)
-            let success = result > 0
-
-            if success {
-                await FileSystemManager.shared.clearCache(for: device)
+            do {
+                try await FileSystemManager.shared.deleteObject(
+                    for: device,
+                    objectID: file.objectID
+                )
                 await loadFiles()
-            } else {
+            } catch {
                 errorMessage = L10n.FileBrowser.operationFailedWithMessage.localized(file.name)
                 showingErrorAlert = true
             }
@@ -327,31 +373,33 @@ extension FileBrowserView {
     }
     
     func performBatchDelete(files: [FileItem]) {
-    Task {
-        var deletedCount = 0
-        var failedFiles: [String] = []
-
-        for file in files {
-            let result = Kalam_DeleteObject(file.objectId)
-            if result > 0 {
-                deletedCount += 1
-            } else {
-                failedFiles.append(file.name)
+        Task {
+            do {
+                let result = try await FileSystemManager.shared.deleteObjects(
+                    for: device,
+                    objectIDs: files.map(\.objectID)
+                )
+                if !result.succeededObjectIDs.isEmpty {
+                    await loadFiles()
+                }
+                if !result.failures.isEmpty {
+                    let filesByID = Dictionary(
+                        uniqueKeysWithValues: files.map { ($0.objectID, $0.name) }
+                    )
+                    let details = result.failures.map { failure in
+                        let name = filesByID[failure.objectID] ?? "\(failure.objectID.rawValue)"
+                        return "\(name): \(String(describing: failure.error))"
+                    }
+                    errorMessage = "The following files failed to delete:\n\n\(details.joined(separator: "\n"))"
+                    showingErrorAlert = true
+                }
+            } catch {
+                errorMessage = String(describing: error)
+                showingErrorAlert = true
             }
+            selectedFiles.removeAll()
         }
-
-        await FileSystemManager.shared.clearCache(for: device)
-        await loadFiles()
-
-        if failedFiles.isEmpty {
-        } else {
-            errorMessage = "The following files failed to delete:\n\n\(failedFiles.joined(separator: "\n"))"
-            showingErrorAlert = true
-        }
-
-        selectedFiles.removeAll()
     }
-}
     
     
 }

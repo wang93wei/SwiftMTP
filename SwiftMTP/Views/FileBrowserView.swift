@@ -16,6 +16,7 @@ struct FileBrowserView: View {
     @Namespace var toolbarNamespace
     
     @StateObject var transferManager = FileTransferManager.shared
+    @StateObject var transferCompletionCenter = MTPTransferCompletionCenter.shared
     @State var showTransferPanel = false
     
     var hasSelectedFolders: Bool {
@@ -75,7 +76,17 @@ struct FileBrowserView: View {
             .task {
                 await loadFiles()
             }
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshFileList"))) { _ in
+            .onReceive(transferCompletionCenter.events) { event in
+                guard event.remoteMutation,
+                      let storageID = currentPath.first?.storageID
+                        ?? device.storageInfo.first?.storageID,
+                      event.matches(
+                        appDeviceID: device.id,
+                        storageID: storageID,
+                        parentID: currentPath.last?.objectID ?? .root
+                      ) else {
+                    return
+                }
                 Task {
                     await loadFiles()
                 }
@@ -378,20 +389,25 @@ struct FileBrowserView: View {
     
     func loadFiles() async {
         isLoading = true
-
-        let files: [FileItem]
-
-        if currentPath.isEmpty {
-            files = await FileSystemManager.shared.getRootFiles(for: device)
-        } else if let parent = currentPath.last {
-            files = await FileSystemManager.shared.getChildrenFiles(for: device, parent: parent)
-        } else {
-            files = []
+        defer { isLoading = false }
+        do {
+            let files: [FileItem]
+            if currentPath.isEmpty {
+                files = try await FileSystemManager.shared.getRootFiles(for: device)
+            } else if let parent = currentPath.last {
+                files = try await FileSystemManager.shared.getChildrenFiles(
+                    for: device,
+                    parent: parent
+                )
+            } else {
+                files = []
+            }
+            currentFiles = sortFiles(files)
+            selectedFiles.removeAll()
+        } catch {
+            errorMessage = String(describing: error)
+            showingErrorAlert = true
         }
-
-        currentFiles = sortFiles(files)
-        selectedFiles.removeAll()
-        isLoading = false
     }
     
     func sortFiles(_ files: [FileItem]) -> [FileItem] {

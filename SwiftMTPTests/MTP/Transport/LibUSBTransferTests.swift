@@ -3,6 +3,28 @@ import XCTest
 @testable import SwiftMTP
 
 final class LibUSBTransferTests: XCTestCase {
+    func testPreCancelledTransferDoesNotAllocateOrSubmit() throws {
+        let fake = FakeLibUSBFunctions()
+        let context = try LibUSBContext(functions: fake.table, startsEventLoop: false)
+        let token = MTPCancellationToken()
+        token.cancel()
+        let transfer = LibUSBTransfer(
+            context: context,
+            deviceHandle: OpaquePointer(bitPattern: 0x200)!,
+            endpoint: 0x81,
+            buffer: .input(capacity: 64),
+            timeoutMilliseconds: 1_000,
+            functions: fake.table
+        )
+
+        XCTAssertThrowsError(try transfer.execute(cancellation: token)) {
+            XCTAssertEqual($0 as? MTPCoreError, .cancelled)
+        }
+        XCTAssertFalse(fake.events.contains("allocateTransfer"))
+        XCTAssertFalse(fake.events.contains("submitTransfer"))
+        context.shutdown()
+    }
+
     func testReadBufferIsFreedOnlyAfterCompletionCallback() throws {
         let fake = FakeLibUSBFunctions()
         let context = try LibUSBContext(
@@ -80,6 +102,39 @@ final class LibUSBTransferTests: XCTestCase {
             XCTAssertEqual($0 as? MTPCoreError, .cancelled)
         }
         XCTAssertEqual(fake.events.last, "freeTransfer")
+        context.shutdown()
+    }
+
+    func testCompletionWinningCancellationRaceReturnsCompletedBytesOnce() throws {
+        let fake = FakeLibUSBFunctions()
+        let context = try LibUSBContext(functions: fake.table, startsEventLoop: false)
+        let token = MTPCancellationToken()
+        let transfer = LibUSBTransfer(
+            context: context,
+            deviceHandle: OpaquePointer(bitPattern: 0x200)!,
+            endpoint: 0x81,
+            buffer: .input(capacity: 64),
+            timeoutMilliseconds: 1_000,
+            functions: fake.table
+        )
+        let result = UncheckedResultBox<Result<Data, Error>>()
+        let completed = DispatchSemaphore(value: 0)
+
+        DispatchQueue.global().async {
+            result.store(Result {
+                try transfer.execute(cancellation: token)
+            })
+            completed.signal()
+        }
+
+        XCTAssertTrue(fake.waitForEvent("submitTransfer"))
+        token.cancel()
+        XCTAssertTrue(fake.waitForEvent("cancelTransfer"))
+        fake.completeNext(status: LIBUSB_TRANSFER_COMPLETED, data: Data([9]))
+
+        XCTAssertEqual(completed.wait(timeout: .now() + 1), .success)
+        XCTAssertEqual(try result.value?.get(), Data([9]))
+        XCTAssertEqual(fake.events.filter { $0 == "freeTransfer" }.count, 1)
         context.shutdown()
     }
 
@@ -240,6 +295,79 @@ final class LibUSBTransferTests: XCTestCase {
             try XCTUnwrap(events.firstIndex(of: "close"))
         )
         context.shutdown()
+    }
+
+    func testDuplicateTerminalCallbackIsIgnoredBeforeTransferIsFreed() throws {
+        let fake = FakeLibUSBFunctions()
+        fake.transferBehavior = .immediateDuplicate(
+            status: LIBUSB_TRANSFER_COMPLETED,
+            data: Data([1, 2, 3])
+        )
+        let context = try LibUSBContext(functions: fake.table, startsEventLoop: false)
+        let transfer = LibUSBTransfer(
+            context: context,
+            deviceHandle: OpaquePointer(bitPattern: 0x200)!,
+            endpoint: 0x81,
+            buffer: .input(capacity: 64),
+            timeoutMilliseconds: 1_000,
+            functions: fake.table
+        )
+
+        XCTAssertEqual(
+            try transfer.execute(cancellation: MTPCancellationToken()),
+            Data([1, 2, 3])
+        )
+        XCTAssertEqual(fake.events.filter { $0 == "freeTransfer" }.count, 1)
+        context.shutdown()
+    }
+
+    func testCompletedTransferRemovesItsCancellationCallback() throws {
+        let fake = FakeLibUSBFunctions()
+        fake.transferBehavior = .immediate(
+            status: LIBUSB_TRANSFER_COMPLETED,
+            data: Data([1])
+        )
+        let context = try LibUSBContext(functions: fake.table, startsEventLoop: false)
+        let token = MTPCancellationToken()
+        let transfer = LibUSBTransfer(
+            context: context,
+            deviceHandle: OpaquePointer(bitPattern: 0x200)!,
+            endpoint: 0x81,
+            buffer: .input(capacity: 64),
+            timeoutMilliseconds: 1_000,
+            functions: fake.table
+        )
+
+        XCTAssertEqual(try transfer.execute(cancellation: token), Data([1]))
+        XCTAssertEqual(token.registeredCallbackCount, 0)
+        context.shutdown()
+    }
+
+    func testTimeoutAndNoDeviceTerminalCallbacksMapAfterCallbackOwnershipEnds() throws {
+        for (status, expectedError) in [
+            (LIBUSB_TRANSFER_TIMED_OUT, MTPCoreError.timeout),
+            (LIBUSB_TRANSFER_NO_DEVICE, MTPCoreError.disconnected),
+        ] {
+            let fake = FakeLibUSBFunctions()
+            fake.transferBehavior = .immediate(status: status, data: Data())
+            let context = try LibUSBContext(functions: fake.table, startsEventLoop: false)
+            let transfer = LibUSBTransfer(
+                context: context,
+                deviceHandle: OpaquePointer(bitPattern: 0x200)!,
+                endpoint: 0x81,
+                buffer: .input(capacity: 64),
+                timeoutMilliseconds: 1_000,
+                functions: fake.table
+            )
+
+            XCTAssertThrowsError(
+                try transfer.execute(cancellation: MTPCancellationToken())
+            ) {
+                XCTAssertEqual($0 as? MTPCoreError, expectedError)
+            }
+            XCTAssertEqual(fake.events.suffix(2), ["submitTransfer", "freeTransfer"])
+            context.shutdown()
+        }
     }
 
 }

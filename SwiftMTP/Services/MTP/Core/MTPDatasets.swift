@@ -33,14 +33,224 @@ nonisolated struct MTPUInt32Array: Equatable, Sendable {
 nonisolated struct MTPObjectInfoDataset: Equatable, Sendable {
     let storageID: MTPStorageID
     let objectFormat: UInt16
+    let protectionStatus: UInt16
     let objectSize: UInt64
+    let thumbFormat: UInt16
+    let thumbCompressedSize: UInt32
+    let thumbPixelWidth: UInt32
+    let thumbPixelHeight: UInt32
+    let imagePixelWidth: UInt32
+    let imagePixelHeight: UInt32
+    let imageBitDepth: UInt32
     let parentObject: MTPObjectID
+    let associationType: UInt16
+    let associationDescription: UInt32
+    let sequenceNumber: UInt32
     let filename: String
+    let captureDateString: String
+    let modificationDateString: String
+    let keywords: String
+
+    var modificationDate: Date? {
+        try? Self.parseDate(modificationDateString)
+    }
+
+    var hasObjectSizeSentinel: Bool {
+        objectSize == UInt64(UInt32.max)
+    }
+
+    init(
+        storageID: MTPStorageID,
+        objectFormat: UInt16,
+        objectSize: UInt64,
+        parentObject: MTPObjectID,
+        filename: String,
+        modificationDateString: String = "",
+        protectionStatus: UInt16 = 0,
+        thumbFormat: UInt16 = 0,
+        thumbCompressedSize: UInt32 = 0,
+        thumbPixelWidth: UInt32 = 0,
+        thumbPixelHeight: UInt32 = 0,
+        imagePixelWidth: UInt32 = 0,
+        imagePixelHeight: UInt32 = 0,
+        imageBitDepth: UInt32 = 0,
+        associationType: UInt16 = 0,
+        associationDescription: UInt32 = 0,
+        sequenceNumber: UInt32 = 0,
+        captureDateString: String = "",
+        keywords: String = ""
+    ) throws {
+        var validator = MTPBinaryWriter()
+        try validator.writeMTPString(filename)
+        try validator.writeMTPString(captureDateString)
+        try validator.writeMTPString(modificationDateString)
+        try validator.writeMTPString(keywords)
+        _ = try Self.parseDate(captureDateString)
+        _ = try Self.parseDate(modificationDateString)
+
+        self.storageID = storageID
+        self.objectFormat = objectFormat
+        self.protectionStatus = protectionStatus
+        self.objectSize = objectSize
+        self.thumbFormat = thumbFormat
+        self.thumbCompressedSize = thumbCompressedSize
+        self.thumbPixelWidth = thumbPixelWidth
+        self.thumbPixelHeight = thumbPixelHeight
+        self.imagePixelWidth = imagePixelWidth
+        self.imagePixelHeight = imagePixelHeight
+        self.imageBitDepth = imageBitDepth
+        self.parentObject = parentObject
+        self.associationType = associationType
+        self.associationDescription = associationDescription
+        self.sequenceNumber = sequenceNumber
+        self.filename = filename
+        self.captureDateString = captureDateString
+        self.modificationDateString = modificationDateString
+        self.keywords = keywords
+    }
+
+    static func folder(
+        storageID: MTPStorageID,
+        parentObject: MTPObjectID,
+        name: String
+    ) throws -> Self {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw MTPCoreError.invalidInput("folder name must not be empty")
+        }
+        guard !trimmed.contains(where: { "/\\:*?\"<>|".contains($0) }) else {
+            throw MTPCoreError.invalidInput("folder name contains a forbidden character")
+        }
+        return try Self(
+            storageID: storageID,
+            objectFormat: 0x3001,
+            objectSize: 0,
+            parentObject: parentObject,
+            filename: trimmed,
+            associationType: 1
+        )
+    }
+
+    static func file(
+        storageID: MTPStorageID,
+        parentObject: MTPObjectID,
+        name: String,
+        size: UInt64,
+        modificationDateString: String = ""
+    ) throws -> Self {
+        guard !name.isEmpty else {
+            throw MTPCoreError.invalidInput("file name must not be empty")
+        }
+        guard !name.contains(where: { "/\\:*?\"<>|".contains($0) }) else {
+            throw MTPCoreError.invalidInput("file name contains a forbidden character")
+        }
+        guard !name.unicodeScalars.contains(where: {
+            $0.value < 0x20 || $0.value == 0x7F
+        }) else {
+            throw MTPCoreError.invalidInput("file name contains a control character")
+        }
+        return try Self(
+            storageID: storageID,
+            objectFormat: 0x3000,
+            objectSize: size,
+            parentObject: parentObject,
+            filename: name,
+            modificationDateString: modificationDateString
+        )
+    }
+
+    func encoded() throws -> Data {
+        var writer = MTPBinaryWriter()
+        writer.write(storageID.rawValue)
+        writer.write(objectFormat)
+        writer.write(protectionStatus)
+        writer.write(Self.compressedSizeField(for: objectSize))
+        writer.write(thumbFormat)
+        writer.write(thumbCompressedSize)
+        writer.write(thumbPixelWidth)
+        writer.write(thumbPixelHeight)
+        writer.write(imagePixelWidth)
+        writer.write(imagePixelHeight)
+        writer.write(imageBitDepth)
+        writer.write(parentObject.rawValue)
+        writer.write(associationType)
+        writer.write(associationDescription)
+        writer.write(sequenceNumber)
+        try writer.writeMTPString(filename)
+        try writer.writeMTPString(captureDateString)
+        try writer.writeMTPString(modificationDateString)
+        try writer.writeMTPString(keywords)
+        return writer.data
+    }
+
+    static func decode(_ data: Data) throws -> Self {
+        var reader = MTPBinaryReader(data: data)
+        let storageID = try MTPStorageID(validating: reader.readUInt32())
+        let objectFormat = try reader.readUInt16()
+        let protectionStatus = try reader.readUInt16()
+        let objectSize = UInt64(try reader.readUInt32())
+        let thumbFormat = try reader.readUInt16()
+        let thumbCompressedSize = try reader.readUInt32()
+        let thumbPixelWidth = try reader.readUInt32()
+        let thumbPixelHeight = try reader.readUInt32()
+        let imagePixelWidth = try reader.readUInt32()
+        let imagePixelHeight = try reader.readUInt32()
+        let imageBitDepth = try reader.readUInt32()
+        let parentObject = try MTPObjectID(validating: reader.readUInt32())
+        let associationType = try reader.readUInt16()
+        let associationDescription = try reader.readUInt32()
+        let sequenceNumber = try reader.readUInt32()
+        let filename = try reader.readMTPString()
+        let captureDateString = try reader.readMTPString()
+        let modificationDateString = try reader.readMTPString()
+        let keywords = try reader.readMTPString()
+        guard reader.remainingCount == 0 else {
+            throw MTPCoreError.protocolViolation("ObjectInfo dataset has trailing bytes")
+        }
+        return try Self(
+            storageID: storageID,
+            objectFormat: objectFormat,
+            objectSize: objectSize,
+            parentObject: parentObject,
+            filename: filename,
+            modificationDateString: modificationDateString,
+            protectionStatus: protectionStatus,
+            thumbFormat: thumbFormat,
+            thumbCompressedSize: thumbCompressedSize,
+            thumbPixelWidth: thumbPixelWidth,
+            thumbPixelHeight: thumbPixelHeight,
+            imagePixelWidth: imagePixelWidth,
+            imagePixelHeight: imagePixelHeight,
+            imageBitDepth: imageBitDepth,
+            associationType: associationType,
+            associationDescription: associationDescription,
+            sequenceNumber: sequenceNumber,
+            captureDateString: captureDateString,
+            keywords: keywords
+        )
+    }
 
     /// ObjectInfo has a separate UInt32 size field: values through
     /// `0xFFFFFFFE` are exact, while larger values use its sentinel.
     static func compressedSizeField(for byteCount: UInt64) -> UInt32 {
         byteCount >= UInt64(UInt32.max) ? UInt32.max : UInt32(byteCount)
+    }
+
+    private static func parseDate(_ value: String) throws -> Date? {
+        guard !value.isEmpty else {
+            return nil
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd'T'HHmmssZ"
+        formatter.isLenient = false
+        let normalized = value.hasSuffix("Z") ? String(value.dropLast()) + "+0000" : value
+        guard let date = formatter.date(from: normalized) else {
+            throw MTPCoreError.protocolViolation("ObjectInfo contains a malformed MTP timestamp")
+        }
+        return date
     }
 }
 

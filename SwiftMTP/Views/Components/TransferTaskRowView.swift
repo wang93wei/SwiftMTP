@@ -58,6 +58,8 @@ struct TransferTaskRowView: View {
         switch task.status {
         case .completed:
             return .green
+        case .partial:
+            return .orange
         case .failed:
             return .red
         case .cancelled:

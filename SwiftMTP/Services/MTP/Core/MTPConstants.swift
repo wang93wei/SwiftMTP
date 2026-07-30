@@ -18,6 +18,17 @@ nonisolated struct MTPOperationCode: RawRepresentable, Hashable, Sendable {
     static let deleteObject = Self(rawValue: 0x100B)
     static let sendObjectInfo = Self(rawValue: 0x100C)
     static let sendObject = Self(rawValue: 0x100D)
+    static let getObjectPropValue = Self(rawValue: 0x9803)
+}
+
+nonisolated struct MTPObjectPropertyCode: RawRepresentable, Hashable, Sendable {
+    let rawValue: UInt16
+
+    init(rawValue: UInt16) {
+        self.rawValue = rawValue
+    }
+
+    static let objectSize = Self(rawValue: 0xDC04)
 }
 
 nonisolated struct MTPResponseCode: RawRepresentable, Hashable, Sendable {
@@ -35,6 +46,7 @@ nonisolated struct MTPResponseCode: RawRepresentable, Hashable, Sendable {
     static let invalidObjectHandle = Self(rawValue: 0x2009)
     static let deviceBusy = Self(rawValue: 0x2019)
     static let sessionAlreadyOpen = Self(rawValue: 0x201E)
+    static let invalidObjectPropCode = Self(rawValue: 0xA801)
 }
 
 nonisolated enum MTPContainerType: UInt16, Sendable {

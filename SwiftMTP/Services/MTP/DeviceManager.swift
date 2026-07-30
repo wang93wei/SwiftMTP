@@ -8,52 +8,11 @@
 import Foundation
 import Combine
 
-// Helper structs for JSON decoding from Kalam
-struct KalamDevice: Codable {
-    let id: Int
-    let name: String
-    let manufacturer: String
-    let model: String
-    let serialNumber: String
-    let storage: [KalamStorage]
-    let mtpSupport: KalamMTPSupport
-}
-
-struct KalamMTPSupport: Codable {
-    let mtpVersion: String
-    let deviceVersion: String
-    let vendorExtension: String
-}
-
-struct KalamStorage: Codable {
-    let id: UInt32
-    let description: String
-    let freeSpace: UInt64
-    let maxCapacity: UInt64
-}
-
 @MainActor
-class DeviceManager: ObservableObject, DeviceManaging {
+class DeviceManager: ObservableObject {
     // MARK: - Singleton
 
-    static let shared = DeviceManager()
-
-    // MARK: - Constants
-
-    /// Default scan interval in seconds
-    private static let DefaultScanInterval: TimeInterval = 3.0
-
-    /// Scan interval when device is connected (seconds)
-    private static let ConnectedDeviceScanInterval: TimeInterval = 5.0
-
-    /// Maximum scan interval for exponential backoff (seconds)
-    private static let MaxScanInterval: TimeInterval = 30.0
-
-    /// Maximum consecutive failures before stopping automatic scan
-    private static let MaxFailuresBeforeManualRefresh: Int = 3
-
-    /// Root directory ID (MTP protocol standard value)
-    private static let RootDirectoryId: UInt32 = 0xFFFFFFFF
+    static let shared = DeviceManager(runtime: MTPProviderRuntime.shared)
 
     // MARK: - 发布属性
 
@@ -75,6 +34,9 @@ class DeviceManager: ObservableObject, DeviceManaging {
     /// 是否显示手动刷新按钮
     @Published var showManualRefreshButton: Bool = false
 
+    /// Recoverable per-device or per-storage failures from the last successful scan.
+    @Published private(set) var scanFailures: [MTPScanFailure] = []
+
     // MARK: - 私有属性
 
     /// User configured scan interval in seconds
@@ -92,22 +54,8 @@ class DeviceManager: ObservableObject, DeviceManaging {
     /// Whether app termination cleanup has started
     private var isShuttingDown: Bool = false
     
-    /// Device ID cache (using NSCache for automatic memory management)
-    private let deviceIdCache = NSCache<NSNumber, UUIDWrapper>()
-    
-    /// Device serial cache (using NSCache for automatic memory management)
-    private let deviceSerialCache = NSCache<NSNumber, NSString>()
-    
-    /// UUID wrapper class (for NSCache, as NSCache requires object types to be classes)
-    private class UUIDWrapper: NSObject {
-        let uuid: UUID
-        init(_ uuid: UUID) {
-            self.uuid = uuid
-        }
-    }
-    
-    /// Last successful scan device serial set (for detecting device disconnection)
-    private var lastDeviceSerials: Set<String> = []
+    private let runtime: any MTPProviderRuntimeProtocol
+    private var appIDsByIdentity: [MTPDeviceIdentity: UUID] = [:]
     
     /// Consecutive failure count (for exponential backoff)
     private var consecutiveFailures: Int = 0
@@ -115,22 +63,16 @@ class DeviceManager: ObservableObject, DeviceManaging {
     /// Current scan interval in seconds
     private var currentScanInterval: TimeInterval = AppConfiguration.defaultScanInterval
     
-    private init() {
-        // Initialize Kalam kernel
-        Kalam_Init()
-        
-        // Configure device ID cache
-        deviceIdCache.countLimit = AppConfiguration.deviceCacheCountLimit
-        deviceIdCache.totalCostLimit = AppConfiguration.deviceCacheTotalCostLimit
-        
-        // Configure device serial cache
-        deviceSerialCache.countLimit = AppConfiguration.deviceCacheCountLimit
-        deviceSerialCache.totalCostLimit = AppConfiguration.deviceSerialCacheTotalCostLimit
-        
+    init(
+        runtime: any MTPProviderRuntimeProtocol,
+        startsScanning: Bool = true
+    ) {
+        self.runtime = runtime
         // Initialize scan interval to user configured value
         currentScanInterval = userScanInterval
-        
-        startScanning()
+        if startsScanning {
+            startScanning()
+        }
     }
     
     deinit {
@@ -196,14 +138,27 @@ class DeviceManager: ObservableObject, DeviceManaging {
     /// Scan for devices
     /// Detects device connection and disconnection, uses exponential backoff strategy to reduce scan frequency on failures
     func scanDevices() {
+        _ = beginScan()
+    }
+
+    /// Starts a scan and suspends until its published state has been updated.
+    /// Tests use this seam instead of polling wall-clock time.
+    func scanDevicesAndWait() async {
+        guard let task = beginScan() else {
+            return
+        }
+        await task.value
+    }
+
+    private func beginScan() -> Task<Void, Never>? {
         // Avoid concurrent scanning
-        guard !isScanning, !isShuttingDown else { return }
+        guard !isScanning, !isShuttingDown else { return nil }
         
         // Stop automatic scanning after reaching max consecutive failures
         if consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
             print("[DeviceManager] Max failures reached, stopping automatic scanning")
             stopScanning()
-            return
+            return nil
         }
         
         let actualInterval = userScanInterval
@@ -212,111 +167,33 @@ class DeviceManager: ObservableObject, DeviceManaging {
         // Set scanning flag on main thread
         isScanning = true
         
-        scanOperationTask = Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self = self else { return }
-            
-            defer {
-                Task { @MainActor [weak self] in
-                    self?.scanOperationTask = nil
-                }
-            }
-            
+        let task = Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
             let shouldContinue = await MainActor.run { !self.isShuttingDown && !Task.isCancelled }
             guard shouldContinue else { return }
             
-            // Call Kalam_Scan through Go bridge
-            guard let jsonPtr = Kalam_Scan() else {
-                print("[DeviceManager] Kalam_Scan returned nil - no devices found")
-                await MainActor.run {
-                    guard !self.isShuttingDown else {
-                        self.isScanning = false
-                        return
-                    }
-                    self.handleDeviceDisconnection()
-                    self.isScanning = false
-                    self.hasScannedOnce = true
-                    
-                    // Stop automatic scanning after reaching max consecutive failures
-                    if self.consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
-                        print("[DeviceManager] Max failures reached, stopping automatic scanning")
-                        self.stopScanning()
-                    }
-                }
-                return
-            }
-            
-            // Use defer to ensure memory is always freed
-            defer {
-                Kalam_FreeString(jsonPtr)
-            }
-            
-            let jsonString = String(cString: jsonPtr)
-            
-            guard let data = jsonString.data(using: .utf8) else {
-                print("[DeviceManager] Failed to convert device JSON string to data")
-                await MainActor.run {
-                    guard !self.isShuttingDown else {
-                        self.isScanning = false
-                        return
-                    }
-                    self.handleDeviceDisconnection()
-                    self.isScanning = false
-                    self.hasScannedOnce = true
-                    
-                    // Stop automatic scanning after reaching max consecutive failures
-                    if self.consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
-                        print("[DeviceManager] Max failures reached, stopping automatic scanning")
-                        self.stopScanning()
-                    }
-                }
-                return
-            }
-            
             do {
-                let kalamDevices = try JSONDecoder().decode([KalamDevice].self, from: data)
-                
-                // Map devices on MainActor since mapToDevice is MainActor isolated
-                let newDevices = await MainActor.run {
-                    return kalamDevices.map { self.mapToDevice($0) }
-                }
-                
-                print("[DeviceManager] Successfully found \(newDevices.count) device(s)")
-                
-                await MainActor.run {
-                    guard !self.isShuttingDown else {
-                        self.isScanning = false
-                        return
-                    }
-                    self.updateDevices(newDevices)
-                    self.isScanning = false
-                    self.hasScannedOnce = true
-                }
+                let result = try self.runtime.scanDevices()
+                await self.applySuccessfulScan(result)
             } catch {
-                print("[DeviceManager] Failed to decode devices JSON: \(error)")
-                await MainActor.run {
-                    guard !self.isShuttingDown else {
-                        self.isScanning = false
-                        return
-                    }
-                    self.handleDeviceDisconnection()
-                    self.isScanning = false
-                    self.hasScannedOnce = true
-                    
-                    // Stop automatic scanning after reaching max consecutive failures
-                    if self.consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
-                        print("[DeviceManager] Max failures reached, stopping automatic scanning")
-                        self.stopScanning()
-                    }
-                }
+                print("[DeviceManager] Typed device scan failed: \(error)")
+                await self.applyFailedScan(error)
             }
         }
+        scanOperationTask = task
+        return task
     }
     
     /// 选择设备
     /// - Parameter device: 要选择的设备
     func selectDevice(_ device: Device) {
-        selectedDevice = device
-        connectionError = nil
+        do {
+            try runtime.coordinator.selectDevice(device.id)
+            selectedDevice = device
+            connectionError = nil
+        } catch {
+            connectionError = String(describing: error)
+        }
     }
     
     /// Manually refresh device list
@@ -338,24 +215,15 @@ class DeviceManager: ObservableObject, DeviceManaging {
     /// Update device list
     /// - Parameter newDevices: New device list
     private func updateDevices(_ newDevices: [Device]) {
-        let newSerials = Set(newDevices.map { $0.serialNumber })
-        
-        // Check if selected device is still connected (using serial number instead of UUID)
-        if let selected = selectedDevice, !selected.serialNumber.isEmpty && !newSerials.contains(selected.serialNumber) {
-            // Device disconnected
-            handleDeviceDisconnection()
+        let newIdentities = Set(newDevices.map(\.mtpIdentity))
+
+        if let selected = selectedDevice,
+           !newIdentities.contains(selected.mtpIdentity) {
+            handleConfirmedDisconnection()
         }
         
         // Update device list
-                devices = newDevices
-                lastDeviceSerials = newSerials
-        
-                // Reset failure count when devices are successfully detected
-                if !newDevices.isEmpty {
-                    consecutiveFailures = 0
-                    currentScanInterval = userScanInterval
-                    showManualRefreshButton = false
-                }
+        devices = newDevices
         
                 // Check if scan interval needs to be updated (when user settings change)
                 // Only restart if the interval has actually changed
@@ -368,16 +236,18 @@ class DeviceManager: ObservableObject, DeviceManaging {
                 }        
         // Auto-select if only one device and none selected
         if selectedDevice == nil && newDevices.count == 1 {
-            selectedDevice = newDevices.first
+            if let device = newDevices.first {
+                selectDevice(device)
+            }
         }
     }
     
-    /// Handle device disconnection
-    /// Clears all device-related state, cancels active transfer tasks
-    private func handleDeviceDisconnection() {
+    /// Clears device state only after a successful disappearance or explicit disconnect.
+    private func handleConfirmedDisconnection() {
         if selectedDevice != nil || !devices.isEmpty {
             // Cancel all active transfer tasks
             FileTransferManager.shared.cancelAllTasks()
+            runtime.coordinator.close()
 
             // Clear all content
             devices = []
@@ -394,7 +264,9 @@ class DeviceManager: ObservableObject, DeviceManaging {
 
             print("[DeviceManager] Device disconnected - UI reset and tasks cancelled")
         }
-        
+    }
+
+    private func recordScanFailure() {
         // Increment failure count
         consecutiveFailures += 1
         
@@ -409,45 +281,111 @@ class DeviceManager: ObservableObject, DeviceManaging {
         
         print("[DeviceManager] Scan failed \(consecutiveFailures) times, next scan in \(backoffInterval)s")
     }
+
+    private func applySuccessfulScan(_ result: MTPScanResult) {
+        guard !isShuttingDown else {
+            finishScan()
+            return
+        }
+
+        do {
+            var newDevices = try result.snapshots.map { snapshot in
+                let device = mapToDevice(snapshot)
+                try runtime.coordinator.register(
+                    appDeviceID: device.id,
+                    snapshot: snapshot,
+                    providerKind: runtime.providerKind
+                )
+                return device
+            }
+            let scannedIdentities = Set(newDevices.map(\.mtpIdentity))
+            let inconclusiveIdentities = Set(
+                result.failures
+                    .filter { $0.error != .disconnected }
+                    .map {
+                        MTPDeviceIdentity(
+                            providerKind: runtime.providerKind,
+                            deviceID: $0.deviceID
+                        )
+                    }
+            )
+            newDevices.append(
+                contentsOf: devices.filter {
+                    inconclusiveIdentities.contains($0.mtpIdentity)
+                        && !scannedIdentities.contains($0.mtpIdentity)
+                }
+            )
+            print("[DeviceManager] Successfully found \(newDevices.count) device(s)")
+            scanFailures = result.failures
+            connectionError = nil
+            consecutiveFailures = 0
+            currentScanInterval = userScanInterval
+            showManualRefreshButton = false
+            updateDevices(newDevices)
+        } catch {
+            applyFailedScan(error)
+            return
+        }
+        finishScan()
+    }
+
+    private func applyFailedScan(_ error: Error) {
+        guard !isShuttingDown else {
+            finishScan()
+            return
+        }
+
+        if let coreError = error as? MTPCoreError,
+           case .disconnected = coreError {
+            handleConfirmedDisconnection()
+        } else {
+            connectionError = String(describing: error)
+        }
+        recordScanFailure()
+        finishScan()
+
+        if consecutiveFailures >= AppConfiguration.maxFailuresBeforeManualRefresh {
+            print("[DeviceManager] Max failures reached, stopping automatic scanning")
+            stopScanning()
+        }
+    }
+
+    private func finishScan() {
+        isScanning = false
+        hasScannedOnce = true
+        scanOperationTask = nil
+    }
     
-    /// Map Kalam device to application device model
-    /// - Parameter kalamDevice: Kalam device
+    /// Map a typed provider snapshot to the existing application model.
     /// - Returns: Application device model
-    private func mapToDevice(_ kalamDevice: KalamDevice) -> Device {
-        let storageInfos = kalamDevice.storage.map { storage in
+    private func mapToDevice(_ snapshot: MTPDeviceSnapshot) -> Device {
+        let identity = MTPDeviceIdentity(
+            providerKind: runtime.providerKind,
+            deviceID: snapshot.deviceID
+        )
+        let storageInfos = snapshot.storages.map { storage in
             StorageInfo(
-                storageId: storage.id,
+                storageID: storage.id,
                 maxCapacity: storage.maxCapacity,
                 freeSpace: storage.freeSpace,
                 description: storage.description
             )
         }
-        
-        let mtpSupportInfo = MTPSupportInfo(
-            mtpVersion: kalamDevice.mtpSupport.mtpVersion,
-            deviceVersion: kalamDevice.mtpSupport.deviceVersion,
-            vendorExtension: kalamDevice.mtpSupport.vendorExtension
-        )
-        
-        // Use cached UUID or generate new one (NSCache is thread-safe)
-        let deviceKey = NSNumber(value: kalamDevice.id)
-        let deviceIdWrapper = deviceIdCache.object(forKey: deviceKey) ?? UUIDWrapper(UUID())
-        deviceIdCache.setObject(deviceIdWrapper, forKey: deviceKey)
-        let deviceId = deviceIdWrapper.uuid
-        
-        // Cache serial number for device unique identification (NSCache is thread-safe)
-        deviceSerialCache.setObject(NSString(string: kalamDevice.serialNumber), forKey: deviceKey)
-        
+        let deviceID = appIDsByIdentity[identity] ?? UUID()
+        appIDsByIdentity[identity] = deviceID
+        let legacyIndex = Int(snapshot.deviceID.rawValue.split(separator: ":").last ?? "") ?? 0
+
         return Device(
-            id: deviceId,
-            deviceIndex: kalamDevice.id,
-            name: kalamDevice.name,
-            manufacturer: kalamDevice.manufacturer,
-            model: kalamDevice.model,
-            serialNumber: kalamDevice.serialNumber,
+            id: deviceID,
+            deviceIndex: legacyIndex,
+            mtpIdentity: identity,
+            name: snapshot.name,
+            manufacturer: snapshot.manufacturer,
+            model: snapshot.model,
+            serialNumber: "",
             batteryLevel: nil,
             storageInfo: storageInfos,
-            mtpSupportInfo: mtpSupportInfo,
+            mtpSupportInfo: nil,
             isConnected: true
         )
     }

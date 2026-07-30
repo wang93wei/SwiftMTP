@@ -49,6 +49,9 @@ nonisolated struct MTPBinaryReader: Sendable {
             guard let value = String(data: Data(content), encoding: .utf16LittleEndian) else {
                 throw MTPCoreError.protocolViolation("MTP string contains invalid UTF-16LE")
             }
+            guard !value.utf16.contains(0) else {
+                throw MTPCoreError.protocolViolation("MTP string contains an embedded null")
+            }
             return value
         } catch {
             offset = startOffset

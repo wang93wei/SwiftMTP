@@ -35,9 +35,32 @@ func Initialize(init Init) (*mtp.Device, error) {
 	return dev, nil
 }
 
+// InitializeExact configures only the device at the complete physical USB locator.
+func InitializeExact(init Init, locator mtp.DeviceLocator) (*mtp.Device, error) {
+	dev, err := mtp.SelectDeviceByLocator(locator, init.DebugMode)
+	if err != nil {
+		return nil, MtpDetectFailedError{error: err}
+	}
+
+	dev.MTPDebug = init.DebugMode
+	dev.DataDebug = init.DebugMode
+	dev.USBDebug = init.DebugMode
+	dev.Timeout = devTimeout
+	if err = dev.Configure(); err != nil {
+		dev.Close()
+		dev.Done()
+		return nil, ConfigureError{error: err}
+	}
+	return dev, nil
+}
+
 // Dispose - close the mtp device
 func Dispose(dev *mtp.Device) {
+	if dev == nil {
+		return
+	}
 	dev.Close()
+	dev.Done()
 }
 
 // FetchDeviceInfo - fetch device Info

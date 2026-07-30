@@ -1,23 +1,38 @@
 import Foundation
 import OSLog
 
-nonisolated struct MTPScanFailure: Equatable, Sendable {
-    enum Stage: String, Equatable, Sendable {
-        case device
-        case storage
-    }
-
-    let deviceID: MTPDeviceID
-    let storageID: MTPStorageID?
-    let stage: Stage
-    let error: MTPCoreError
-}
-
 nonisolated protocol SwiftMTPDiscoverySession: AnyObject {
     var deviceID: MTPDeviceID { get }
     func getDeviceInfo() throws -> MTPDeviceInfoDataset
     func getStorageIDs() throws -> [MTPStorageID]
     func getStorageInfo(_ storageID: MTPStorageID) throws -> MTPStorageInfoDataset
+    func getObjectHandles(
+        storageID: MTPStorageID,
+        parentID: MTPObjectID
+    ) throws -> [MTPObjectID]
+    func getObjectInfo(_ objectID: MTPObjectID) throws -> MTPObjectInfoDataset
+    func download(
+        objectID: MTPObjectID,
+        sink: any MTPStreamSink,
+        progress: @escaping MTPTransferProgress,
+        cancellation: MTPCancellationToken
+    ) throws -> MTPDownloadResult
+    func upload(
+        storageID: MTPStorageID,
+        parentID: MTPObjectID,
+        name: String,
+        size: UInt64,
+        modificationDateString: String,
+        source: any MTPStreamSource,
+        progress: @escaping MTPTransferProgress,
+        cancellation: MTPCancellationToken
+    ) throws -> MTPUploadResult
+    func createFolder(
+        storageID: MTPStorageID,
+        parentID: MTPObjectID,
+        name: String
+    ) throws -> MTPObjectID
+    func deleteObject(_ objectID: MTPObjectID) throws
     func close()
 }
 
@@ -28,23 +43,29 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
         LibUSBContext,
         LibUSBDeviceCandidate
     ) throws -> any SwiftMTPDiscoverySession
+    typealias DownloadDestinationFactory = (
+        URL,
+        MTPDownloadReplacementPolicy
+    ) throws -> any MTPDownloadDestination
+    typealias UploadSourceFactory = (
+        MTPUploadRequest
+    ) throws -> any MTPUploadSource
 
     private let stateLock = NSLock()
     private let contextFactory: ContextFactory
     private let enumerateCandidates: Enumerator
     private let makeSession: SessionFactory
+    private let makeDownloadDestination: DownloadDestinationFactory
+    private let makeUploadSource: UploadSourceFactory
     private var context: LibUSBContext?
-    private var scanFailures: [MTPScanFailure] = []
-
-    var lastScanFailures: [MTPScanFailure] {
-        stateLock.withLock { scanFailures }
-    }
 
     init(
         functions: LibUSBFunctionTable = LibUSBFunctionTable(),
         contextFactory: ContextFactory? = nil,
         enumerateCandidates: Enumerator? = nil,
-        makeSession: SessionFactory? = nil
+        makeSession: SessionFactory? = nil,
+        makeDownloadDestination: DownloadDestinationFactory? = nil,
+        makeUploadSource: UploadSourceFactory? = nil
     ) {
         self.contextFactory = contextFactory ?? {
             try LibUSBContext(functions: functions)
@@ -58,6 +79,15 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
                 candidate: candidate,
                 functions: functions
             )
+        }
+        self.makeDownloadDestination = makeDownloadDestination ?? {
+            try MTPAtomicDownloadDestination(
+                destinationURL: $0,
+                replacementPolicy: $1
+            )
+        }
+        self.makeUploadSource = makeUploadSource ?? {
+            try MTPUploadSourcePolicy.open(request: $0)
         }
     }
 
@@ -78,7 +108,7 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
         }
     }
 
-    func scanDevices() throws -> [MTPDeviceSnapshot] {
+    func scanDevices() throws -> MTPScanResult {
         let context = try currentContext()
         let candidates = try enumerateCandidates(context)
         var snapshots: [MTPDeviceSnapshot] = []
@@ -147,10 +177,7 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
                 )
             }
         }
-        stateLock.withLock {
-            scanFailures = failures
-        }
-        return snapshots
+        return MTPScanResult(snapshots: snapshots, failures: failures)
     }
 
     func openSession(for deviceID: MTPDeviceID) throws -> any MTPBackendSession {
@@ -171,14 +198,17 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
             session.close()
             throw MTPCoreError.protocolViolation("Swift provider opened a different device")
         }
-        return SwiftMTPBackendSession(discoverySession: session)
+        return SwiftMTPBackendSession(
+            discoverySession: session,
+            makeDownloadDestination: makeDownloadDestination,
+            makeUploadSource: makeUploadSource
+        )
     }
 
     func shutdown() {
         let context = stateLock.withLock {
             let current = self.context
             self.context = nil
-            scanFailures.removeAll()
             return current
         }
         context?.shutdown()
@@ -196,154 +226,5 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
     private static func coreError(_ error: Error) -> MTPCoreError {
         error as? MTPCoreError
             ?? .protocolViolation("unexpected Swift MTP discovery failure")
-    }
-}
-
-private nonisolated final class LibUSBMTPDiscoverySession: SwiftMTPDiscoverySession {
-    let deviceID: MTPDeviceID
-
-    private let handle: LibUSBDeviceHandle
-    private let session: MTPDeviceSession
-    private let closeLock = NSLock()
-    private var closed = false
-
-    init(
-        context: LibUSBContext,
-        candidate: LibUSBDeviceCandidate,
-        functions: LibUSBFunctionTable
-    ) throws {
-        let handle = try LibUSBDeviceHandle(
-            context: context,
-            candidate: candidate,
-            functions: functions
-        )
-        let transport = LibUSBTransport(handle: handle, functions: functions)
-        let session = MTPDeviceSession(transport: transport)
-        do {
-            try session.open()
-        } catch {
-            handle.close()
-            throw error
-        }
-        self.deviceID = candidate.interface.deviceID
-        self.handle = handle
-        self.session = session
-    }
-
-    deinit {
-        close()
-    }
-
-    func getDeviceInfo() throws -> MTPDeviceInfoDataset {
-        try withOpenSession { try session.getDeviceInfo() }
-    }
-
-    func getStorageIDs() throws -> [MTPStorageID] {
-        try withOpenSession { try session.getStorageIDs() }
-    }
-
-    func getStorageInfo(_ storageID: MTPStorageID) throws -> MTPStorageInfoDataset {
-        try withOpenSession { try session.getStorageInfo(storageID) }
-    }
-
-    func close() {
-        closeLock.withLock {
-            guard !closed else {
-                return
-            }
-            closed = true
-            session.close()
-            handle.close()
-        }
-    }
-
-    private func withOpenSession<T>(_ operation: () throws -> T) throws -> T {
-        try closeLock.withLock {
-            guard !closed else {
-                throw MTPCoreError.disconnected
-            }
-            return try operation()
-        }
-    }
-}
-
-private nonisolated final class SwiftMTPBackendSession: MTPBackendSession {
-    let deviceID: MTPDeviceID
-    let providerKind = MTPProviderKind.swift
-
-    private let discoverySession: any SwiftMTPDiscoverySession
-    private let closeLock = NSLock()
-    private var closed = false
-
-    init(discoverySession: any SwiftMTPDiscoverySession) {
-        self.discoverySession = discoverySession
-        self.deviceID = discoverySession.deviceID
-    }
-
-    deinit {
-        close()
-    }
-
-    func listObjects(
-        storageID: MTPStorageID,
-        parentID: MTPObjectID
-    ) throws -> [MTPObject] {
-        throw try unsupported()
-    }
-
-    func createFolder(
-        storageID: MTPStorageID,
-        parentID: MTPObjectID,
-        name: String
-    ) throws -> MTPObjectID {
-        throw try unsupported()
-    }
-
-    func deleteObject(_ objectID: MTPObjectID) throws {
-        throw try unsupported()
-    }
-
-    func download(
-        _ request: MTPDownloadRequest,
-        progress: @escaping (UInt64) -> Void,
-        cancellation: MTPCancellationToken
-    ) throws {
-        throw try unsupported()
-    }
-
-    func upload(
-        _ request: MTPUploadRequest,
-        progress: @escaping (UInt64) -> Void,
-        cancellation: MTPCancellationToken
-    ) throws {
-        throw try unsupported()
-    }
-
-    func refreshStorage(_ storageID: MTPStorageID) throws {
-        _ = try closeLock.withLock {
-            guard !closed else {
-                throw MTPCoreError.disconnected
-            }
-            return try discoverySession.getStorageInfo(storageID)
-        }
-    }
-
-    func close() {
-        closeLock.withLock {
-            guard !closed else {
-                return
-            }
-            closed = true
-            discoverySession.close()
-        }
-    }
-
-    private func unsupported() throws -> MTPCoreError {
-        try closeLock.withLock {
-            guard !closed else {
-                throw MTPCoreError.disconnected
-            }
-            return .unsupportedDevice
-        }
     }
 }

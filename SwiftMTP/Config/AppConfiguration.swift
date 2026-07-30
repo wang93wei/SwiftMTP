@@ -10,12 +10,15 @@ import Foundation
 
 /// Centralized application configuration
 /// Provides single source of truth for all app constants and settings
-struct AppConfiguration {
+nonisolated struct AppConfiguration {
     
     // MARK: - MTP Protocol Constants
     
     /// Root directory ID (MTP protocol standard value)
     static let rootDirectoryId: UInt32 = 0xFFFFFFFF
+
+    /// Filesystem stays Go-backed until transfer migration is complete.
+    static let defaultMTPProvider: MTPProviderKind = .go
     
     // MARK: - File Transfer Constants
     

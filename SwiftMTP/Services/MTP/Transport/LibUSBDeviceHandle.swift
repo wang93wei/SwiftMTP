@@ -26,7 +26,7 @@ nonisolated final class LibUSBDeviceCandidate {
     }
 }
 
-nonisolated final class LibUSBDeviceHandle {
+nonisolated final class LibUSBDeviceHandle: @unchecked Sendable {
     let context: LibUSBContext
     let interface: MTPUSBInterface
 

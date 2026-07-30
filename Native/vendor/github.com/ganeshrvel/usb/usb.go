@@ -519,6 +519,25 @@ func (d *Device) GetDeviceAddress() uint8 {
 	return uint8(C.libusb_get_device_address(d.me()))
 }
 
+// GetPortNumbers returns the complete physical USB port path for a device.
+func (d *Device) GetPortNumbers() ([]uint8, error) {
+	const maxPortDepth = 32
+	path := make([]C.uint8_t, maxPortDepth)
+	count := C.libusb_get_port_numbers(d.me(), &path[0], C.int(len(path)))
+	if count < 0 {
+		return nil, Error(count)
+	}
+	if count == 0 {
+		return nil, fmt.Errorf("usb device has no physical port path")
+	}
+
+	result := make([]uint8, int(count))
+	for index := range result {
+		result[index] = uint8(path[index])
+	}
+	return result, nil
+}
+
 // Get the negotiated connection speed for a device.
 func (d *Device) GetDeviceSpeed() int {
 	return int(C.libusb_get_device_speed(d.me()))

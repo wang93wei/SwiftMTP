@@ -27,6 +27,37 @@ extern const char *_GoStringPtr(_GoString_ s);
 
 #line 1 "cgo-generated-wrapper"
 
+#line 3 "kalam_bridge_transfer.go"
+
+#include <stdlib.h>
+#include <stdint.h>
+
+typedef void (*KalamTransferProgressCallback)(uint64_t, uintptr_t);
+
+static inline void KalamInvokeTransferProgress(
+	uintptr_t callback,
+	uintptr_t context,
+	uint64_t bytes
+) {
+	if (callback != 0) {
+		((KalamTransferProgressCallback)callback)(bytes, context);
+	}
+}
+
+#line 1 "cgo-generated-wrapper"
+
+#line 3 "kalam_transfer_legacy_download.go"
+
+#include <stdlib.h>
+
+#line 1 "cgo-generated-wrapper"
+
+#line 3 "kalam_transfer_legacy_upload.go"
+
+#include <stdlib.h>
+
+#line 1 "cgo-generated-wrapper"
+
 
 /* End of preamble from import "C" comments.  */
 
@@ -89,18 +120,29 @@ extern "C" {
 
 extern void Kalam_Init(void);
 extern char* Kalam_Scan(void);
+extern char* Kalam_ScanResult(void);
+extern char* Kalam_OpenSession(char* deviceID);
+extern char* Kalam_CloseSession(char* token);
+extern char* Kalam_ListFilesSession(char* token, GoUint32 storageID, GoUint32 parentID);
+extern char* Kalam_CreateFolderSession(char* token, GoUint32 storageID, GoUint32 parentID, char* folderName);
+extern char* Kalam_DeleteObjectSession(char* token, GoUint32 objectID);
+extern char* Kalam_RefreshStorageSession(char* token, GoUint32 storageID);
 extern char* Kalam_ListFiles(GoUint32 storageID, GoUint32 parentID);
 extern void Kalam_FreeString(char* str);
 extern GoUint32 Kalam_CreateFolder(GoUint32 storageID, GoUint32 parentID, char* folderName);
 extern GoInt32 Kalam_DeleteObject(GoUint32 objectID);
-extern void Kalam_SetProgressCallback(uintptr_t cb);
-extern GoInt32 Kalam_DownloadFile(GoUint32 objectID, char* destinationPath, char* taskID);
-extern void Kalam_CancelTask(char* taskID);
-extern GoInt32 Kalam_UploadFile(GoUint32 storageID, GoUint32 parentID, char* sourcePath, char* taskID);
 extern GoInt32 Kalam_RefreshStorage(GoUint32 storageID);
 extern GoInt32 Kalam_ResetDeviceCache(void);
 extern void Kalam_CleanupLeakedStrings(void);
 extern void Kalam_CleanupDevicePool(void);
+extern void Kalam_SetProgressCallback(uintptr_t cb);
+extern GoInt32 Kalam_PrepareTransferTask(char* taskID);
+extern GoInt32 Kalam_AbortTransferTask(char* taskID);
+extern char* Kalam_DownloadFileSession(char* token, GoUint32 objectID, char* destinationPath, char* taskID, uintptr_t progressCallback, uintptr_t progressContext);
+extern void Kalam_CancelTask(char* taskID);
+extern char* Kalam_UploadFileSession(char* token, GoUint32 storageID, GoUint32 parentID, char* sourcePath, char* name, GoUint64 size, char* taskID, uintptr_t progressCallback, uintptr_t progressContext);
+extern GoInt32 Kalam_DownloadFile(GoUint32 objectID, char* destinationPath, char* taskID);
+extern GoInt32 Kalam_UploadFile(GoUint32 storageID, GoUint32 parentID, char* sourcePath, char* taskID);
 
 #ifdef __cplusplus
 }
