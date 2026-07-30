@@ -39,6 +39,20 @@ final class MTPObjectInfoDatasetTests: XCTestCase {
         XCTAssertEqual(try dataset.encoded(), bytes)
     }
 
+    func testDecodesWireZeroParentAsRoot() throws {
+        var bytes = try MTPObjectInfoDataset.file(
+            storageID: try MTPStorageID(validating: 1),
+            parentObject: .root,
+            name: "root.txt",
+            size: 1
+        ).encoded()
+        bytes.replaceSubrange(38..<42, with: repeatElement(UInt8.zero, count: 4))
+
+        let dataset = try MTPObjectInfoDataset.decode(bytes)
+
+        XCTAssertEqual(dataset.parentObject, .root)
+    }
+
     func testFolderEncodingUsesAssociationFormatAndExactUTF16CodeUnits() throws {
         let storageID = try MTPStorageID(validating: 0x0001_0001)
         let dataset = try MTPObjectInfoDataset.folder(
@@ -137,6 +151,20 @@ final class MTPObjectInfoDatasetTests: XCTestCase {
         XCTAssertEqual(decoded.keywords, "")
         XCTAssertEqual(decoded.modificationDateString, "20260730T040000Z")
         XCTAssertNotNil(decoded.modificationDate)
+    }
+
+    func testAcceptsMTPTimestampWithoutTimezone() throws {
+        let dataset = try MTPObjectInfoDataset(
+            storageID: try MTPStorageID(validating: 1),
+            objectFormat: 0x3000,
+            objectSize: 1,
+            parentObject: .root,
+            filename: "root.txt",
+            modificationDateString: "20260702T034455"
+        )
+
+        XCTAssertEqual(dataset.modificationDateString, "20260702T034455")
+        XCTAssertNotNil(dataset.modificationDate)
     }
 
     func testRejectsTruncatedTrailingEmbeddedNullAndMalformedTimestamp() throws {

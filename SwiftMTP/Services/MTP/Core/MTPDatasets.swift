@@ -196,7 +196,12 @@ nonisolated struct MTPObjectInfoDataset: Equatable, Sendable {
         let imagePixelWidth = try reader.readUInt32()
         let imagePixelHeight = try reader.readUInt32()
         let imageBitDepth = try reader.readUInt32()
-        let parentObject = try MTPObjectID(validating: reader.readUInt32())
+        let rawParentObject = try reader.readUInt32()
+        // ObjectInfo uses zero for a root-level object's absent parent.
+        // Normalize that wire value to the root selector used by the domain layer.
+        let parentObject = rawParentObject == 0
+            ? MTPObjectID.root
+            : try MTPObjectID(validating: rawParentObject)
         let associationType = try reader.readUInt16()
         let associationDescription = try reader.readUInt32()
         let sequenceNumber = try reader.readUInt32()
@@ -244,13 +249,15 @@ nonisolated struct MTPObjectInfoDataset: Equatable, Sendable {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyyMMdd'T'HHmmssZ"
         formatter.isLenient = false
         let normalized = value.hasSuffix("Z") ? String(value.dropLast()) + "+0000" : value
-        guard let date = formatter.date(from: normalized) else {
-            throw MTPCoreError.protocolViolation("ObjectInfo contains a malformed MTP timestamp")
+        for format in ["yyyyMMdd'T'HHmmssZ", "yyyyMMdd'T'HHmmss"] {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: normalized) {
+                return date
+            }
         }
-        return date
+        throw MTPCoreError.protocolViolation("ObjectInfo contains a malformed MTP timestamp")
     }
 }
 
