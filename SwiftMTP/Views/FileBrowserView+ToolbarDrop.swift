@@ -29,7 +29,6 @@ extension FileBrowserView {
                 .labelStyle(.iconOnly)
         }
         .help(L10n.MainWindow.refreshFileList)
-        .glassEffect()
     }
     
     var transferTasksButton: some View {
@@ -40,7 +39,6 @@ extension FileBrowserView {
                 .labelStyle(.iconOnly)
         }
         .help(L10n.MainWindow.viewTransferTasks)
-        .glassEffect()
         .badge(transferManager.activeTasks.count)
     }
     
@@ -49,7 +47,6 @@ extension FileBrowserView {
             showingCreateFolderDialog = true
         }
         .help(L10n.FileBrowser.createNewFolderHelp)
-        .glassEffect()
     }
     
     var uploadFilesButton: some View {
@@ -69,7 +66,6 @@ extension FileBrowserView {
             Label(L10n.FileBrowser.uploadFiles, systemImage: "square.and.arrow.up")
         }
         .help(L10n.FileBrowser.uploadFilesHelp)
-        .glassEffect()
     }
     
     var downloadButton: some View {
@@ -81,7 +77,6 @@ extension FileBrowserView {
         }
         .help(L10n.FileBrowser.downloadHelp)
         .disabled(!hasDownloadableFiles)
-        .glassEffect()
     }
     
     var deleteButton: some View {
@@ -94,7 +89,6 @@ extension FileBrowserView {
         .help(L10n.FileBrowser.deleteHelp)
         .disabled(selectedFiles.isEmpty)
         .tint(selectedFiles.isEmpty ? .secondary : .red)
-        .glassEffect()
     }
 
     var sortMenu: some View {
@@ -127,7 +121,6 @@ extension FileBrowserView {
                 .labelStyle(.iconOnly)
         }
         .help(L10n.FileBrowser.sortFiles)
-        .glassEffect()
     }
 
     
