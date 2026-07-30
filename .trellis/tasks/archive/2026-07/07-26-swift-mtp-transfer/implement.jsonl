@@ -1,7 +1,7 @@
 {"file": ".agents/skills/project-exemption/SKILL.md", "reason": "Mandatory DispatchQueue and NSLock model for FileTransferManager transfer code."}
-{"file": ".trellis/tasks/07-26-swift-mtp-transfer/prd.md", "reason": "Approved transfer requirements, fallback boundary and acceptance criteria."}
-{"file": ".trellis/tasks/07-26-swift-mtp-transfer/design.md", "reason": "Streaming ownership, provider routing, manager state and rollback design."}
-{"file": ".trellis/tasks/07-26-swift-mtp-transfer/research/current-transfer-evidence.md", "reason": "Current Swift, Go, manager, directory and libusb transfer facts with anchors."}
+{"file": ".trellis/tasks/archive/2026-07/07-26-swift-mtp-transfer/prd.md", "reason": "Approved transfer requirements, fallback boundary and acceptance criteria."}
+{"file": ".trellis/tasks/archive/2026-07/07-26-swift-mtp-transfer/design.md", "reason": "Streaming ownership, provider routing, manager state and rollback design."}
+{"file": ".trellis/tasks/archive/2026-07/07-26-swift-mtp-transfer/research/current-transfer-evidence.md", "reason": "Current Swift, Go, manager, directory and libusb transfer facts with anchors."}
 {"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "Official libusb async cancellation and transfer lifetime constraints."}
 {"file": ".trellis/spec/backend/native-mtp.md", "reason": "Current provider, session, filesystem and Native ABI contracts."}
 {"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Transfer crosses files, callbacks, protocol state, managers and UI."}

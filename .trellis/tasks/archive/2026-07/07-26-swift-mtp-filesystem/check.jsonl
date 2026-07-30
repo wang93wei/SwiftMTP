@@ -1,8 +1,8 @@
-{"file": ".trellis/tasks/07-26-swift-mtp-filesystem/prd.md", "reason": "Check every filesystem acceptance criterion and explicit scope boundary."}
-{"file": ".trellis/tasks/07-26-swift-mtp-filesystem/design.md", "reason": "Check transaction/session/provider/cache design consistency."}
-{"file": ".trellis/tasks/07-26-swift-mtp-filesystem/research/repository-evidence.md", "reason": "Check all production Kalam call sites and current UI/cache semantics are addressed."}
-{"file": ".trellis/tasks/07-26-swift-mtp-filesystem/research/protocol-evidence.md", "reason": "Check exact opcode, parameter, ObjectInfo and response contracts."}
-{"file": ".trellis/tasks/07-26-swift-mtp-filesystem/research/exact-go-routing-evidence.md", "reason": "Check live Go topology identity, exact open, token pinning, legacy transfer compatibility and Native artifact gates."}
+{"file": ".trellis/tasks/archive/2026-07/07-26-swift-mtp-filesystem/prd.md", "reason": "Check every filesystem acceptance criterion and explicit scope boundary."}
+{"file": ".trellis/tasks/archive/2026-07/07-26-swift-mtp-filesystem/design.md", "reason": "Check transaction/session/provider/cache design consistency."}
+{"file": ".trellis/tasks/archive/2026-07/07-26-swift-mtp-filesystem/research/repository-evidence.md", "reason": "Check all production Kalam call sites and current UI/cache semantics are addressed."}
+{"file": ".trellis/tasks/archive/2026-07/07-26-swift-mtp-filesystem/research/protocol-evidence.md", "reason": "Check exact opcode, parameter, ObjectInfo and response contracts."}
+{"file": ".trellis/tasks/archive/2026-07/07-26-swift-mtp-filesystem/research/exact-go-routing-evidence.md", "reason": "Check live Go topology identity, exact open, token pinning, legacy transfer compatibility and Native artifact gates."}
 {"file": ".trellis/tasks/archive/2026-07/07-26-swift-mtp-discovery-session/verification.md", "reason": "Prevent regression of libusb lifecycle, exact-ID routing and default Go boundary."}
 {"file": ".trellis/spec/backend/native-mtp.md", "reason": "Check lifecycle, identity, transaction and error invariants."}
 {"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Check typed data and failure semantics across wire, backend, actor cache and UI."}
