@@ -10,7 +10,7 @@ import Combine
 import AppKit
 
 @MainActor
-final class UpdateChecker: ObservableObject, UpdateChecking {
+final class UpdateChecker: ObservableObject {
     // MARK: - Singleton
 
     static let shared = UpdateChecker()
