@@ -6,7 +6,7 @@
 SwiftUI Views
   → DeviceManager / FileSystemManager / FileTransferManager
     → MTPBackend (typed, blocking contract; never called on main thread)
-      → GoMTPBackend (migration only) → Kalam_* → Go
+      → GoMTPBackend (temporary fallback) → Kalam_* → Go
       → SwiftMTPBackend
         → MTPDeviceSession
           → MTP codec + transaction state machine
@@ -14,7 +14,7 @@ SwiftUI Views
               → CLibUSB → bundled libusb-1.0.dylib → Android device
 ```
 
-The final state removes `GoMTPBackend`, `Kalam_*`, CGO and `libkalam`, while preserving `MTPBackend`, `SwiftMTPBackend`, CLibUSB and libusb.
+The cutover state makes `SwiftMTPBackend` the preferred production provider while preserving `GoMTPBackend`, `Kalam_*`, CGO and `libkalam` behind an isolated fallback adapter. CLibUSB and libusb remain the transport boundary for the Swift path. A later, separately authorized removal task deletes the fallback; cutover itself never does.
 
 ## 2. Module Boundaries
 
@@ -37,7 +37,7 @@ The bundled libusb runtime self-reports `1.0.29.11953` and is currently arm64. I
 - Import libusb through a named Clang module rather than exposing its declarations through the app-wide `libkalam` bridging header.
 - Keep the tracked `libusb-1.0.dylib`, its `@rpath` install name and Embed Libraries signing.
 - Add explicit link/search/module settings required by direct Swift calls.
-- Do not require `/opt/homebrew`, `pkg-config`, Go or CGO for a clean build.
+- Do not require `/opt/homebrew`, `pkg-config` or an installed Go toolchain for a clean build; the tracked fallback artifact remains reproducible through its existing Go build workflow.
 - Validate the built app with `otool -L`, `codesign --verify` and inspection of `Contents/Frameworks`.
 
 ## 4. Core Contracts
@@ -135,13 +135,15 @@ The protocol/backend layer names this error `MTPCoreError` to avoid colliding wi
 
 ## 9. Provider Migration and Rollback
 
-- `GoMTPBackend` wraps the existing ABI only during migration.
+- `GoMTPBackend` wraps the existing ABI as the temporary fallback boundary until the user explicitly authorizes removal.
 - Provider choice is a developer/test configuration stored centrally in `AppConfiguration.swift`.
 - The router fixes both provider kind and selected `MTPDeviceID` when a device session is created; switching provider or device requires closing the current session.
 - Differential tests run providers sequentially against the same fixture/device. They never issue write operations to both providers concurrently.
 - Go remains the default until Swift discovery, filesystem and transfer acceptance gates all pass.
-- Final cutover changes the default to Swift, runs the complete matrix, then deletes Go/CGO/libkalam in the same child task.
-- Before deletion, rollback is provider selection; after deletion, rollback is the prior verified Git commit.
+- Final cutover changes new-session preference to Swift and keeps Go available as fallback.
+- Automatic fallback is allowed only before a business operation is submitted, for classified initialization/capability/session-open failures. Mutating operations are never replayed across providers.
+- Cutover cannot delete Go. After the observation period, a separate removal task may start only from a new explicit user instruction.
+- Before removal, rollback is selecting Go for a new session or reverting the verified cutover commit; after authorized removal, rollback is the prior verified Git commit. An active session is never switched in place.
 
 ## 10. Verification Strategy
 
@@ -150,7 +152,8 @@ The protocol/backend layer names this error `MTPCoreError` to avoid colliding wi
 3. Backend contract tests: device/storage/object/upload/download observable results and local file side effects.
 4. Manager integration tests: state, cache invalidation, task progress/terminal status and main-thread updates.
 5. Hardware regression: scan, browse, create, upload, hash-verified download, cancellation, delete and disconnect.
-6. Build/package verification: Debug, Release, test, DMG, dylib linkage/signature and absence of Go/libkalam.
+6. Cutover build/package verification: Debug, Release, test, DMG, dylib linkage/signature, Swift-preferred configuration and isolation of Go/libkalam fallback calls.
+7. Authorized-removal verification: repeat the full matrix, prove Go/libkalam absence, and retain libusb linkage/signature evidence.
 
 ## 11. Known Risks
 

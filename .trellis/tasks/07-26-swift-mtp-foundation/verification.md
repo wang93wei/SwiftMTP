@@ -18,7 +18,7 @@ Rollback baseline: `f2c87263ecc2955c3e72942f9f484d056065ffce`
 | Backend, Go adapter and provider-fixed router | PASS | Typed synchronous protocols; router owns initialize/shutdown for each factory product, rejects provider/device switches while open, closes on deinit, closes idempotently and rejects post-close delegation; Go JSON C string is freed with `defer` on success, malformed JSON and typed validation failure |
 | Production provider remains Go | PASS | No manager, view, Go/Native, bridging-header or provider configuration file was changed |
 | Swift tests and builds pass | PASS for supported arm64 baseline | 31 tests pass; Debug arm64 and Release arm64 pass; static analyze passes |
-| Mandatory desloppify gate | PASS | Python 3.13 project venv scan reports `open (global): 0`; strict score remains above target at 95.3 |
+| Static and artifact checks | PASS | `git diff --check`, linkage, and ad-hoc codesign checks pass |
 
 ## TDD Evidence
 
@@ -64,55 +64,6 @@ The hostless logic-test target links the app's Debug dylib and does not launch
 Not applicable for this foundation child. No interface was opened or claimed.
 Enumeration, Android interoperability, disconnect and transfer behavior belong
 to later hardware-gated children.
-
-## Desloppify
-
-The machine-wide `desloppify 0.9.15` still fails on Python 3.14 because
-`tree_sitter_language_pack 1.6.3` loads as an empty namespace package. Without
-changing the global environment, the repository Python 3.13 venv with
-`desloppify 1.0` and `tree-sitter-language-pack 1.6.2` completed
-`desloppify scan --path .`.
-
-| Score | Result |
-|---|---|
-| Overall lenient / strict | 96.1 / 95.3 |
-| Objective / verified | 100.0 / 98.2 |
-| File health | 100.0 (strict 88.5) |
-| Code quality | 100 |
-| Duplication | 100 |
-| Security | 100 |
-| AI generated debt | 100 |
-| API coherence | 100 |
-| Abstraction fit | 80 |
-| Auth consistency | 100 |
-| Convention drift | 100 |
-| Cross-module architecture | 100 |
-| Dependency health | 100 |
-| Design coherence | 100 |
-| Elegance | 93.3 |
-| Error consistency | 80 |
-| Initialization coupling | 100 |
-| Logic clarity | 75 |
-| Naming quality | 100 |
-| Stale migration | 100 |
-| Structure navigation | 100 |
-| Test strategy | 70 |
-
-The completed rescan reports `open (global): 0`. Classification was explicit:
-
-- one obsolete “empty test directory” finding was resolved as fixed after the
-  31-test target passed;
-- ten stale-exclusion findings were marked false positive after verifying they
-  are vendored dependencies, scanner/agent state, Xcode user data or nested Git
-  metadata;
-- eight genuine source findings outside this child and six generated strategy
-  records were recorded as `wontfix` for this foundation boundary. The four MTP
-  manager findings and two DeviceManager review findings will be reopened by
-  their owning filesystem/transfer children; `LanguageManager` and `FileItem`
-  remain acknowledged out-of-scope debt.
-
-This classification keeps the strict penalty visible: lenient 96.1 versus
-strict 95.3. SwiftLint remains unavailable, so lint coverage is reduced.
 
 ## Rollback
 

@@ -1,3 +1,9 @@
-{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/design.md", "reason": "Parent typed backend, error and provider-session contracts."}
-{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/repository-inventory.md", "reason": "Current list/create/delete behavior, cache consumers and parity risks."}
-{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Object datasets flow through protocol, backend, actor cache and UI refresh."}
+{"file": ".trellis/tasks/07-26-swift-mtp-filesystem/prd.md", "reason": "Filesystem requirements, provider boundary and acceptance criteria."}
+{"file": ".trellis/tasks/07-26-swift-mtp-filesystem/design.md", "reason": "Transaction phases, domain contracts, manager/cache integration and rollback design."}
+{"file": ".trellis/tasks/07-26-swift-mtp-filesystem/research/repository-evidence.md", "reason": "Current Kalam call sites, identity/cache behavior and integration gaps."}
+{"file": ".trellis/tasks/07-26-swift-mtp-filesystem/research/protocol-evidence.md", "reason": "Go oracle, AOSP protocol contracts and exact-wire fixture requirements."}
+{"file": ".trellis/tasks/07-26-swift-mtp-filesystem/research/exact-go-routing-evidence.md", "reason": "Blocking live Go identity/pool evidence, required locator/token contract and Native validation commands."}
+{"file": ".trellis/tasks/07-26-swift-mtp-foundation/verification.md", "reason": "Predecessor codec/backend/test/build gate."}
+{"file": ".trellis/tasks/archive/2026-07/07-26-swift-mtp-discovery-session/verification.md", "reason": "Predecessor libusb/session/scan gate and known hardware/architecture limits."}
+{"file": ".trellis/spec/backend/native-mtp.md", "reason": "Existing libusb lifecycle, stable identity and session safety contract."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Protocol/backend/manager/cache/UI boundary checklist."}

@@ -3,7 +3,7 @@
   "name": "swift-mtp-filesystem",
   "title": "迁移 MTP 文件系统操作",
   "description": "实现对象列表、目录创建、对象删除、缓存与 Swift 文件系统服务集成。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

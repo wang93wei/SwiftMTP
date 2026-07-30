@@ -17,9 +17,9 @@
 
 ## Dependencies and Handoff
 
-- 前四个 child 的 `verification.md` 必须显示全部 blocking AC 与 `Open: 0` 通过。
+- 前四个 child 的 `verification.md` 必须显示全部 blocking AC、自动化测试、build/Analyze、ABI 和静态架构检查通过。
 - discovery、filesystem、transfer 的真实设备 blocking 项必须为 passed，不能仅为 unavailable。
-- 完成时生成本任务 `verification.md`，汇总最终 AC、clean build/tests、DMG/link/sign、desloppify 全分数、硬件矩阵与回滚 commit。
+- 完成时生成本任务 `verification.md`，汇总最终 AC、clean build/tests、Analyze、DMG/link/sign、静态架构检查、硬件矩阵与回滚 commit。
 
 ## Requirements
 
@@ -30,7 +30,7 @@
 - 将测试/环境脚本改为纯 Swift + bundled libusb，不要求 Go 或 Homebrew。
 - 更新 README、wiki、架构/时序图、本地化“built with”文案和测试说明。
 - 验证 `.app`/DMG 中只有所需 libusb，不含 libkalam 或 Go 产物。
-- 执行强制 `desloppify` 扫描并确保 `Open: 0`；涉及残余 Go 修改时执行 Go 专项扫描。
+- 执行完整 Swift tests、Debug/Release/Analyze、DMG/link/sign、Go 残留搜索与 `git diff --check`。
 - 不 push，除非用户另行要求。
 
 ## Acceptance Criteria
@@ -42,7 +42,7 @@
 - [ ] DMG 创建、挂载检查和 codesign 验证通过。
 - [ ] 真机扫描、浏览、创建、上传、hash 下载、取消、删除、断连/重连全部通过，或明确列出无法取得硬件导致的未完成阻塞。
 - [ ] 文档与 8 个本地化资源准确描述 Swift + libusb 架构。
-- [ ] `desloppify scan --path .` 显示 `Open: 0`，并报告全部强制分数。
+- [ ] Swift tests、Debug/Release/Analyze、DMG/link/sign、Go 残留搜索与 `git diff --check` 全部通过并记录。
 - [ ] 最终提交由 commit agent 完成，工作树只包含授权迁移变更。
 
 ## Out of Scope

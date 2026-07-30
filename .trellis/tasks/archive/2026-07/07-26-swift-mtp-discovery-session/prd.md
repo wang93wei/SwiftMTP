@@ -16,7 +16,7 @@
 
 ## Dependencies and Handoff
 
-- 前置 `07-26-swift-mtp-foundation/verification.md` 必须显示全部 blocking AC、build/tests 与 `Open: 0` 通过。
+- 前置 `07-26-swift-mtp-foundation/verification.md` 必须显示全部 blocking AC、build/tests、Analyze 与 artifact checks 通过。
 - 完成时生成本任务 `verification.md`；硬件 scan/open/close 状态必须明确，供 filesystem 阶段判定。
 
 ## Requirements

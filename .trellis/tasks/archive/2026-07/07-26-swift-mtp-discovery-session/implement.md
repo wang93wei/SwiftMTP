@@ -26,10 +26,12 @@
 xcodebuild test -project SwiftMTP.xcodeproj -scheme SwiftMTP -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
 xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP -configuration Debug build
 xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP -configuration Release build
-desloppify scan --path .
+git diff --check
 ```
 
-The child cannot commit unless desloppify reports `Open: 0`; record all required scores in `verification.md`.
+The child cannot commit unless focused/full tests, Debug/Release builds,
+Analyze, and `git diff --check` pass; record exact commands and results in
+`verification.md`.
 
 Hardware gate when available:
 

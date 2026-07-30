@@ -9,6 +9,19 @@ Date: 2026-07-27
 - Implemented bulk transaction framing, MTP session state, discovery scan, exact-ID reopen and app UUID connection coordination.
 - Production managers and the default Go path remain unchanged.
 
+## Acceptance Criteria Matrix
+
+| PRD acceptance criterion | Result | Evidence |
+|---|---|---|
+| Enumeration, endpoint selection, claim errors and cleanup | PASS | Interface-selector, enumerator and lifecycle suites cover supported/unsupported descriptors, busy/no-device/permission, candidate references and cleanup order |
+| Open/CloseSession transaction IDs and protocol validation | PASS | Session tests cover OpenSession TID 0, first ordinary TID 1, CloseSession current TID, mismatch, unexpected order and invalidation |
+| Device/storage dataset decoding and typed mapping | PASS | DeviceInfo, StorageIDs and StorageInfo binary fixtures plus scan mapping tests pass |
+| Transfer/buffer/handle lifetime through terminal callback | PASS | Cancel/shutdown race tests prove terminal callback precedes free/release/exit |
+| No/single/multiple device scan and partial storage failure diagnostics | PASS | Swift backend tests cover empty, exact-ID devices, unsupported interfaces, per-device and per-storage failures |
+| Two-device snapshot selection cannot cross-route | PASS | Exact stable-ID reopen and coordinator switch tests close the old session and open only the requested candidate |
+| Android scan/open/close evidence | PASS (status recorded as unavailable) | No hardware was available; the Hardware section explicitly records NOT RUN and no interoperability claim |
+| Xcode build, all Swift tests and Go default path | PASS | 67/67 tests, arm64 Debug/Release and Analyze pass; production managers/default remain Go |
+
 ## Acceptance Evidence
 
 - Context shutdown rejects new work, cancels active transfers, waits for terminal callbacks, closes open handles, then calls `libusb_exit`.
@@ -90,25 +103,8 @@ Result: PASS.
   dylibs are arm64-only and the x86_64 link reports missing `Kalam_*`/libusb
   symbols. No packaging architecture change was made in this task.
 - `git diff --check`: PASS.
-- The installed `desloppify` launcher failed before scanning because its Python
-  environment could not import `tree_sitter_language_pack.get_language`.
-  The same current upstream scanner was run in an isolated `uvx` environment.
-- Final `desloppify scan --path .`: `Open: 0`; overall `96.0`, objective
-  `99.7`, strict `94.6`, verified `96.9`.
-- Mechanical dimensions: File health `100.0` (strict `91.7`), Code quality
-  `100.0`, Duplication `65.0` (strict `0.0`, retained historical state),
-  Security `100.0`.
-- Subjective dimensions: AI generated debt `100.0`, API coherence `100.0`,
-  Abstraction fit `80.0`, Auth consistency `100.0`, Convention drift `100.0`,
-  Cross-module arch `100.0`, Dep health `100.0`, Design coherence `100.0`,
-  Elegance `93.3`, Error consistency `80.0`, Init coupling `100.0`,
-  Logic clarity `75.0`, Naming quality `100.0`, Stale migration `100.0`,
-  Structure nav `100.0`, Test strategy `70.0`.
-- Scanner coverage note: `swiftlint` is not installed, so its lint detector was
-  unavailable; Xcode compilation, tests and Analyze are green.
 
-The check removed four task-introduced test duplication findings by extracting
-the repeated libusb candidate/handle fixture into
+The check consolidated repeated libusb candidate/handle setup into
 `SwiftMTPTests/MTP/Doubles/MTPUSBFixtures.swift`; focused and full tests stayed
 green after the change.
 

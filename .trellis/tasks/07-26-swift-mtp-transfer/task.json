@@ -3,7 +3,7 @@
   "name": "swift-mtp-transfer",
   "title": "迁移 MTP 上传下载与取消",
   "description": "实现流式上传下载、进度、取消、超时、断连恢复及目录上传集成。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

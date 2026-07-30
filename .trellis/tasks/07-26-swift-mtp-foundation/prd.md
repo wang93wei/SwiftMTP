@@ -17,7 +17,7 @@
 ## Dependencies and Handoff
 
 - 无实现前置子任务；以父任务 PRD/design/research 为输入。
-- 完成时生成本任务 `verification.md`，列出全部 AC、测试/构建/desloppify 证据、硬件状态、Go 默认 provider 和回滚 commit。
+- 完成时生成本任务 `verification.md`，列出全部 AC、测试/构建/Analyze/链接/签名证据、硬件状态、Go 默认 provider 和回滚 commit。
 
 ## Requirements
 

@@ -6,7 +6,7 @@
 - [ ] Run Debug and Release builds with Swift provider selected.
 - [ ] Run and record the full Android hardware matrix.
 - [ ] Run sequential normalized Go/Swift parity comparison.
-- [ ] Run and record `desloppify --lang go scan --path Native` before deleting `Native/`.
+- [ ] Run and record Go normal/race/vet plus native build/header/ABI checks before deleting `Native/`.
 - [ ] Record the pre-cutover Git commit for rollback.
 
 ## Removal Checklist
@@ -18,7 +18,7 @@
 - [ ] Update Xcode embed/link/search/bridging settings; retain explicit CLibUSB/libusb integration.
 - [ ] Update README, wiki, diagrams, testing docs and localized credits.
 - [ ] Search for stale Go/CGO/libkalam references and classify any Trellis-history-only matches.
-- [ ] Write final `verification.md` with all AC, command/test counts, hardware matrix, dylib evidence, all desloppify scores and rollback commit.
+- [ ] Write final `verification.md` with all AC, command/test counts, hardware matrix, build/Analyze/static-audit/dylib evidence and rollback commit.
 
 ## Verification
 
@@ -40,14 +40,15 @@ otool -L <built-app>/Contents/MacOS/SwiftMTP
 codesign --verify --deep --strict --verbose=2 <built-app>
 find <built-app>/Contents/Frameworks -maxdepth 1 -type f -print
 ! git grep -nE 'Kalam_|libkalam|CGO|go-mtpx|build_kalam|go build|go test' -- SwiftMTP SwiftMTPTests SwiftMTP.xcodeproj Scripts docs README.md CLAUDE.md AGENTS.md
-desloppify scan --path .
+git diff --check
 ```
 
 The build-settings command must succeed, then the negated `rg` and scoped grep must succeed by finding no matches. Record the restricted PATH, fresh DerivedData path and built binary linkage in `verification.md` as AC10 evidence.
 
 ## Quality Gate
 
-- `desloppify` open findings are zero; all required mechanical and subjective scores are reported.
+- Full tests, Debug/Release/Analyze, DMG/link/sign, static absence checks, and
+  `git diff --check` pass with exact evidence recorded.
 - `.app` includes libusb and excludes libkalam.
 - No clean-build command invokes Go or Homebrew.
 - Hardware and simulated evidence are clearly distinguished.

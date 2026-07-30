@@ -1,5 +1,7 @@
 {"file": ".agents/skills/project-exemption/SKILL.md", "reason": "Reject Actor/Sendable migration in FileTransferManager files."}
-{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/design.md", "reason": "Check terminal callbacks, buffer ownership, compensation and retry invariants."}
-{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/repository-inventory.md", "reason": "Check current transfer behavior and ensure known bugs are not reproduced."}
-{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "Check libusb resource and cancellation semantics."}
-{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Check file/C callback/protocol/UI boundary consistency."}
+{"file": ".trellis/tasks/07-26-swift-mtp-transfer/prd.md", "reason": "Check every transfer acceptance criterion and user-authorized fallback boundary."}
+{"file": ".trellis/tasks/07-26-swift-mtp-transfer/design.md", "reason": "Check callback lifetime, streaming framing, provider identity and once-only finalization."}
+{"file": ".trellis/tasks/07-26-swift-mtp-transfer/research/current-transfer-evidence.md", "reason": "Verify known unsafe and uncovered legacy behavior is not reproduced."}
+{"file": ".trellis/tasks/07-26-swift-native-mtp-migration/research/external-constraints.md", "reason": "Check libusb cancellation and resource-release ordering."}
+{"file": ".trellis/spec/backend/native-mtp.md", "reason": "Check provider/session/Native ABI invariants and update spec only after implementation passes."}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Check cross-layer errors, IDs, ownership and UI state."}

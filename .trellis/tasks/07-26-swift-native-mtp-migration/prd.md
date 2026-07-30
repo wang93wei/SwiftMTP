@@ -1,8 +1,8 @@
-# 将 Go MTP 核心完整迁移到 Swift
+# 将 Go MTP 核心完整迁移到 Swift，并在确认后删除 Go
 
 ## Goal
 
-将当前由 Go、CGO 与 `libkalam.dylib` 承担的 Android MTP 核心能力迁移为 Swift 原生实现。最终应用保留 libusb 作为 USB transport，但设备发现、MTP/PTP 协议、文件系统和传输不再依赖 Go 工具链、Go 运行时或 CGO。
+将当前由 Go、CGO 与 `libkalam.dylib` 承担的 Android MTP 核心能力迁移为 Swift 原生实现。应用保留 libusb 作为 USB transport；Swift 全链路验收后成为新会话首选，Go/CGO/`libkalam.dylib` 暂时保留为回退。只有用户后续再次明确授权，才进入最终删除 Go 的独立阶段。
 
 ## Background
 
@@ -13,15 +13,16 @@
 
 ## In Scope
 
-- 完成 Delivery Map 中五个阶段及其跨阶段验证。
-- 将当前生产使用的 MTP 能力迁入 Swift，并在最终阶段清理 Go/CGO/libkalam。
+- 完成 Delivery Map 中迁移、切换阶段及其跨阶段验证。
+- 将当前生产使用的 MTP 能力迁入 Swift，并切换为 Swift 优先、Go 回退。
+- 收到用户后续明确授权后，才执行最终 Go/CGO/libkalam 删除阶段。
 
 ## Key Decisions
 
-- **KD1:** 保留 libusb、只移除 Go/CGO/libkalam（R2、R10）。
+- **KD1:** 保留 libusb；Swift 成为首选 provider，Go/CGO/libkalam 在观察期保留为回退，最终删除需要新的用户授权（R2、R10）。
 - **KD2:** 迁移期允许双 provider，但每个设备会话固定一个 provider（R8）。
 - **KD3:** `FileTransferManager*.swift` 继续采用队列与锁（R6）。
-- **KD4:** Go 只有在 Swift 自动化与真机门禁通过后才删除（R9、R10）。
+- **KD4:** Go 回退只允许在新会话建立前选择；活动会话不得切换 provider，失败的写操作不得自动转交另一 provider 重放（R8、R10）。
 
 ## Requirements
 
@@ -34,20 +35,20 @@
 - **R7 — Diagnostics:** USB、MTP、文件 I/O、超时、取消和断连必须产生可诊断的 typed error 与适量结构化日志，不记录文件内容或设备敏感标识。
 - **R8 — Staged migration:** Go 与 Swift provider 可在迁移期共存，但 provider 与选中 `MTPDeviceID` 必须在设备会话开始时固定；生产会话不得混用 provider 或串设备。
 - **R9 — TDD and evidence:** 每个阶段先补失败测试，再实现；纯逻辑用单元/契约测试，USB 与设备差异用真实 Android 设备回归。
-- **R10 — Final cleanup:** Swift provider 全量验收后删除 Go/CGO/libkalam 代码、二进制、脚本、构建项和文档引用，同时保留并正确签名/打包 libusb。
+- **R10 — Cutover, fallback and deletion gate:** Swift provider 全量验收后成为新会话首选；Go/CGO/libkalam 在观察期通过隔离的 typed adapter 提供显式回退。仅初始化、能力不可用或 session-open 等尚未提交业务操作的失败可选择 Go；任何可能已提交的创建、删除、上传或下载都不得跨 provider 自动重放。删除 Go 必须是收到用户明确消息后的独立任务，不能由迁移或切换流程自动触发。
 - **R11 — UI scope:** 保持现有 SwiftUI 信息架构和用户操作，不借迁移新增无关功能或改版界面。
 
 ## Acceptance Criteria
 
-- [ ] **AC1:** 最终生产源码、构建、测试、打包和用户文档不存在 `Kalam_*`、libkalam、CGO 构建或 Go 工具链要求；`.trellis` 仅允许历史/研究证据命中。
+- [ ] **AC1:** 切换后 manager/view 默认路径不直接调用 `Kalam_*`；所有 Go/CGO/libkalam 使用均收口到 typed fallback adapter，Swift provider 是生产新会话首选。收到删除授权并完成独立删除任务后，生产源码、构建、测试和打包才允许彻底移除该 adapter 与 native artifact。
 - [ ] **AC2:** Swift provider 完成设备/存储扫描、对象列表、创建目录、删除、单文件与目录上传、下载、刷新、进度和取消。
 - [ ] **AC3:** 空设备、设备占用、权限、断连、USB 错误、MTP response、协议不同步、超时、取消和本地文件错误均有测试覆盖的结构化错误。
 - [ ] **AC4:** session/transaction 串行化、transaction ID 校验、short packet、split header、zero-length packet 与资源关闭顺序均有协议级测试。
 - [ ] **AC5:** `DeviceManager`、`FileSystemManager`、`FileTransferManager` 的可见状态、缓存失效、断连处理和任务终态无回归。
-- [ ] **AC6:** 迁移期 provider 与 selected snapshot identity 在会话创建时固定，多设备不会串路由；Swift 验收失败时可在新会话切回 Go，最终切换后 Go provider 被删除。
-- [ ] **AC7:** Debug/Release clean build、Swift tests、DMG 打包及 `desloppify` 强制检查通过。
+- [ ] **AC6:** provider 与 selected snapshot identity 在会话创建时固定，多设备不会串路由；Swift 建立新会话失败时可在安全分类下回退 Go，活动会话及可能产生副作用的操作不得跨 provider 重放；Go 在用户授权删除前持续可用。
+- [ ] **AC7:** Debug/Release clean build、Swift tests、Analyze、DMG 打包、ABI/签名检查及 `git diff --check` 通过。
 - [ ] **AC8:** 在可用 Android 硬件上完成扫描→浏览→创建→上传→下载校验→取消→删除→断连回归，并明确记录真机与模拟测试证据。
-- [ ] **AC9:** 最终 `.app` 仍正确嵌入、签名并链接 libusb，但不包含 `libkalam.dylib`。
+- [ ] **AC9:** 切换阶段的 `.app` 正确嵌入、签名并链接 libusb 与 fallback 所需 `libkalam.dylib`，Swift 默认路径不依赖调用 fallback；获准删除后的最终 `.app` 仅保留 libusb，不再包含 `libkalam.dylib`。
 - [ ] **AC10:** 从不安装 Go/Homebrew libusb 的干净环境，使用仓库自带依赖即可构建和测试。
 
 ## Out of Scope
@@ -63,7 +64,8 @@
 2. `07-26-swift-mtp-discovery-session`：libusb 生命周期、设备枚举、MTP session/transaction、设备和存储扫描。
 3. `07-26-swift-mtp-filesystem`：对象列表、创建目录、删除对象和文件系统服务集成。
 4. `07-26-swift-mtp-transfer`：上传下载、进度、取消、超时、断连和目录上传。
-5. `07-26-swift-mtp-cutover`：全量验证、默认切换、删除 Go/CGO/libkalam、清理构建打包文档。
+5. `07-26-swift-mtp-cutover`：全量验证、切换 Swift 首选、保留并隔离 Go fallback、完成观察期证据。
+6. `swift-mtp-go-removal`（授权门槛）：仅在用户后续明确确认删除 Go 后创建并执行，删除 Go/CGO/libkalam 并清理构建、打包和文档。
 
 ## Open Questions
 

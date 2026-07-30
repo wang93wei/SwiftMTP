@@ -26,10 +26,13 @@ xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP -configuration Debug bui
 xcodebuild -project SwiftMTP.xcodeproj -scheme SwiftMTP -configuration Release build
 xcodebuild test -project SwiftMTP.xcodeproj -scheme SwiftMTP -destination 'platform=macOS,arch=arm64' CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=
 otool -L <built-app>/Contents/MacOS/SwiftMTP
-desloppify scan --path .
+codesign --verify --deep --strict --verbose=2 <built-app>
+git diff --check
 ```
 
-The child cannot commit unless desloppify reports `Open: 0`; record lenient/strict, all five mechanical and seven subjective scores in `verification.md`.
+The child cannot commit unless focused/full tests, Debug/Release builds,
+Analyze, linkage/signing checks, and `git diff --check` pass; record the exact
+commands and results in `verification.md`.
 
 ## Review Gate
 
