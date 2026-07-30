@@ -11,11 +11,12 @@ struct DeviceListView: View {
     @EnvironmentObject private var deviceManager: DeviceManager
     @State private var refreshID = UUID()
     @State private var title = ""
+    @State private var selectedDeviceID: Device.ID?
     
     var body: some View {
-        List(deviceManager.devices, selection: $deviceManager.selectedDevice) { device in
+        List(deviceManager.devices, selection: $selectedDeviceID) { device in
             DeviceRowView(device: device)
-                .tag(device)
+                .tag(device.id)
         }
         .id(refreshID)
         .listStyle(.sidebar)
@@ -60,6 +61,33 @@ struct DeviceListView: View {
             // 在视图出现时初始化 title，确保 LanguageManager 已初始化
             if title.isEmpty {
                 title = L10n.DeviceList.devices
+            }
+            selectedDeviceID = deviceManager.selectedDevice?.id
+        }
+        .onChange(of: selectedDeviceID) { _, deviceID in
+            guard let deviceID,
+                  deviceManager.selectedDevice?.id != deviceID else {
+                return
+            }
+
+            // List selection is emitted during a SwiftUI update. Yield before
+            // opening the session and publishing the application selection.
+            Task { @MainActor in
+                await Task.yield()
+                guard selectedDeviceID == deviceID,
+                      deviceManager.selectedDevice?.id != deviceID,
+                      let device = deviceManager.devices.first(where: { $0.id == deviceID }) else {
+                    return
+                }
+                deviceManager.selectDevice(device)
+                if deviceManager.selectedDevice?.id != deviceID {
+                    selectedDeviceID = deviceManager.selectedDevice?.id
+                }
+            }
+        }
+        .onChange(of: deviceManager.selectedDevice?.id) { _, deviceID in
+            if selectedDeviceID != deviceID {
+                selectedDeviceID = deviceID
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .languageDidChange)) { _ in

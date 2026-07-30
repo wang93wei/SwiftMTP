@@ -17,8 +17,8 @@ nonisolated struct AppConfiguration {
     /// Root directory ID (MTP protocol standard value)
     static let rootDirectoryId: UInt32 = 0xFFFFFFFF
 
-    /// Filesystem stays Go-backed until transfer migration is complete.
-    static let defaultMTPProvider: MTPProviderKind = .go
+    /// Swift-native owns the production MTP path; Go remains available as a fallback.
+    static let defaultMTPProvider: MTPProviderKind = .swift
     
     // MARK: - File Transfer Constants
     

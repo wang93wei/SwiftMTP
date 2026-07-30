@@ -175,6 +175,10 @@ final class DeviceManagerBackendTests: XCTestCase {
 }
 
 final class MTPProviderRuntimeTests: XCTestCase {
+    func testProductionRuntimeUsesSwiftNativeProvider() {
+        XCTAssertEqual(MTPProviderRuntime.shared.providerKind, .swift)
+    }
+
     func testScanCarriesBackendSnapshotsAndFailuresTogether() throws {
         let deviceID = try MTPDeviceID(validating: "swift:1:1:1111:0001")
         let failure = MTPScanFailure(

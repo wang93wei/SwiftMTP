@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 
 /// Injected migration boundary around the existing Kalam C ABI.
-/// Go remains the production provider until the transfer path is migrated.
+/// Go remains available as a fallback until the Swift cutover is verified.
 nonisolated protocol GoMTPKernelBoundary: AnyObject {
     func initialize()
     func shutdown()

@@ -22,9 +22,12 @@ Questions to answer:
 
 ## State Categories
 
-<!-- Local state, global state, server state, URL state -->
-
-(To be filled by the team)
+- View-only interaction state, such as the selected row ID inside a SwiftUI
+  `List`, stays in local `@State`.
+- Application state and USB session state stay in the appropriate
+  `@MainActor` manager, such as `DeviceManager`.
+- Views request state transitions through manager methods that enforce backend
+  invariants; they do not publish application state directly.
 
 ---
 
@@ -46,6 +49,10 @@ Questions to answer:
 
 ## Common Mistakes
 
-<!-- State management mistakes your team has made -->
-
-(To be filled by the team)
+- Do not bind `List(selection:)` directly to an `@Published` application
+  property. SwiftUI can write that binding during a view update, producing
+  `Publishing changes from within view updates is not allowed`.
+- Bind selection to a stable local identifier, then yield out of the view
+  update before calling the manager action. For device selection, always call
+  `DeviceManager.selectDevice(_:)`; assigning `selectedDevice` directly skips
+  the provider-bound MTP session open.

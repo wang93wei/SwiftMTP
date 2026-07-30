@@ -9,9 +9,9 @@
   boundaries.
 - Scope: device enumeration, endpoint selection, libusb lifecycle, MTP session
   transactions, discovery snapshots, and exact device routing.
-- Current rollout boundary: `.go` remains the production provider until a later
-  cutover task. Do not wire `SwiftMTPBackend` into production managers merely
-  because this foundation exists.
+- Current rollout boundary: `.swift` is the production default. The Go adapter
+  remains compiled as a fallback boundary until its removal is explicitly
+  approved; an active operation must never be replayed through another provider.
 - Concurrency boundary: these blocking USB primitives use `DispatchQueue`,
   `NSLock`, and `NSCondition`. Do not migrate file-transfer code to Swift
   structured concurrency; that module has an explicit project exemption.
@@ -62,6 +62,13 @@ hardware.
   interrupt IN endpoint. The normal class is Still Image (`0x06`);
   vendor-specific (`0xFF`) is temporarily accepted only with the same exact
   endpoint contract.
+- USB endpoint shape creates only a PTP/MTP candidate. Before publishing a
+  device snapshot, `DeviceInfo.OperationsSupported` must contain the operations
+  used by the complete application path: `GetStorageIDs` (`0x1004`),
+  `GetStorageInfo` (`0x1005`), `GetObjectHandles` (`0x1007`), `GetObjectInfo`
+  (`0x1008`), `GetObject` (`0x1009`), `DeleteObject` (`0x100B`),
+  `SendObjectInfo` (`0x100C`), and `SendObject` (`0x100D`). A PTP-only device is
+  recorded as an isolated `unsupportedDevice` failure and scanning continues.
 - `OpenSession` uses transaction ID `0`. The first ordinary operation uses
   transaction ID `1`. `CloseSession` uses the current transaction ID.
   Transaction IDs must never wrap into `0`.
@@ -96,6 +103,7 @@ hardware.
 | device removed / terminal `NO_DEVICE` | `disconnected` |
 | timeout / cancellation | `timeout` / `cancelled` |
 | unsupported endpoint set | omit the candidate; do not leak a device reference |
+| PTP candidate missing required file-transfer operations | record an isolated `unsupportedDevice` failure; continue scanning |
 | duplicate native stable ID | fail closed with `protocolViolation` |
 | wrong response transaction ID or container order | `protocolViolation` and invalidate the MTP session |
 | failed `OpenSession` | permanently invalidate that session instance |
@@ -108,6 +116,9 @@ hardware.
 
 - Good: two phones with the same VID/PID but different port paths are scanned,
   registered under different app UUIDs, and reopened by their exact native IDs.
+- Good: an iPhone PTP session may open and return storage metadata, but it is
+  omitted when it lacks `SendObjectInfo`/`SendObject`; a healthy Android MTP
+  device from the same scan remains visible.
 - Base: an empty USB bus yields an empty scan result and no retained candidates.
 - Good partial failure: one storage query fails, the device and healthy storages
   remain visible, and the failure includes device ID, storage ID, stage, and
@@ -135,7 +146,8 @@ hardware.
   zero.
 - Backend/coordinator: partial scan failures, storage failures, identity
   collision, inspection-session cleanup, exact re-enumeration, provider/device
-  mismatch, repeated selection, switching devices, and idempotent close.
+  mismatch, PTP capability rejection, repeated selection, switching devices,
+  and idempotent close.
 - Before archive: focused tests, all `SwiftMTPTests`, arm64 Debug and Release
   builds, arm64 Analyze, and `git diff --check`.
 
@@ -172,7 +184,8 @@ The exact-ID lookup must fail when there is no match or more than one match.
 - `FileTransferManager` keeps the project-exempt traditional
   `DispatchQueue`/`NSLock` model. Transfer work must not be migrated to actors,
   `AsyncStream`, or an otherwise structured-concurrency state machine.
-- The production provider remains `.go` until the separate cutover task.
+- The production provider defaults to `.swift`. The Go transfer adapter remains
+  available only as a pinned fallback provider until explicit removal approval.
 
 ### 2. Signatures
 

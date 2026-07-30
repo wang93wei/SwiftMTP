@@ -2,6 +2,85 @@ import XCTest
 @testable import SwiftMTP
 
 final class SwiftMTPBackendTests: XCTestCase {
+    func testScanRejectsPTPCapabilitySetAndKeepsMTPDevice() throws {
+        let fakeUSB = FakeLibUSBFunctions()
+        let context = try LibUSBContext(functions: fakeUSB.table, startsEventLoop: false)
+        let iphonePTPID = try MTPDeviceID(validating: "swift:0:1:05ac:12a8")
+        let xiaomiMTPID = try MTPDeviceID(validating: "swift:2:1.3:2717:ff48")
+        let storageID = try MTPStorageID(validating: 1)
+        let iphoneSession = FakeSwiftDiscoverySession(
+            deviceID: iphonePTPID,
+            storageIDs: [storageID],
+            deviceInfo: MTPDeviceInfoDataset(
+                standardVersion: 100,
+                vendorExtensionID: 6,
+                vendorExtensionVersion: 101,
+                vendorExtensionDescription: "PTP",
+                functionalMode: 0,
+                operationsSupported: [
+                    MTPOperationCode.getStorageIDs.rawValue,
+                    MTPOperationCode.getStorageInfo.rawValue,
+                    MTPOperationCode.getObjectHandles.rawValue,
+                    MTPOperationCode.getObjectInfo.rawValue,
+                    MTPOperationCode.getObject.rawValue,
+                ],
+                eventsSupported: [],
+                devicePropertiesSupported: [],
+                captureFormats: [],
+                imageFormats: [],
+                manufacturer: "Apple",
+                model: "iPhone",
+                deviceVersion: "1",
+                serialNumber: "private"
+            )
+        )
+        iphoneSession.storageInfo[storageID] = makeStorageInfo(description: "Photos")
+        let xiaomiSession = FakeSwiftDiscoverySession(
+            deviceID: xiaomiMTPID,
+            storageIDs: [storageID]
+        )
+        xiaomiSession.storageInfo[storageID] = makeStorageInfo(description: "Internal")
+        let candidates = [
+            makeCandidate(deviceID: iphonePTPID, raw: 0x401, functions: fakeUSB.table),
+            makeCandidate(deviceID: xiaomiMTPID, raw: 0x402, functions: fakeUSB.table),
+        ]
+        let attemptedDeviceIDs = UncheckedResultBox<[MTPDeviceID]>()
+        attemptedDeviceIDs.store([])
+        let backend = SwiftMTPBackend(
+            functions: fakeUSB.table,
+            contextFactory: { context },
+            enumerateCandidates: { _ in candidates },
+            makeSession: { _, candidate in
+                var values = attemptedDeviceIDs.value ?? []
+                values.append(candidate.interface.deviceID)
+                attemptedDeviceIDs.store(values)
+                return candidate.interface.deviceID == iphonePTPID
+                    ? iphoneSession
+                    : xiaomiSession
+            }
+        )
+
+        try backend.initialize()
+        let result = try backend.scanDevices()
+
+        XCTAssertEqual(result.snapshots.map(\.deviceID), [xiaomiMTPID])
+        XCTAssertEqual(
+            result.failures,
+            [
+                MTPScanFailure(
+                    deviceID: iphonePTPID,
+                    storageID: nil,
+                    stage: .device,
+                    error: .unsupportedDevice
+                ),
+            ]
+        )
+        XCTAssertEqual(attemptedDeviceIDs.value, [iphonePTPID, xiaomiMTPID])
+        XCTAssertEqual(iphoneSession.closeCount, 1)
+        XCTAssertEqual(xiaomiSession.closeCount, 1)
+        backend.shutdown()
+    }
+
     func testScanKeepsDeviceIdentityWhenOneStorageFailsAndRecordsFailures() throws {
         let fakeUSB = FakeLibUSBFunctions()
         let context = try LibUSBContext(functions: fakeUSB.table, startsEventLoop: false)

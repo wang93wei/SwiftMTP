@@ -58,6 +58,16 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
     private let makeDownloadDestination: DownloadDestinationFactory
     private let makeUploadSource: UploadSourceFactory
     private var context: LibUSBContext?
+    private static let requiredFileTransferOperations: Set<UInt16> = [
+        MTPOperationCode.getStorageIDs.rawValue,
+        MTPOperationCode.getStorageInfo.rawValue,
+        MTPOperationCode.getObjectHandles.rawValue,
+        MTPOperationCode.getObjectInfo.rawValue,
+        MTPOperationCode.getObject.rawValue,
+        MTPOperationCode.deleteObject.rawValue,
+        MTPOperationCode.sendObjectInfo.rawValue,
+        MTPOperationCode.sendObject.rawValue,
+    ]
 
     init(
         functions: LibUSBFunctionTable = LibUSBFunctionTable(),
@@ -125,6 +135,16 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
                     )
                 }
                 let deviceInfo = try session.getDeviceInfo()
+                let operationCodes = deviceInfo.operationsSupported
+                    .map { String(format: "%04x", $0) }
+                    .joined(separator: ",")
+                MTPLog.session.debug(
+                    "DeviceInfo for \(deviceID.rawValue, privacy: .private(mask: .hash)): extensionID=\(deviceInfo.vendorExtensionID, privacy: .public), operations=\(operationCodes, privacy: .public)"
+                )
+                try Self.requireFileTransferCapabilities(
+                    deviceInfo,
+                    deviceID: deviceID
+                )
                 let storageIDs = try session.getStorageIDs()
                 var storages: [MTPStorage] = []
                 for storageID in storageIDs {
@@ -164,17 +184,20 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
                     )
                 )
             } catch {
+                let coreError = Self.coreError(error)
                 failures.append(
                     MTPScanFailure(
                         deviceID: deviceID,
                         storageID: nil,
                         stage: .device,
-                        error: Self.coreError(error)
+                        error: coreError
                     )
                 )
-                MTPLog.session.error(
-                    "Device scan failed for \(deviceID.rawValue, privacy: .private(mask: .hash))"
-                )
+                if coreError != .unsupportedDevice {
+                    MTPLog.session.error(
+                        "Device scan failed for \(deviceID.rawValue, privacy: .private(mask: .hash))"
+                    )
+                }
             }
         }
         return MTPScanResult(snapshots: snapshots, failures: failures)
@@ -226,5 +249,24 @@ nonisolated final class SwiftMTPBackend: MTPBackend {
     private static func coreError(_ error: Error) -> MTPCoreError {
         error as? MTPCoreError
             ?? .protocolViolation("unexpected Swift MTP discovery failure")
+    }
+
+    private static func requireFileTransferCapabilities(
+        _ deviceInfo: MTPDeviceInfoDataset,
+        deviceID: MTPDeviceID
+    ) throws {
+        let supportedOperations = Set(deviceInfo.operationsSupported)
+        let missingOperations = requiredFileTransferOperations
+            .subtracting(supportedOperations)
+            .sorted()
+        guard missingOperations.isEmpty else {
+            let missingCodes = missingOperations
+                .map { String(format: "%04x", $0) }
+                .joined(separator: ",")
+            MTPLog.session.info(
+                "Ignoring PTP-only device \(deviceID.rawValue, privacy: .private(mask: .hash)); missing file-transfer operations: \(missingCodes, privacy: .public)"
+            )
+            throw MTPCoreError.unsupportedDevice
+        }
     }
 }

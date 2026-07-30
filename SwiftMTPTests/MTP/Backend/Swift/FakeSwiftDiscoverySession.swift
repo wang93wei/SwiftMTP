@@ -3,6 +3,7 @@ import Foundation
 
 final class FakeSwiftDiscoverySession: SwiftMTPDiscoverySession {
     let deviceID: MTPDeviceID
+    var deviceInfo: MTPDeviceInfoDataset
     var deviceInfoError: MTPCoreError?
     var storageIDs: [MTPStorageID]
     var storageInfo: [MTPStorageID: MTPStorageInfoDataset] = [:]
@@ -24,22 +25,29 @@ final class FakeSwiftDiscoverySession: SwiftMTPDiscoverySession {
     private(set) var uploadCount = 0
     private(set) var closeCount = 0
 
-    init(deviceID: MTPDeviceID, storageIDs: [MTPStorageID] = []) {
+    init(
+        deviceID: MTPDeviceID,
+        storageIDs: [MTPStorageID] = [],
+        deviceInfo: MTPDeviceInfoDataset? = nil
+    ) {
         self.deviceID = deviceID
         self.storageIDs = storageIDs
-    }
-
-    func getDeviceInfo() throws -> MTPDeviceInfoDataset {
-        if let deviceInfoError {
-            throw deviceInfoError
-        }
-        return MTPDeviceInfoDataset(
+        self.deviceInfo = deviceInfo ?? MTPDeviceInfoDataset(
             standardVersion: 100,
             vendorExtensionID: 6,
             vendorExtensionVersion: 101,
             vendorExtensionDescription: "MTP",
             functionalMode: 0,
-            operationsSupported: [],
+            operationsSupported: [
+                MTPOperationCode.getStorageIDs.rawValue,
+                MTPOperationCode.getStorageInfo.rawValue,
+                MTPOperationCode.getObjectHandles.rawValue,
+                MTPOperationCode.getObjectInfo.rawValue,
+                MTPOperationCode.getObject.rawValue,
+                MTPOperationCode.deleteObject.rawValue,
+                MTPOperationCode.sendObjectInfo.rawValue,
+                MTPOperationCode.sendObject.rawValue,
+            ],
             eventsSupported: [],
             devicePropertiesSupported: [],
             captureFormats: [],
@@ -49,6 +57,13 @@ final class FakeSwiftDiscoverySession: SwiftMTPDiscoverySession {
             deviceVersion: "1",
             serialNumber: "private"
         )
+    }
+
+    func getDeviceInfo() throws -> MTPDeviceInfoDataset {
+        if let deviceInfoError {
+            throw deviceInfoError
+        }
+        return deviceInfo
     }
 
     func getStorageIDs() throws -> [MTPStorageID] {
