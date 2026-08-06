@@ -141,8 +141,8 @@ channel:
 # hint lines in those files) — there is no config.yaml knob for this,
 # `trellis update` preserves your edits across regeneration.
 #
-codex:
-  dispatch_mode: sub-agent  # or "inline"; legacy alias: "sub-agent"
+# codex:
+#   dispatch_mode: auto  # or "inline"; legacy alias: "sub-agent"
 
 #-------------------------------------------------------------------------------
 # Sub-agent context injection limits

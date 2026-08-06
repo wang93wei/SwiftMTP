@@ -35,6 +35,16 @@
               "timeout": 30
             }
           ]
+        },
+        {
+          "matcher": "Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "python3 \"${ZCODE_PROJECT_DIR}/.zcode/hooks/inject-shell-session-context.py\"",
+              "timeout": 5
+            }
+          ]
         }
       ]
     }
